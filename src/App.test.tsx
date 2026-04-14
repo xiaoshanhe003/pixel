@@ -26,8 +26,9 @@ vi.mock('./utils/pixelPipeline', () => ({
       cells: Array.from({ length: 256 }, (_, index) => ({
         x: index % 16,
         y: Math.floor(index / 16),
-        color: index % 2 === 0 ? '#000000' : '#ffffff',
+        color: index === 0 ? null : index % 2 === 0 ? '#000000' : '#ffffff',
         source: { r: 0, g: 0, b: 0 },
+        alpha: index === 0 ? 0 : 255,
       })),
     }),
   ),
@@ -45,34 +46,37 @@ describe('App', () => {
   it('renders the converter heading and size options', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: /pixel forge/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /像素工坊/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/16 x 16/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/32 x 32/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/16 colors/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/32 colors/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/enable dithering/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/clean stray pixels/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/preserve silhouette/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/16 色/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/32 色/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/启用抖动/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/清理杂点/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/保留轮廓/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/简化形状/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/线稿角色模式/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/主体铺满画幅/i)).toBeInTheDocument();
   });
 
   it('shows a generated grid after an image is uploaded', async () => {
     render(<App />);
 
-    const input = screen.getByLabelText(/upload image/i) as HTMLInputElement;
+    const input = screen.getByLabelText(/上传图片/i) as HTMLInputElement;
     const file = new File(['fake'], 'sprite.png', { type: 'image/png' });
 
     await userEvent.upload(input, file);
 
     await waitFor(() =>
-      expect(screen.getByText(/grid ready/i)).toBeInTheDocument(),
+      expect(screen.getByText(/像素网格已生成/i)).toBeInTheDocument(),
     );
 
     expect(
-      screen.getByAltText(/uploaded source preview/i),
+      screen.getByAltText(/已上传原图预览/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('grid', { name: /pixel output grid/i }),
+      screen.getByRole('grid', { name: /像素输出网格/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/active palette/i)).toBeInTheDocument();
+    expect(screen.getByText(/当前调色板/i)).toBeInTheDocument();
   });
 });

@@ -15,6 +15,9 @@ const DEFAULT_OPTIONS: ConversionOptions = {
   dithering: false,
   cleanupNoise: true,
   preserveSilhouette: true,
+  simplifyShapes: true,
+  animeMode: true,
+  fillFrame: false,
 };
 
 function getPaletteCounts(grid: PixelGridModel | null): Map<string, number> {
@@ -25,6 +28,10 @@ function getPaletteCounts(grid: PixelGridModel | null): Map<string, number> {
   }
 
   for (const cell of grid.cells) {
+    if (!cell.color) {
+      continue;
+    }
+
     counts.set(cell.color, (counts.get(cell.color) ?? 0) + 1);
   }
 
@@ -37,13 +44,13 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [pixelGrid, setPixelGrid] = useState<PixelGridModel | null>(null);
-  const [status, setStatus] = useState('Upload an image to begin');
+  const [status, setStatus] = useState('上传图片后开始转换');
 
   useEffect(() => {
     if (!selectedFile) {
       setPreviewUrl(undefined);
       setPixelGrid(null);
-      setStatus('Upload an image to begin');
+      setStatus('上传图片后开始转换');
       return;
     }
 
@@ -51,27 +58,27 @@ export default function App() {
     let cancelled = false;
 
     setPreviewUrl(nextPreviewUrl);
-    setStatus('Processing image...');
+    setStatus('正在处理图片...');
 
     void (async () => {
       try {
         const image = await fileToImageElement(selectedFile);
         const imageData = imageSourceToImageData(
           image,
-          conversionOptions.gridSize,
-          conversionOptions.gridSize,
-          false,
+          image.naturalWidth || image.width,
+          image.naturalHeight || image.height,
+          true,
         );
         const nextGrid = buildPixelGrid(imageData, conversionOptions);
 
         if (!cancelled) {
           setPixelGrid(nextGrid);
-          setStatus('Grid ready');
+          setStatus('像素网格已生成');
         }
       } catch {
         if (!cancelled) {
           setPixelGrid(null);
-          setStatus('Unable to process this image');
+          setStatus('图片处理失败');
         }
       }
     })();
@@ -83,15 +90,16 @@ export default function App() {
   }, [conversionOptions, selectedFile]);
 
   const paletteCounts = getPaletteCounts(pixelGrid);
+  const transparentCount =
+    pixelGrid?.cells.filter((cell) => cell.color === null).length ?? 0;
 
   return (
     <main className="app-shell">
       <section className="hero">
-        <p className="eyebrow">Pixel Art Converter</p>
-        <h1>Pixel Forge</h1>
+        <p className="eyebrow">像素画转换器</p>
+        <h1>像素工坊</h1>
         <p className="lede">
-          Upload an image, compress it into deliberate pixels, and inspect the
-          result as a true editable grid.
+          上传图片，把画面压缩成更有取舍的像素块，并用可编辑网格查看结果。
         </p>
       </section>
 
@@ -103,12 +111,12 @@ export default function App() {
           />
         </div>
 
-        <section className="comparison-stage" aria-label="source and result comparison">
+        <section className="comparison-stage" aria-label="原图与结果对比">
           <div className="comparison-panel">
             <div className="panel panel--comparison">
               <div className="panel__header">
-                <h2>Source</h2>
-                <span>Original image preview</span>
+                <h2>原图</h2>
+                <span>{previewUrl ? '预览已就绪' : '尚未上传'}</span>
               </div>
               <div className="panel__body">
                 <ImageUploader
@@ -122,7 +130,7 @@ export default function App() {
           <div className="comparison-panel">
             <div className="panel panel--comparison">
               <div className="panel__header">
-                <h2>Result</h2>
+                <h2>结果</h2>
                 <span>{status}</span>
               </div>
               <div className="panel__body">
@@ -130,8 +138,7 @@ export default function App() {
                   <PixelGrid grid={pixelGrid} />
                 ) : (
                   <div className="empty-state">
-                    Pixel grid will appear here once the source image has been
-                    sampled.
+                    采样完成后，这里会显示像素网格。
                   </div>
                 )}
               </div>
@@ -139,27 +146,28 @@ export default function App() {
           </div>
         </section>
 
-        <aside className="sidebar-stack" aria-label="grid side panels">
+        <aside className="sidebar-stack" aria-label="侧边信息面板">
           {pixelGrid ? (
             <>
               <PalettePanel
                 palette={pixelGrid.palette}
                 counts={paletteCounts}
+                transparentCount={transparentCount}
               />
               <InspectorPanel
                 grid={pixelGrid}
                 options={conversionOptions}
+                transparentCount={transparentCount}
               />
             </>
           ) : (
             <section className="panel panel--sidebar">
               <div className="panel__header panel__header--stack">
-                <h2>Inspector</h2>
-                <span>No grid yet</span>
+                <h2>检查器</h2>
+                <span>等待生成</span>
               </div>
               <p className="sidebar-copy">
-                Generate a draft to inspect palette usage, cell count, and
-                future edit affordances.
+                生成草稿后，这里会显示调色板和网格统计。
               </p>
             </section>
           )}

@@ -8,13 +8,9 @@ export default function ImageUploader({
   previewUrl,
 }: ImageUploaderProps) {
   return (
-    <section className="uploader-stage" aria-label="image upload panel">
+    <section className="uploader-stage" aria-label="图片上传区域">
       <label className="uploader" htmlFor="image-upload">
-        <span className="uploader__title">Upload Image</span>
-        <span className="uploader__copy">
-          PNG, JPG, or WebP. Start with a strong silhouette for cleaner pixel
-          reduction.
-        </span>
+        <span className="uploader__title">上传图片</span>
         <input
           id="image-upload"
           type="file"
@@ -33,12 +29,11 @@ export default function ImageUploader({
         <img
           className="source-preview"
           src={previewUrl}
-          alt="Uploaded source preview"
+          alt="已上传原图预览"
         />
       ) : (
         <div className="empty-state">
-          Drop in an image to compare its source silhouette against the reduced
-          grid.
+          上传图片后开始。
         </div>
       )}
     </section>

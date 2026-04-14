@@ -6,17 +6,10 @@ type PixelGridProps = {
 
 export default function PixelGrid({ grid }: PixelGridProps) {
   return (
-    <section className="pixel-grid-card" aria-label="pixel output panel">
-      <div className="panel__header panel__header--tight">
-        <h2>Pixel Output</h2>
-        <span>
-          {grid.width} x {grid.height} editable matrix
-        </span>
-      </div>
-
+    <section className="pixel-grid-card" aria-label="像素输出面板">
       <div
         role="grid"
-        aria-label="Pixel output grid"
+        aria-label="像素输出网格"
         className="pixel-grid"
         style={{ gridTemplateColumns: `repeat(${grid.width}, minmax(0, 1fr))` }}
       >
@@ -25,9 +18,9 @@ export default function PixelGrid({ grid }: PixelGridProps) {
             key={`${cell.x}-${cell.y}`}
             type="button"
             role="gridcell"
-            className="pixel-cell"
-            aria-label={`cell ${cell.x},${cell.y} ${cell.color}`}
-            style={{ backgroundColor: cell.color }}
+            className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}`}
+            aria-label={`像素 ${cell.x},${cell.y} ${cell.color ?? '透明'}`}
+            style={cell.color ? { backgroundColor: cell.color } : undefined}
           />
         ))}
       </div>

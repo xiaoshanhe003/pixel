@@ -7,8 +7,9 @@ export type RGB = {
 export type PixelCell = {
   x: number;
   y: number;
-  color: string;
+  color: string | null;
   source: RGB;
+  alpha: number;
 };
 
 export type GridSize = 16 | 32;
@@ -21,6 +22,9 @@ export type ConversionOptions = {
   dithering: boolean;
   cleanupNoise: boolean;
   preserveSilhouette: boolean;
+  simplifyShapes: boolean;
+  animeMode: boolean;
+  fillFrame: boolean;
 };
 
 export type PixelGrid = {

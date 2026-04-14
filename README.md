@@ -7,8 +7,8 @@ low-resolution output instead of generic thumbnail downscaling.
 
 - Upload PNG, JPG, or WebP source images
 - Convert to `16x16` or `32x32`
-- Limit palette to `16` or `32` colors
-- Toggle ordered dithering and cleanup
+- Extract a source-adaptive palette capped to `16` or `32` colors
+- Toggle conservative ordered dithering and cleanup
 - Preserve silhouette edges during conservative cleanup
 - Inspect output as an editable cell grid with palette and grid stats
 
