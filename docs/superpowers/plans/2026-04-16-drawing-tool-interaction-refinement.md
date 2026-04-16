@@ -119,7 +119,7 @@ setToolSettings: (updater) =>
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "shows brush and eraser size controls for the active tool"`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/types/studio.ts src/hooks/useStudioApp.ts src/App.tsx src/hooks/App.rendering.test.tsx
@@ -193,7 +193,7 @@ Expected: FAIL because the left dock has no helper controls or guidance copy.
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "renders tool-specific helper controls inside the left dock"`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/EditingToolbar.tsx src/components/StudioLeftDock.tsx src/styles/primitives.css src/hooks/App.rendering.test.tsx
@@ -292,7 +292,7 @@ it('lets the user see rectangle preview before commit and draws after release', 
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx src/hooks/App.canvas-editing.test.tsx`
 Expected: PASS with preview and multi-cell drawing behavior covered.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/components/StudioCanvasStage.tsx src/components/PixelGrid.tsx src/styles/canvas.css src/components/__tests__/PixelGrid.test.tsx src/hooks/App.canvas-editing.test.tsx
@@ -360,7 +360,7 @@ const toolCursor = getCursorForTool(tool);
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx -t "cursor"`
 Expected: PASS with viewport and cell cursor assertions aligned.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/PixelGrid.tsx src/styles/canvas-foundation.css src/styles/canvas.css src/components/__tests__/PixelGrid.test.tsx
@@ -373,7 +373,7 @@ git commit -m "fix: align canvas hover cursor with selected tool"
 - Modify: `src/hooks/App.canvas-editing.test.tsx`
 - Modify: `README.md`
 
-Status note: the verification and documentation steps are complete. The remaining audit trail item is the final commit that closes this execution pass.
+Status note: verification, documentation, and final audit-trail commits are complete for this execution pass.
 
 - [x] **Step 1: Add a focused interaction regression test**
 
@@ -408,7 +408,7 @@ Expected: PASS
 Run: `npm test -- --runInBand`
 Expected: PASS across the repo with no regressions in blank-canvas editing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/App.canvas-editing.test.tsx src/hooks/App.rendering.test.tsx src/components/__tests__/PixelGrid.test.tsx README.md
@@ -425,6 +425,7 @@ git commit -m "test: verify refined drawing tool interactions"
 - [x] 2026-04-16 局部回归：`npm test -- src/components/__tests__/PixelGrid.test.tsx src/hooks/App.canvas-editing.test.tsx src/hooks/App.rendering.test.tsx`
 - [x] 2026-04-16 全量验证：`npm test -- --run`
 - [x] 2026-04-16 构建验证：`npm run build`
+- [x] 2026-04-16 提交记录：`2ba43cb docs: record drawing tool regression status`
 
 ## Self-Review
 
