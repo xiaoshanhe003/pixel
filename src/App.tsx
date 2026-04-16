@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import BeadPalettePanel from './components/BeadPalettePanel';
 import ConversionControls from './components/ConversionControls';
+import CrochetChart from './components/CrochetChart';
+import CrochetPatternPanel from './components/CrochetPatternPanel';
 import EditingToolbar from './components/EditingToolbar';
 import FrameStrip from './components/FrameStrip';
 import ImageUploader from './components/ImageUploader';
@@ -8,6 +10,7 @@ import InspectorPanel from './components/InspectorPanel';
 import LayersPanel from './components/LayersPanel';
 import PalettePanel from './components/PalettePanel';
 import PixelGrid from './components/PixelGrid';
+import ScenarioExportPanel from './components/ScenarioExportPanel';
 import type { ConversionOptions } from './types/pixel';
 import type {
   EditorTool,
@@ -17,6 +20,7 @@ import type {
 } from './types/studio';
 import { fileToImageElement, imageSourceToImageData } from './utils/image';
 import { countBeadUsage, mapGridToBeadPalette } from './utils/beads';
+import { analyzeCrochetPattern } from './utils/crochet';
 import { buildPixelGrid } from './utils/pixelPipeline';
 import type { BeadBrand } from './data/beadPalettes';
 import {
@@ -89,6 +93,13 @@ export default function App() {
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewFps, setPreviewFps] = useState(6);
   const [beadBrand, setBeadBrand] = useState<BeadBrand>('perler');
+  const [crochetViewMode, setCrochetViewMode] = useState<'color' | 'symbol'>('color');
+  const [beadExportMode, setBeadExportMode] = useState<'bead-chart' | 'bead-list'>(
+    'bead-chart',
+  );
+  const [crochetExportMode, setCrochetExportMode] = useState<
+    'crochet-chart' | 'crochet-rows'
+  >('crochet-chart');
 
   useEffect(() => {
     if (!selectedFile) {
@@ -136,8 +147,7 @@ export default function App() {
     setDocument((current) => {
       if (
         current.width === conversionOptions.gridSize &&
-        current.height === conversionOptions.gridSize &&
-        current.scenario === activeScenario
+        current.height === conversionOptions.gridSize
       ) {
         return current;
       }
@@ -216,6 +226,10 @@ export default function App() {
     activeScenario === 'beads' && activeGrid
       ? countBeadUsage(activeGrid, beadBrand)
       : [];
+  const crochetAnalysis =
+    activeScenario === 'crochet' && activeGrid
+      ? analyzeCrochetPattern(activeGrid)
+      : null;
   const scenario = SCENARIOS.find((item) => item.id === activeScenario) ?? SCENARIOS[0];
 
   function handlePaintCell(x: number, y: number, color: string | null) {
@@ -300,6 +314,10 @@ export default function App() {
     }
 
     setPreviewIsPlaying((current) => !current);
+  }
+
+  function handlePrintExport() {
+    window.print();
   }
 
   return (
@@ -407,6 +425,24 @@ export default function App() {
               <div className="panel__header">
                 <h2>{scenario.label}</h2>
                 <div className="canvas-toolbar">
+                  {activeScenario === 'crochet' ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`chip-button${crochetViewMode === 'color' ? ' is-active' : ''}`}
+                        onClick={() => setCrochetViewMode('color')}
+                      >
+                        颜色图
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip-button${crochetViewMode === 'symbol' ? ' is-active' : ''}`}
+                        onClick={() => setCrochetViewMode('symbol')}
+                      >
+                        符号图
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     className="chip-button"
@@ -439,19 +475,37 @@ export default function App() {
               </div>
               <div className="panel__body stage-canvas-body">
                 {activeGrid ? (
-                  <PixelGrid
-                    grid={activeGrid}
-                    editable
-                    activeColor={activeColor}
-                    tool={activeTool}
-                    onPaintCell={handlePaintCell}
-                    onFillArea={handleFillArea}
-                    onDrawLine={handleDrawLine}
-                    onDrawRectangle={handleDrawRectangle}
-                    onSampleCell={handleSampleCell}
-                    zoom={canvasZoom}
-                    showGrid={showGridLines}
-                  />
+                  activeScenario === 'crochet' && crochetAnalysis ? (
+                    <CrochetChart
+                      grid={activeGrid}
+                      viewMode={crochetViewMode}
+                      symbolByColor={crochetAnalysis.symbolByColor}
+                      editable
+                      activeColor={activeColor}
+                      tool={activeTool}
+                      onPaintCell={handlePaintCell}
+                      onFillArea={handleFillArea}
+                      onDrawLine={handleDrawLine}
+                      onDrawRectangle={handleDrawRectangle}
+                      onSampleCell={handleSampleCell}
+                      zoom={canvasZoom}
+                      showGrid={showGridLines}
+                    />
+                  ) : (
+                    <PixelGrid
+                      grid={activeGrid}
+                      editable
+                      activeColor={activeColor}
+                      tool={activeTool}
+                      onPaintCell={handlePaintCell}
+                      onFillArea={handleFillArea}
+                      onDrawLine={handleDrawLine}
+                      onDrawRectangle={handleDrawRectangle}
+                      onSampleCell={handleSampleCell}
+                      zoom={canvasZoom}
+                      showGrid={showGridLines}
+                    />
+                  )
                 ) : (
                   <div className="empty-state">
                     采样完成后，这里会显示像素网格。
@@ -476,20 +530,27 @@ export default function App() {
                 onFpsChange={setPreviewFps}
               />
             ) : (
-              <section className="panel stage-bottom-note">
-                <div className="panel__header">
-                  <h2>导出</h2>
-                </div>
-                <div className="panel__body panel__body--compact">
-                  <div className="tag-row">
-                    {scenario.exports.map((item) => (
-                      <span key={item} className="info-tag">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </section>
+              activeGrid && (
+                <ScenarioExportPanel
+                  scenario={activeScenario}
+                  grid={activeGrid}
+                  beadBrand={activeScenario === 'beads' ? beadBrand : undefined}
+                  beadUsage={activeScenario === 'beads' ? beadUsage : undefined}
+                  crochetAnalysis={activeScenario === 'crochet' ? crochetAnalysis ?? undefined : undefined}
+                  exportMode={
+                    activeScenario === 'beads' ? beadExportMode : crochetExportMode
+                  }
+                  onExportModeChange={(mode) => {
+                    if (activeScenario === 'beads') {
+                      setBeadExportMode(mode as 'bead-chart' | 'bead-list');
+                      return;
+                    }
+
+                    setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
+                  }}
+                  onPrint={handlePrintExport}
+                />
+              )
             )}
           </section>
 
@@ -503,6 +564,8 @@ export default function App() {
                     transparentCount={transparentCount}
                     onBrandChange={setBeadBrand}
                   />
+                ) : activeScenario === 'crochet' && crochetAnalysis ? (
+                  <CrochetPatternPanel analysis={crochetAnalysis} />
                 ) : (
                   <PalettePanel
                     palette={activeGrid.palette}

@@ -41,6 +41,7 @@ vi.stubGlobal(
     revokeObjectURL: vi.fn(),
   }),
 );
+vi.stubGlobal('print', vi.fn());
 
 describe('App', () => {
   it('renders the studio heading, scenario tabs, and size options', () => {
@@ -167,6 +168,52 @@ describe('App', () => {
     expect(screen.getByText(/Perler 映射/i)).toBeInTheDocument();
     expect(screen.getAllByText(/255 颗/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/材料总数：255 颗/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /打印导出/i })).toBeInTheDocument();
+    expect(screen.getByText(/拼豆打印图纸/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /颜色清单/i }));
+
+    expect(screen.getByText(/拼豆颜色清单/i)).toBeInTheDocument();
+  });
+
+  it('prints only from the scenario export panel action', async () => {
+    render(<App />);
+
+    const input = screen.getByLabelText(/上传图片/i) as HTMLInputElement;
+    const file = new File(['fake'], 'beads-print.png', { type: 'image/png' });
+    await userEvent.upload(input, file);
+
+    await waitFor(() =>
+      expect(screen.getByRole('grid', { name: /像素输出网格/i })).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
+
+    expect(window.print).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows crochet numbering, symbol view, and row instructions', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /新建空白画布/i }));
+    await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,15 透明/i));
+
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+
+    expect(screen.getAllByRole('heading', { name: /钩织图纸/i }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/第 1 行/i)).toBeInTheDocument();
+    expect(screen.getByText(/A x 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/钩织 PDF 图纸/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /符号图/i }));
+
+    expect(screen.getByLabelText(/像素 0,15 #d65a31 符号 A/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /行列说明/i }));
+
+    expect(screen.getByText(/钩织行列说明/i)).toBeInTheDocument();
   });
 
   it('lets the user create and manage layers in pixel mode', async () => {

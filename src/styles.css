@@ -394,6 +394,9 @@ button {
 }
 
 .pixel-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
   width: 100%;
   aspect-ratio: 1;
   border: 1px solid rgba(31, 28, 23, 0.08);
@@ -423,9 +426,199 @@ button {
   background-image: none;
 }
 
+.pixel-cell--symbol {
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.pixel-cell__overlay {
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
 .pixel-cell--editable:hover {
   outline: 2px solid var(--pomegranate);
   z-index: 1;
+}
+
+.crochet-chart {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: 36px minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.crochet-chart__corner {
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.crochet-chart__columns {
+  display: grid;
+  gap: 1px;
+  align-items: center;
+  padding: 0 28px;
+}
+
+.crochet-chart__rows {
+  display: grid;
+  gap: 1px;
+}
+
+.crochet-chart__index {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.crochet-rows {
+  display: grid;
+  gap: 12px;
+  padding: 0 22px 22px;
+}
+
+.crochet-row-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.export-sheet {
+  display: grid;
+  gap: 16px;
+  margin: 0 22px 22px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 233, 0.94));
+}
+
+.export-sheet__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.export-sheet__legend,
+.export-sheet__list {
+  display: grid;
+  gap: 10px;
+}
+
+.export-sheet__legend-item,
+.export-sheet__list-row {
+  display: grid;
+  grid-template-columns: 28px repeat(2, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.print-grid {
+  display: grid;
+  gap: 1px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: #e7dfd2;
+}
+
+.print-grid__cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 20px;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.print-grid__cell--empty {
+  background:
+    linear-gradient(45deg, rgba(223, 216, 203, 0.7) 25%, transparent 25%, transparent 75%, rgba(223, 216, 203, 0.7) 75%),
+    linear-gradient(45deg, rgba(223, 216, 203, 0.7) 25%, transparent 25%, transparent 75%, rgba(223, 216, 203, 0.7) 75%),
+    rgba(255, 255, 255, 0.4);
+  background-position: 0 0, 5px 5px, 0 0;
+  background-size: 10px 10px, 10px 10px, auto;
+}
+
+.print-grid--symbols .print-grid__cell {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .scenario-export-panel,
+  .scenario-export-panel * {
+    visibility: visible !important;
+  }
+
+  .scenario-export-panel {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .scenario-export-panel .chip-button,
+  .scenario-export-panel .panel__header span {
+    display: none;
+  }
+
+  .scenario-export-panel .frame-strip__actions {
+    padding: 0 22px 12px;
+  }
+
+  .export-sheet {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    page-break-inside: avoid;
+  }
+
+  .export-sheet__legend-item,
+  .export-sheet__list-row {
+    break-inside: avoid;
+  }
+
+  .print-grid {
+    break-inside: avoid;
+    background: #d8d0c4;
+  }
 }
 
 .tool-panel__body,
@@ -773,6 +966,357 @@ button {
 
 @media (max-width: 1080px) {
   .controls-and-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Figma-inspired override */
+:root {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --ink: #000000;
+  --muted: rgba(0, 0, 0, 0.62);
+  --line: rgba(0, 0, 0, 0.12);
+  --line-soft: rgba(0, 0, 0, 0.08);
+  --surface-soft: rgba(0, 0, 0, 0.04);
+  --surface-glass: rgba(0, 0, 0, 0.08);
+  --focus: 2px dashed #000000;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+html,
+body,
+#root {
+  background: #fff;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(173, 255, 47, 0.18), transparent 22%),
+    radial-gradient(circle at top right, rgba(255, 0, 153, 0.14), transparent 20%),
+    radial-gradient(circle at bottom left, rgba(128, 0, 255, 0.12), transparent 24%),
+    #fff;
+  font-family:
+    figmaSans,
+    'figmaSans Fallback',
+    'SF Pro Display',
+    system-ui,
+    Helvetica,
+    sans-serif;
+  font-feature-settings: 'kern' 1;
+  letter-spacing: -0.14px;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-feature-settings: 'kern' 1;
+}
+
+:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  width: min(1600px, calc(100% - 32px));
+  padding: 16px 0 28px;
+}
+
+.studio-app {
+  gap: 16px;
+}
+
+.app-topbar {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.app-brand h1 {
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  font-weight: 400;
+  line-height: 0.96;
+  letter-spacing: -1.4px;
+}
+
+.scenario-switcher {
+  gap: 8px;
+}
+
+.scenario-tab,
+.chip-button,
+.size-control__option,
+.layer-card__select {
+  min-height: 40px;
+  padding: 8px 18px 10px;
+  border: 1px solid transparent;
+  border-radius: 50px;
+  background: transparent;
+  color: #000;
+  box-shadow: none;
+  transform: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.scenario-tab:hover,
+.chip-button:hover,
+.size-control__option:hover,
+.layer-card__select:hover {
+  transform: none;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.scenario-tab.is-active,
+.chip-button.is-active {
+  background: #000;
+  color: #fff;
+  box-shadow: none;
+  transform: none;
+}
+
+.scenario-tab.is-active:hover,
+.chip-button.is-active:hover {
+  background: #000;
+}
+
+.topbar-status,
+.canvas-toolbar,
+.frame-strip__actions,
+.layer-card__actions {
+  gap: 8px;
+}
+
+.canvas-toolbar__value,
+.frame-strip__fps,
+.info-tag {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 50px;
+  background: #fff;
+  color: #000;
+}
+
+.studio-layout {
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: 16px;
+}
+
+.left-dock,
+.right-dock,
+.canvas-stage {
+  gap: 16px;
+}
+
+.panel,
+.controls-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
+}
+
+.panel--dock {
+  background: #fff;
+}
+
+.panel__header {
+  padding: 18px 18px 0;
+}
+
+.panel__header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.22px;
+}
+
+.panel__header span,
+.uploader__copy,
+.sidebar-copy,
+.inspector-note {
+  color: var(--muted);
+}
+
+.panel__body,
+.tool-panel__body,
+.scenario-panel__body,
+.controls-card {
+  padding: 16px 18px 18px;
+}
+
+.tool-section__label,
+.size-control legend,
+.toggle-grid legend,
+.scenario-list h3 {
+  font-family:
+    figmaMono,
+    'figmaMono Fallback',
+    'SF Mono',
+    Menlo,
+    monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.size-control__option,
+.toggle-option {
+  border-color: var(--line);
+}
+
+.size-control__option input,
+.toggle-option input {
+  accent-color: #000;
+}
+
+.stage-canvas-panel {
+  min-height: 720px;
+  border-color: rgba(0, 0, 0, 0.08);
+  background:
+    linear-gradient(135deg, rgba(151, 255, 70, 0.16), transparent 22%),
+    radial-gradient(circle at 90% 10%, rgba(255, 230, 0, 0.22), transparent 28%),
+    radial-gradient(circle at 15% 85%, rgba(166, 0, 255, 0.14), transparent 30%),
+    radial-gradient(circle at 78% 80%, rgba(255, 0, 153, 0.16), transparent 22%),
+    #fff;
+}
+
+.stage-canvas-body {
+  min-height: 640px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(12px);
+}
+
+.uploader,
+.empty-state,
+.crochet-chart__corner,
+.crochet-chart__index,
+.export-sheet__legend-item,
+.export-sheet__list-row,
+.frame-card,
+.layer-card,
+.swatch,
+.crochet-row-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.uploader,
+.empty-state {
+  border-style: dashed;
+}
+
+.pixel-grid-viewport {
+  padding: 20px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.pixel-grid {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+    #fff;
+  background-position: 0 0, 8px 8px, 0 0;
+  background-size: 16px 16px, 16px 16px, auto;
+  box-shadow: none;
+}
+
+.pixel-grid--flat {
+  border-color: transparent;
+  background: transparent;
+}
+
+.pixel-cell {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.pixel-cell--transparent,
+.swatch-chip--transparent,
+.print-grid__cell--empty,
+.frame-card__pixel--transparent {
+  background:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.08) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.08) 75%),
+    rgba(255, 255, 255, 0.9);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, auto;
+}
+
+.pixel-cell--editable:hover {
+  outline: 1px dashed #000;
+  outline-offset: -1px;
+}
+
+.color-picker input[type='color'],
+.layer-card__input,
+.source-preview,
+.print-grid,
+.frame-card__thumbnail {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.frame-card.is-active,
+.layer-card.is-active {
+  background: #000;
+  color: #fff;
+}
+
+.frame-card.is-active span,
+.layer-card.is-active span,
+.layer-card.is-active input {
+  color: inherit;
+}
+
+.layer-card.is-active .layer-card__input {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.swatch-chip {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+.export-sheet {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.print-grid {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.print-grid--symbols .print-grid__cell {
+  background: #fff;
+}
+
+@media (max-width: 1180px) {
+  .studio-layout {
     grid-template-columns: 1fr;
   }
 }

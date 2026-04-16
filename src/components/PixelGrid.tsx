@@ -27,6 +27,8 @@ type PixelGridProps = {
   onSampleCell?: (color: string | null) => void;
   zoom?: number;
   showGrid?: boolean;
+  presentation?: 'color' | 'symbol';
+  getCellOverlay?: (cell: PixelGridModel['cells'][number]) => string | undefined;
 };
 
 export default function PixelGrid({
@@ -41,6 +43,8 @@ export default function PixelGrid({
   onSampleCell,
   zoom = 1,
   showGrid = true,
+  presentation = 'color',
+  getCellOverlay,
 }: PixelGridProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{
@@ -170,9 +174,17 @@ export default function PixelGrid({
               key={`${cell.x}-${cell.y}`}
               type="button"
               role="gridcell"
-              className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}${editable ? ' pixel-cell--editable' : ''}${showGrid ? '' : ' pixel-cell--flat'}`}
-              aria-label={`像素 ${cell.x},${cell.y} ${cell.color ?? '透明'}`}
-              style={cell.color ? { backgroundColor: cell.color } : undefined}
+              className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}${editable ? ' pixel-cell--editable' : ''}${showGrid ? '' : ' pixel-cell--flat'}${presentation === 'symbol' ? ' pixel-cell--symbol' : ''}`}
+              aria-label={`像素 ${cell.x},${cell.y} ${cell.color ?? '透明'}${
+                presentation === 'symbol' && cell.color
+                  ? ` 符号 ${getCellOverlay?.(cell) ?? '?'}`
+                  : ''
+              }`}
+              style={
+                presentation === 'color' && cell.color
+                  ? { backgroundColor: cell.color }
+                  : undefined
+              }
               onPointerDown={(event) => {
                 if (!editable || tool === 'move') {
                   return;
@@ -259,7 +271,11 @@ export default function PixelGrid({
 
                 paintCell(cell.x, cell.y, tool === 'erase' ? null : activeColor ?? null);
               }}
-            />
+            >
+              {presentation === 'symbol' && cell.color ? (
+                <span className="pixel-cell__overlay">{getCellOverlay?.(cell) ?? '?'}</span>
+              ) : null}
+            </button>
           ))}
         </div>
       </div>
