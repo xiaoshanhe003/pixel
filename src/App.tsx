@@ -40,8 +40,10 @@ import {
   getTransparentCount,
   mergeActiveLayerDown,
   moveLayer,
+  moveLayerToIndex,
   renameLayer,
   replaceActiveLayerCell,
+  setLayerOpacity,
   setActiveFrame,
   setActiveLayer,
   toggleLayerLock,
@@ -324,14 +326,7 @@ export default function App() {
     <main className="app-shell">
       <section className="studio-app">
         <header className="app-topbar">
-          <div className="app-brand">
-            <span className="app-kicker">Pattern Studio</span>
-            <h1>像素工坊</h1>
-            <p className="app-subtitle">Pixel art, beads, crochet charts</p>
-          </div>
-
           <div className="topbar-cluster">
-            <span className="topbar-cluster__label">Mode</span>
             <nav className="scenario-switcher" aria-label="创作场景">
               {SCENARIOS.map((item) => (
                 <button
@@ -347,7 +342,6 @@ export default function App() {
           </div>
 
           <div className="topbar-cluster topbar-actions">
-            <span className="topbar-cluster__label">File</span>
             <button
               type="button"
               className="chip-button"
@@ -358,7 +352,6 @@ export default function App() {
           </div>
 
           <div className="topbar-cluster topbar-status">
-            <span className="topbar-cluster__label">Document</span>
             <span className="info-tag">
               {document.width} x {document.height}
             </span>
@@ -376,38 +369,6 @@ export default function App() {
               tool={activeTool}
               onToolChange={setActiveTool}
             />
-
-            {activeScenario === 'pixel' && activeFrame ? (
-              <LayersPanel
-                layers={activeFrame.layers}
-                activeLayerId={activeFrame.activeLayerId}
-                onSelectLayer={(layerId) =>
-                  setDocument((current) => setActiveLayer(current, layerId))
-                }
-                onAddLayer={() => setDocument((current) => addLayerToActiveFrame(current))}
-                onDuplicateLayer={() =>
-                  setDocument((current) => duplicateActiveLayer(current))
-                }
-                onDeleteLayer={() =>
-                  setDocument((current) => deleteActiveLayer(current))
-                }
-                onMergeLayerDown={() =>
-                  setDocument((current) => mergeActiveLayerDown(current))
-                }
-                onRenameLayer={(layerId, name) =>
-                  setDocument((current) => renameLayer(current, layerId, name))
-                }
-                onToggleVisibility={(layerId) =>
-                  setDocument((current) => toggleLayerVisibility(current, layerId))
-                }
-                onToggleLock={(layerId) =>
-                  setDocument((current) => toggleLayerLock(current, layerId))
-                }
-                onMoveLayer={(layerId, direction) =>
-                  setDocument((current) => moveLayer(current, layerId, direction))
-                }
-              />
-            ) : null}
 
             <section className="panel panel--dock">
               <div className="panel__header">
@@ -428,13 +389,10 @@ export default function App() {
           </aside>
 
           <section className="canvas-stage" aria-label="主画布工作区">
-          <section className="panel stage-canvas-panel">
+            <section className="panel stage-canvas-panel">
               <div className="panel__header">
-                <div className="panel-title-block">
-                  <span className="panel-title-block__label">Canvas</span>
-                  <h2>{scenario.label}</h2>
-                </div>
                 <div className="canvas-toolbar">
+                  <span className="canvas-toolbar__context">{scenario.label}</span>
                   {activeScenario === 'crochet' ? (
                     <>
                       <button
@@ -462,7 +420,10 @@ export default function App() {
                   >
                     缩小
                   </button>
-                  <span className="canvas-toolbar__value">
+                  <span
+                    className="canvas-toolbar__value"
+                    aria-label={`当前缩放 ${Math.round(canvasZoom * 100)}%`}
+                  >
                     {Math.round(canvasZoom * 100)}%
                   </span>
                   <button
@@ -539,32 +500,72 @@ export default function App() {
                 onTogglePlayback={handleTogglePlayback}
                 onFpsChange={setPreviewFps}
               />
-            ) : (
-              activeGrid && (
-                <ScenarioExportPanel
-                  scenario={activeScenario}
-                  grid={activeGrid}
-                  beadBrand={activeScenario === 'beads' ? beadBrand : undefined}
-                  beadUsage={activeScenario === 'beads' ? beadUsage : undefined}
-                  crochetAnalysis={activeScenario === 'crochet' ? crochetAnalysis ?? undefined : undefined}
-                  exportMode={
-                    activeScenario === 'beads' ? beadExportMode : crochetExportMode
-                  }
-                  onExportModeChange={(mode) => {
-                    if (activeScenario === 'beads') {
-                      setBeadExportMode(mode as 'bead-chart' | 'bead-list');
-                      return;
-                    }
-
-                    setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
-                  }}
-                  onPrint={handlePrintExport}
-                />
-              )
-            )}
+            ) : null}
           </section>
 
           <aside className="right-dock" aria-label="右侧属性栏">
+            {activeScenario === 'pixel' && activeFrame ? (
+              <LayersPanel
+                layers={activeFrame.layers}
+                width={document.width}
+                height={document.height}
+                activeLayerId={activeFrame.activeLayerId}
+                onSelectLayer={(layerId) =>
+                  setDocument((current) => setActiveLayer(current, layerId))
+                }
+                onAddLayer={() => setDocument((current) => addLayerToActiveFrame(current))}
+                onDuplicateLayer={() =>
+                  setDocument((current) => duplicateActiveLayer(current))
+                }
+                onDeleteLayer={() =>
+                  setDocument((current) => deleteActiveLayer(current))
+                }
+                onMergeLayerDown={() =>
+                  setDocument((current) => mergeActiveLayerDown(current))
+                }
+                onRenameLayer={(layerId, name) =>
+                  setDocument((current) => renameLayer(current, layerId, name))
+                }
+                onToggleVisibility={(layerId) =>
+                  setDocument((current) => toggleLayerVisibility(current, layerId))
+                }
+                onToggleLock={(layerId) =>
+                  setDocument((current) => toggleLayerLock(current, layerId))
+                }
+                onMoveLayer={(layerId, direction) =>
+                  setDocument((current) => moveLayer(current, layerId, direction))
+                }
+                onReorderLayer={(layerId, targetIndex) =>
+                  setDocument((current) => moveLayerToIndex(current, layerId, targetIndex))
+                }
+                onOpacityChange={(layerId, opacity) =>
+                  setDocument((current) => setLayerOpacity(current, layerId, opacity))
+                }
+              />
+            ) : null}
+
+            {activeScenario !== 'pixel' && activeGrid ? (
+              <ScenarioExportPanel
+                scenario={activeScenario}
+                grid={activeGrid}
+                beadBrand={activeScenario === 'beads' ? beadBrand : undefined}
+                beadUsage={activeScenario === 'beads' ? beadUsage : undefined}
+                crochetAnalysis={activeScenario === 'crochet' ? crochetAnalysis ?? undefined : undefined}
+                exportMode={
+                  activeScenario === 'beads' ? beadExportMode : crochetExportMode
+                }
+                onExportModeChange={(mode) => {
+                  if (activeScenario === 'beads') {
+                    setBeadExportMode(mode as 'bead-chart' | 'bead-list');
+                    return;
+                  }
+
+                  setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
+                }}
+                onPrint={handlePrintExport}
+              />
+            ) : null}
+
             {activeGrid ? (
               <>
                 {activeScenario === 'beads' ? (

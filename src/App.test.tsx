@@ -47,7 +47,6 @@ describe('App', () => {
   it('renders the studio heading, scenario tabs, and size options', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: /像素工坊/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /新建空白画布/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /像素绘画/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /拼豆图纸/i })).toBeInTheDocument();
@@ -220,22 +219,22 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByRole('heading', { name: /图层/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /拖动排序 图层 1/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
 
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /拖动排序 图层 2/i })).toBeInTheDocument();
   });
 
   it('lets the user delete the active layer in pixel mode', async () => {
     render(<App />);
 
     await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(2);
 
     await userEvent.click(screen.getByRole('button', { name: /删除图层/i }));
 
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(1);
   });
 
   it('lets the user merge the active layer down in pixel mode', async () => {
@@ -251,13 +250,44 @@ describe('App', () => {
     fireEvent.pointerEnter(end, { pointerId: 11 });
     fireEvent.pointerUp(end, { pointerId: 11 });
 
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(2);
 
     await userEvent.click(screen.getByRole('button', { name: /合并到下层/i }));
 
-    expect(screen.getAllByRole('button', { name: /选中/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(1);
     expect(screen.getByLabelText(/像素 0,0 #d65a31/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/像素 1,0 #d65a31/i)).toBeInTheDocument();
+  });
+
+  it('lets the user hide a layer and change its opacity', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+    await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
+    await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
+
+    await userEvent.click(screen.getByRole('button', { name: /隐藏 图层 2/i }));
+    expect(screen.getByLabelText(/像素 1,0 透明/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /显示 图层 2/i }));
+
+    const opacity = screen.getByRole('slider', { name: /^图层 2 透明度$/i });
+    fireEvent.change(opacity, { target: { value: '50' } });
+
+    expect(screen.getByLabelText(/图层 2 透明度数值/i)).toHaveTextContent('50%');
+  });
+
+  it('lets the user rename a layer', async () => {
+    render(<App />);
+
+    await userEvent.dblClick(screen.getByText('图层 1'));
+    const input = screen.getAllByRole('textbox', { name: /图层 1 名称/i })[0];
+
+    await userEvent.clear(input);
+    await userEvent.type(input, '角色线稿');
+    fireEvent.blur(input);
+
+    expect(screen.getByText('角色线稿')).toBeInTheDocument();
   });
 
   it('adds a duplicate frame in pixel mode', async () => {
@@ -273,11 +303,11 @@ describe('App', () => {
   it('updates canvas zoom and grid visibility controls', async () => {
     render(<App />);
 
-    expect(screen.getByText(/100%/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/当前缩放 100%/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /放大/i }));
 
-    expect(screen.getByText(/125%/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/当前缩放 125%/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /隐藏网格/i }));
 

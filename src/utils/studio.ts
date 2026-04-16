@@ -5,6 +5,7 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
+import { clampByte, hexToRgb, rgbToHex } from './color';
 
 let nextStudioId = 0;
 
@@ -147,24 +148,66 @@ export function composeFrame(
   const cellCount = width * height;
   const base = createBlankGrid(width);
   const cells = base.cells.map((cell, index) => {
-    let topCell = cell;
+    let compositeRed = 255;
+    let compositeGreen = 255;
+    let compositeBlue = 255;
+    let compositeAlpha = 0;
+    let topSource = cell.source;
 
     for (const layer of [...frame.layers].reverse()) {
-      if (!layer.visible) {
+      if (!layer.visible || layer.opacity <= 0) {
         continue;
       }
 
       const candidate = layer.cells[index];
 
-      if (candidate?.color) {
-        topCell = {
-          ...candidate,
-          source: { ...candidate.source },
-        };
+      if (!candidate?.color) {
+        continue;
       }
+
+      const candidateAlpha = (candidate.alpha / 255) * layer.opacity;
+
+      if (candidateAlpha <= 0) {
+        continue;
+      }
+
+      const candidateRgb = hexToRgb(candidate.color);
+      const nextAlpha = candidateAlpha + compositeAlpha * (1 - candidateAlpha);
+
+      if (nextAlpha <= 0) {
+        continue;
+      }
+
+      compositeRed = clampByte(
+        (candidateRgb.r * candidateAlpha + compositeRed * compositeAlpha * (1 - candidateAlpha)) /
+          nextAlpha,
+      );
+      compositeGreen = clampByte(
+        (candidateRgb.g * candidateAlpha + compositeGreen * compositeAlpha * (1 - candidateAlpha)) /
+          nextAlpha,
+      );
+      compositeBlue = clampByte(
+        (candidateRgb.b * candidateAlpha + compositeBlue * compositeAlpha * (1 - candidateAlpha)) /
+          nextAlpha,
+      );
+      compositeAlpha = nextAlpha;
+      topSource = { ...candidate.source };
     }
 
-    return topCell;
+    if (compositeAlpha <= 0) {
+      return cell;
+    }
+
+    return {
+      ...cell,
+      color: rgbToHex({
+        r: compositeRed,
+        g: compositeGreen,
+        b: compositeBlue,
+      }),
+      source: topSource,
+      alpha: clampByte(compositeAlpha * 255),
+    };
   });
 
   return {
@@ -733,6 +776,33 @@ export function moveLayer(
   });
 }
 
+export function moveLayerToIndex(
+  document: StudioDocument,
+  layerId: string,
+  targetIndex: number,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => {
+    const index = frame.layers.findIndex((layer) => layer.id === layerId);
+
+    if (index === -1 || targetIndex < 0 || targetIndex >= frame.layers.length) {
+      return frame;
+    }
+
+    if (index === targetIndex) {
+      return frame;
+    }
+
+    const nextLayers = [...frame.layers];
+    const [layer] = nextLayers.splice(index, 1);
+    nextLayers.splice(targetIndex, 0, layer);
+
+    return {
+      ...frame,
+      layers: nextLayers,
+    };
+  });
+}
+
 export function setActiveLayer(
   document: StudioDocument,
   layerId: string,
@@ -740,6 +810,21 @@ export function setActiveLayer(
   return updateFrame(document, document.activeFrameId, (frame) => ({
     ...frame,
     activeLayerId: layerId,
+  }));
+}
+
+export function setLayerOpacity(
+  document: StudioDocument,
+  layerId: string,
+  opacity: number,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) =>
+      layer.id === layerId
+        ? { ...layer, opacity: Math.max(0, Math.min(1, opacity)) }
+        : layer,
+    ),
   }));
 }
 
