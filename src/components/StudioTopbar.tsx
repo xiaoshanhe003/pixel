@@ -4,16 +4,24 @@ type StudioTopbarProps = {
   document: StudioDocument;
   activeScenario: ScenarioId;
   scenarios: ScenarioDefinition[];
+  canUndo: boolean;
+  canRedo: boolean;
   onScenarioChange: (scenarioId: ScenarioId) => void;
   onCreateBlankCanvas: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
 };
 
 export default function StudioTopbar({
   document,
   activeScenario,
   scenarios,
+  canUndo,
+  canRedo,
   onScenarioChange,
   onCreateBlankCanvas,
+  onUndo,
+  onRedo,
 }: StudioTopbarProps) {
   return (
     <header className="app-topbar">
@@ -33,6 +41,24 @@ export default function StudioTopbar({
       </div>
 
       <div className="topbar-cluster topbar-actions">
+        <div className="topbar-history">
+          <button
+            type="button"
+            className="chip-button"
+            onClick={onUndo}
+            disabled={!canUndo}
+          >
+            撤销
+          </button>
+          <button
+            type="button"
+            className="chip-button"
+            onClick={onRedo}
+            disabled={!canRedo}
+          >
+            重做
+          </button>
+        </div>
         <button type="button" className="chip-button" onClick={onCreateBlankCanvas}>
           新建空白画布
         </button>

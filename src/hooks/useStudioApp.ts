@@ -16,33 +16,23 @@ import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/cro
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
 import {
-  addFrameToDocument,
-  addLayerToActiveFrame,
-  applyBrushStrokeOnActiveLayer,
   composeFrame,
-  clearActiveLayer,
   countPaletteUsage,
   createDocumentFromGrid,
   createStudioDocument,
-  deleteActiveFrame,
-  deleteActiveLayer,
-  drawLineOnActiveLayer,
-  drawRectangleOnActiveLayer,
-  duplicateActiveFrame,
-  duplicateActiveLayer,
-  fillActiveLayerArea,
   getTransparentCount,
-  mergeActiveLayerDown,
-  moveLayer,
-  moveLayerToIndex,
-  renameLayer,
-  replaceActiveLayerCell,
   setActiveFrame,
   setActiveLayer,
-  setLayerOpacity,
-  toggleLayerLock,
-  toggleLayerVisibility,
 } from '../utils/studio';
+import {
+  applyStudioCommandToHistory,
+  applyStudioTransientUpdate,
+  createStudioHistoryState,
+  redoStudioHistory,
+  resetStudioHistory,
+  undoStudioHistory,
+  type StudioHistoryState,
+} from '../utils/studioCommands';
 
 type ExportMode = 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows';
 
@@ -84,6 +74,8 @@ type StudioDerivedState = {
 export type UseStudioAppResult = {
   controls: {
     conversionOptions: ConversionOptions;
+    canUndo: boolean;
+    canRedo: boolean;
   };
   source: StudioSourceState;
   editor: {
@@ -120,6 +112,8 @@ export type UseStudioAppResult = {
     setPreviewFps: (fps: number) => void;
     selectFrame: (frameId: string) => void;
     createBlankCanvas: () => void;
+    undo: () => void;
+    redo: () => void;
     addFrame: () => void;
     duplicateFrame: () => void;
     deleteFrame: () => void;
@@ -161,12 +155,17 @@ export type UseStudioAppResult = {
 };
 
 function useStudioDocumentSync(params: {
+  document: StudioDocument;
   activeScenario: ScenarioId;
   conversionOptions: ConversionOptions;
   selectedFile: File | null;
-  setDocument: React.Dispatch<React.SetStateAction<StudioDocument>>;
+  resetDocument: (document: StudioDocument) => void;
+  setDocument: (
+    updater: (current: StudioDocument) => StudioDocument,
+  ) => void;
 }) {
-  const { activeScenario, conversionOptions, selectedFile, setDocument } = params;
+  const { document, activeScenario, conversionOptions, selectedFile, resetDocument, setDocument } =
+    params;
   const [previewUrl, setPreviewUrl] = useState<string>();
 
   useEffect(() => {
@@ -192,11 +191,11 @@ function useStudioDocumentSync(params: {
         const nextGrid = buildPixelGrid(imageData, conversionOptions);
 
         if (!cancelled) {
-          setDocument(createDocumentFromGrid(activeScenario, nextGrid));
+          resetDocument(createDocumentFromGrid(activeScenario, nextGrid));
         }
       } catch {
         if (!cancelled) {
-          setDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+          resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
         }
       }
     })();
@@ -212,17 +211,22 @@ function useStudioDocumentSync(params: {
       return;
     }
 
-    setDocument((current) => {
-      if (
-        current.width === conversionOptions.gridSize &&
-        current.height === conversionOptions.gridSize
-      ) {
-        return current;
-      }
+    if (
+      document.width === conversionOptions.gridSize &&
+      document.height === conversionOptions.gridSize
+    ) {
+      return;
+    }
 
-      return createStudioDocument(activeScenario, conversionOptions.gridSize);
-    });
-  }, [activeScenario, conversionOptions.gridSize, selectedFile, setDocument]);
+    resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+  }, [
+    activeScenario,
+    conversionOptions.gridSize,
+    document.height,
+    document.width,
+    resetDocument,
+    selectedFile,
+  ]);
 
   useEffect(() => {
     setDocument((current) =>
@@ -240,7 +244,9 @@ function useStudioPlayback(params: {
   frameCount: number;
   previewFps: number;
   previewIsPlaying: boolean;
-  setDocument: React.Dispatch<React.SetStateAction<StudioDocument>>;
+  setDocument: (
+    updater: (current: StudioDocument) => StudioDocument,
+  ) => void;
 }) {
   const { activeScenario, frameCount, previewFps, previewIsPlaying, setDocument } = params;
 
@@ -355,8 +361,8 @@ export function useStudioApp(): UseStudioAppResult {
     useState<ConversionOptions>(DEFAULT_OPTIONS);
   const [activeScenario, setActiveScenario] = useState<ScenarioId>('pixel');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [document, setDocument] = useState<StudioDocument>(
-    createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize),
+  const [history, setHistory] = useState<StudioHistoryState>(() =>
+    createStudioHistoryState(createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize)),
   );
   const [activeColor, setActiveColor] = useState('#d65a31');
   const [activeTool, setActiveTool] = useState<EditorTool>('paint');
@@ -378,10 +384,22 @@ export function useStudioApp(): UseStudioAppResult {
     'crochet-chart' | 'crochet-rows'
   >('crochet-chart');
 
+  const document = history.present;
+
+  const setDocument = (updater: (current: StudioDocument) => StudioDocument) => {
+    setHistory((current) => applyStudioTransientUpdate(current, updater));
+  };
+
+  const resetDocument = (nextDocument: StudioDocument) => {
+    setHistory(resetStudioHistory(nextDocument));
+  };
+
   const { previewUrl, setPreviewUrl } = useStudioDocumentSync({
+    document,
     activeScenario,
     conversionOptions,
     selectedFile,
+    resetDocument,
     setDocument,
   });
 
@@ -408,19 +426,45 @@ export function useStudioApp(): UseStudioAppResult {
     crochetExportMode,
   });
 
-  function updateActiveLayer(
-    updater: (current: StudioDocument) => StudioDocument,
-  ) {
+  function dispatchCommand(command: Parameters<typeof applyStudioCommandToHistory>[1]) {
     if (!derived.activeFrame || !derived.activeLayer) {
       return;
     }
 
-    setDocument(updater);
+    setHistory((current) => applyStudioCommandToHistory(current, command));
   }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isModifierPressed = event.metaKey || event.ctrlKey;
+
+      if (!isModifierPressed || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        setHistory((current) => undoStudioHistory(current));
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        setHistory((current) => redoStudioHistory(current));
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return {
     controls: {
       conversionOptions,
+      canUndo: history.past.length > 0,
+      canRedo: history.future.length > 0,
     },
     source: {
       selectedFile,
@@ -462,12 +506,14 @@ export function useStudioApp(): UseStudioAppResult {
       createBlankCanvas: () => {
         setSelectedFile(null);
         setPreviewUrl(undefined);
-        setDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+        resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
         setCanvasZoom(1);
       },
-      addFrame: () => setDocument((current) => addFrameToDocument(current)),
-      duplicateFrame: () => setDocument((current) => duplicateActiveFrame(current)),
-      deleteFrame: () => setDocument((current) => deleteActiveFrame(current)),
+      undo: () => setHistory((current) => undoStudioHistory(current)),
+      redo: () => setHistory((current) => redoStudioHistory(current)),
+      addFrame: () => dispatchCommand({ type: 'addFrame' }),
+      duplicateFrame: () => dispatchCommand({ type: 'duplicateFrame' }),
+      deleteFrame: () => dispatchCommand({ type: 'deleteFrame' }),
       togglePlayback: () => {
         if (document.frames.length <= 1) {
           return;
@@ -487,16 +533,16 @@ export function useStudioApp(): UseStudioAppResult {
         setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
       },
       paintCell: (x, y, color) =>
-        updateActiveLayer((current) =>
+        dispatchCommand(
           activeTool === 'paint' || activeTool === 'erase'
-            ? applyBrushStrokeOnActiveLayer(
-                current,
+            ? {
+                type: 'paintCell',
                 x,
                 y,
-                activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                size: activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
                 color,
-              )
-            : replaceActiveLayerCell(current, x, y, color),
+              }
+            : { type: 'replaceCell', x, y, color },
         ),
       sampleCell: (color) => {
         if (!color) {
@@ -506,39 +552,28 @@ export function useStudioApp(): UseStudioAppResult {
         setActiveColor(color);
         setActiveTool('paint');
       },
-      fillArea: (x, y, color) =>
-        updateActiveLayer((current) => fillActiveLayerArea(current, x, y, color)),
+      fillArea: (x, y, color) => dispatchCommand({ type: 'fillArea', x, y, color }),
       drawLine: (startX, startY, endX, endY, color) =>
-        updateActiveLayer((current) =>
-          drawLineOnActiveLayer(current, startX, startY, endX, endY, color),
-        ),
+        dispatchCommand({ type: 'drawLine', startX, startY, endX, endY, color }),
       drawRectangle: (startX, startY, endX, endY, color) =>
-        updateActiveLayer((current) =>
-          drawRectangleOnActiveLayer(current, startX, startY, endX, endY, color),
-        ),
+        dispatchCommand({ type: 'drawRectangle', startX, startY, endX, endY, color }),
       selectLayer: (layerId) =>
         setDocument((current) => setActiveLayer(current, layerId)),
-      addLayer: () => setDocument((current) => addLayerToActiveFrame(current)),
-      duplicateLayer: (layerId) =>
-        setDocument((current) => duplicateActiveLayer(current, layerId)),
-      deleteLayer: (layerId) =>
-        setDocument((current) => deleteActiveLayer(current, layerId)),
-      mergeLayerDown: (layerId) =>
-        setDocument((current) => mergeActiveLayerDown(current, layerId)),
-      renameLayer: (layerId, name) =>
-        setDocument((current) => renameLayer(current, layerId, name)),
+      addLayer: () => dispatchCommand({ type: 'addLayer' }),
+      duplicateLayer: (layerId) => dispatchCommand({ type: 'duplicateLayer', layerId }),
+      deleteLayer: (layerId) => dispatchCommand({ type: 'deleteLayer', layerId }),
+      mergeLayerDown: (layerId) => dispatchCommand({ type: 'mergeLayerDown', layerId }),
+      renameLayer: (layerId, name) => dispatchCommand({ type: 'renameLayer', layerId, name }),
       toggleLayerVisibility: (layerId) =>
-        setDocument((current) => toggleLayerVisibility(current, layerId)),
-      toggleLayerLock: (layerId) =>
-        setDocument((current) => toggleLayerLock(current, layerId)),
-      clearLayer: (layerId) =>
-        setDocument((current) => clearActiveLayer(current, layerId)),
+        dispatchCommand({ type: 'toggleLayerVisibility', layerId }),
+      toggleLayerLock: (layerId) => dispatchCommand({ type: 'toggleLayerLock', layerId }),
+      clearLayer: (layerId) => dispatchCommand({ type: 'clearLayer', layerId }),
       moveLayer: (layerId, direction) =>
-        setDocument((current) => moveLayer(current, layerId, direction)),
+        dispatchCommand({ type: 'moveLayer', layerId, direction }),
       reorderLayer: (layerId, targetIndex) =>
-        setDocument((current) => moveLayerToIndex(current, layerId, targetIndex)),
+        dispatchCommand({ type: 'reorderLayer', layerId, targetIndex }),
       setLayerOpacity: (layerId, opacity) =>
-        setDocument((current) => setLayerOpacity(current, layerId, opacity)),
+        dispatchCommand({ type: 'setLayerOpacity', layerId, opacity }),
     },
   };
 }

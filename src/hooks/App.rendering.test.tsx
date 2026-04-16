@@ -8,6 +8,8 @@ describe('App rendering', () => {
     renderApp();
 
     expect(screen.getByRole('button', { name: /新建空白画布/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /撤销/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /重做/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /像素绘画/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /拼豆图纸/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /钩织图纸/i })).toBeInTheDocument();

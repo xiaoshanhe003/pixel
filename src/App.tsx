@@ -19,8 +19,12 @@ export default function App() {
           document={studio.document}
           activeScenario={studio.activeScenario}
           scenarios={SCENARIOS}
+          canUndo={controls.canUndo}
+          canRedo={controls.canRedo}
           onScenarioChange={actions.setActiveScenario}
           onCreateBlankCanvas={actions.createBlankCanvas}
+          onUndo={actions.undo}
+          onRedo={actions.redo}
         />
 
         <section className="studio-layout">
