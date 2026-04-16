@@ -27,7 +27,10 @@ export default function EditingToolbar({
   return (
     <section className="panel tool-panel" aria-label="编辑工具">
       <div className="panel__header">
-        <h2>工具</h2>
+        <div className="panel-title-block">
+          <span className="panel-title-block__label">Tools</span>
+          <h2>工具</h2>
+        </div>
       </div>
 
       <div className="tool-panel__body">

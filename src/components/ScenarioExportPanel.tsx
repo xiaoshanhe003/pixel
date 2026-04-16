@@ -60,7 +60,10 @@ export default function ScenarioExportPanel({
       aria-label="打印导出"
     >
       <div className="panel__header">
-        <h2>打印导出</h2>
+        <div className="panel-title-block">
+          <span className="panel-title-block__label">Print</span>
+          <h2>打印导出</h2>
+        </div>
         <span>{grid.width} x {grid.height}</span>
       </div>
       <div className="frame-strip__actions">

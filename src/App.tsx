@@ -325,23 +325,29 @@ export default function App() {
       <section className="studio-app">
         <header className="app-topbar">
           <div className="app-brand">
+            <span className="app-kicker">Pattern Studio</span>
             <h1>像素工坊</h1>
+            <p className="app-subtitle">Pixel art, beads, crochet charts</p>
           </div>
 
-          <nav className="scenario-switcher" aria-label="创作场景">
-            {SCENARIOS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`scenario-tab${item.id === activeScenario ? ' is-active' : ''}`}
-                onClick={() => setActiveScenario(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+          <div className="topbar-cluster">
+            <span className="topbar-cluster__label">Mode</span>
+            <nav className="scenario-switcher" aria-label="创作场景">
+              {SCENARIOS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`scenario-tab${item.id === activeScenario ? ' is-active' : ''}`}
+                  onClick={() => setActiveScenario(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-          <div className="topbar-actions">
+          <div className="topbar-cluster topbar-actions">
+            <span className="topbar-cluster__label">File</span>
             <button
               type="button"
               className="chip-button"
@@ -351,7 +357,8 @@ export default function App() {
             </button>
           </div>
 
-          <div className="topbar-status">
+          <div className="topbar-cluster topbar-status">
+            <span className="topbar-cluster__label">Document</span>
             <span className="info-tag">
               {document.width} x {document.height}
             </span>
@@ -423,7 +430,10 @@ export default function App() {
           <section className="canvas-stage" aria-label="主画布工作区">
           <section className="panel stage-canvas-panel">
               <div className="panel__header">
-                <h2>{scenario.label}</h2>
+                <div className="panel-title-block">
+                  <span className="panel-title-block__label">Canvas</span>
+                  <h2>{scenario.label}</h2>
+                </div>
                 <div className="canvas-toolbar">
                   {activeScenario === 'crochet' ? (
                     <>
