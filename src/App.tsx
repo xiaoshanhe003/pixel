@@ -3,10 +3,12 @@ import StudioLeftDock from './components/StudioLeftDock';
 import StudioRightDock from './components/StudioRightDock';
 import StudioTopbar from './components/StudioTopbar';
 import { SCENARIOS } from './constants/studio';
+import { DEFAULT_PALETTES } from './data/defaultPalettes';
 import { useStudioApp } from './hooks/useStudioApp';
 
 export default function App() {
   const { controls, source, editor, studio, output, stats, actions } = useStudioApp();
+  const activePalette = DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
 
   return (
     <main className="app-shell">
@@ -23,6 +25,7 @@ export default function App() {
           <StudioLeftDock
             activeColor={editor.activeColor}
             activeTool={editor.activeTool}
+            activePalette={activePalette}
             conversionOptions={controls.conversionOptions}
             previewUrl={source.previewUrl}
             onActiveColorChange={actions.setActiveColor}
@@ -81,6 +84,7 @@ export default function App() {
             }
             materialCountLabel={stats.materialCountLabel}
             conversionOptions={controls.conversionOptions}
+            onFileSelected={actions.setSelectedFile}
             onLayerSelect={actions.selectLayer}
             onLayerAdd={actions.addLayer}
             onLayerDuplicate={actions.duplicateLayer}

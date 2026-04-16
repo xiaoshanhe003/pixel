@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GridSize } from '../types/pixel';
 import type { StudioLayer } from '../types/studio';
 import { Checkbox } from './ui/checkbox';
@@ -18,6 +18,7 @@ type LayersPanelProps = {
   width: GridSize;
   height: GridSize;
   activeLayerId: string;
+  onUploadImage: (file: File | null) => void;
   onSelectLayer: (layerId: string) => void;
   onAddLayer: () => void;
   onDuplicateLayer: (layerId?: string) => void;
@@ -37,6 +38,7 @@ export default function LayersPanel({
   width,
   height,
   activeLayerId,
+  onUploadImage,
   onSelectLayer,
   onAddLayer,
   onDuplicateLayer,
@@ -55,6 +57,7 @@ export default function LayersPanel({
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [contextMenuLayerId, setContextMenuLayerId] = useState<string | null>(null);
   const [expandedOpacityLayerId, setExpandedOpacityLayerId] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const handlePointerDown = () => setContextMenuLayerId(null);
@@ -78,6 +81,23 @@ export default function LayersPanel({
       <div className="panel__header">
         <h2>图层</h2>
         <div className="panel__header-actions">
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+            onChange={(event) => {
+              onUploadImage(event.target.files?.[0] ?? null);
+              event.currentTarget.value = '';
+            }}
+          />
+          <button
+            type="button"
+            className="chip-button"
+            onClick={() => uploadInputRef.current?.click()}
+          >
+            上传图片
+          </button>
           <button type="button" className="chip-button" onClick={onAddLayer}>
             新建图层
           </button>
@@ -192,6 +212,7 @@ export default function LayersPanel({
                     className="layer-row__name-input"
                     value={layer.name}
                     autoFocus
+                    onFocus={(event) => event.currentTarget.select()}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => onRenameLayer(layer.id, event.target.value)}
                     onBlur={() => setEditingLayerId(null)}

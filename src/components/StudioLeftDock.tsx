@@ -7,6 +7,7 @@ import ImageUploader from './ImageUploader';
 type StudioLeftDockProps = {
   activeColor: string;
   activeTool: EditorTool;
+  activePalette: readonly string[];
   conversionOptions: ConversionOptions;
   previewUrl?: string;
   onActiveColorChange: (color: string) => void;
@@ -18,6 +19,7 @@ type StudioLeftDockProps = {
 export default function StudioLeftDock({
   activeColor,
   activeTool,
+  activePalette,
   conversionOptions,
   previewUrl,
   onActiveColorChange,
@@ -29,6 +31,7 @@ export default function StudioLeftDock({
     <aside className="left-dock" aria-label="左侧工具栏">
       <EditingToolbar
         activeColor={activeColor}
+        palette={activePalette}
         onColorChange={onActiveColorChange}
         tool={activeTool}
         onToolChange={onActiveToolChange}

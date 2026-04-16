@@ -3,6 +3,7 @@ import { TOOL_ICON_SVGS } from '../utils/toolIcons';
 
 type EditingToolbarProps = {
   activeColor: string;
+  palette: readonly string[];
   onColorChange: (color: string) => void;
   tool: EditorTool;
   onToolChange: (tool: EditorTool) => void;
@@ -20,6 +21,7 @@ const TOOL_OPTIONS: Array<{ id: EditorTool; label: string }> = [
 
 export default function EditingToolbar({
   activeColor,
+  palette,
   onColorChange,
   tool,
   onToolChange,
@@ -28,7 +30,6 @@ export default function EditingToolbar({
     <section className="panel tool-panel" aria-label="编辑工具">
       <div className="panel__header">
         <div className="panel-title-block">
-          <span className="panel-title-block__label">Tools</span>
           <h2>工具</h2>
         </div>
       </div>
@@ -66,6 +67,26 @@ export default function EditingToolbar({
             />
             <code>{activeColor}</code>
           </div>
+          {palette.length > 0 ? (
+            <div className="color-palette" role="list" aria-label="当前色板">
+              {palette.map((color) => {
+                const isActive = activeColor.toLowerCase() === color.toLowerCase();
+
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`color-palette__swatch${isActive ? ' is-active' : ''}`}
+                    onClick={() => onColorChange(color)}
+                    aria-label={`选择颜色 ${color}`}
+                    aria-pressed={isActive}
+                    title={color}
+                    style={{ backgroundColor: color }}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
         </label>
       </div>
     </section>

@@ -15,6 +15,38 @@ import LayersPanel from './LayersPanel';
 import PalettePanel from './PalettePanel';
 import ScenarioExportPanel from './ScenarioExportPanel';
 
+function buildSelectedLayerPalette(frame?: StudioFrame): {
+  palette: string[];
+  counts: Map<string, number>;
+} {
+  const activeLayer = frame?.layers.find((layer) => layer.id === frame.activeLayerId);
+
+  if (!activeLayer) {
+    return {
+      palette: [],
+      counts: new Map<string, number>(),
+    };
+  }
+
+  const palette: string[] = [];
+  const counts = new Map<string, number>();
+
+  for (const cell of activeLayer.cells) {
+    if (!cell.color) {
+      continue;
+    }
+
+    if (!counts.has(cell.color)) {
+      palette.push(cell.color);
+      counts.set(cell.color, 0);
+    }
+
+    counts.set(cell.color, (counts.get(cell.color) ?? 0) + 1);
+  }
+
+  return { palette, counts };
+}
+
 type StudioRightDockProps = {
   activeScenario: ScenarioId;
   scenario: ScenarioDefinition;
@@ -31,6 +63,7 @@ type StudioRightDockProps = {
   exportMode: 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows';
   materialCountLabel?: string;
   conversionOptions: ConversionOptions;
+  onFileSelected: (file: File | null) => void;
   onLayerSelect: (layerId: string) => void;
   onLayerAdd: () => void;
   onLayerDuplicate: (layerId?: string) => void;
@@ -66,6 +99,7 @@ export default function StudioRightDock({
   exportMode,
   materialCountLabel,
   conversionOptions,
+  onFileSelected,
   onLayerSelect,
   onLayerAdd,
   onLayerDuplicate,
@@ -82,6 +116,8 @@ export default function StudioRightDock({
   onExportModeChange,
   onPrint,
 }: StudioRightDockProps) {
+  const selectedLayerPalette = buildSelectedLayerPalette(activeFrame);
+
   return (
     <aside className="right-dock" aria-label="右侧属性栏">
       {activeScenario === 'pixel' && activeFrame ? (
@@ -90,6 +126,7 @@ export default function StudioRightDock({
           width={documentWidth}
           height={documentHeight}
           activeLayerId={activeFrame.activeLayerId}
+          onUploadImage={onFileSelected}
           onSelectLayer={onLayerSelect}
           onAddLayer={onLayerAdd}
           onDuplicateLayer={onLayerDuplicate}
@@ -135,9 +172,17 @@ export default function StudioRightDock({
             <CrochetPatternPanel analysis={crochetAnalysis} />
           ) : (
             <PalettePanel
-              palette={activeGrid.palette}
-              counts={paletteCounts}
-              transparentCount={transparentCount}
+              palette={
+                activeScenario === 'pixel'
+                  ? selectedLayerPalette.palette
+                  : activeGrid.palette
+              }
+              counts={
+                activeScenario === 'pixel'
+                  ? selectedLayerPalette.counts
+                  : paletteCounts
+              }
+              transparentCount={activeScenario === 'pixel' ? 0 : transparentCount}
             />
           )}
           <InspectorPanel
