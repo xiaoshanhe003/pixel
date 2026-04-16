@@ -16,16 +16,13 @@ export default function ConversionControls({
     onChange({ ...value, [key]: next } as ConversionOptions);
   };
 
-  const sizeOptions: GridSize[] = [16, 32];
+  const sizeOptions: GridSize[] = [16, 32, 64];
   const paletteOptions: PaletteSize[] = [16, 32];
 
   return (
     <section className="controls-card" aria-label="转换控制">
       <div className="controls-card__header">
         <p className="eyebrow">转换控制</p>
-        <p className="controls-card__note">
-          在生成像素网格前调整缩减策略。
-        </p>
       </div>
 
       <div className="controls-card__groups">
@@ -67,9 +64,6 @@ export default function ConversionControls({
 
         <fieldset className="toggle-grid">
           <legend>处理选项</legend>
-          <p className="control-help">
-            抖动更适合渐变。清理会去掉零散杂点。保留轮廓能避免边缘小形状被过度抹平。
-          </p>
           <label className="toggle-option">
             <input
               type="checkbox"

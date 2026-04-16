@@ -32,9 +32,7 @@ export default function ImageUploader({
           alt="已上传原图预览"
         />
       ) : (
-        <div className="empty-state">
-          上传图片后开始。
-        </div>
+        <div className="empty-state">无参考图</div>
       )}
     </section>
   );

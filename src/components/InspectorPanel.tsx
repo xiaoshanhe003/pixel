@@ -4,28 +4,34 @@ type InspectorPanelProps = {
   grid: PixelGrid;
   options: ConversionOptions;
   transparentCount: number;
+  scenarioLabel: string;
+  frameCount: number;
+  materialCountLabel?: string;
 };
 
 export default function InspectorPanel({
   grid,
   options,
   transparentCount,
+  scenarioLabel,
+  frameCount,
+  materialCountLabel,
 }: InspectorPanelProps) {
   return (
     <section className="panel panel--sidebar">
-      <div className="panel__header panel__header--stack">
+      <div className="panel__header">
         <h2>网格检查器</h2>
-        <span>{grid.width * grid.height} 格</span>
+        <span>{grid.width} x {grid.height}</span>
       </div>
 
       <ul className="inspector-list">
         <li>总格数：{grid.cells.length}</li>
         <li>实际颜色：{grid.palette.length}</li>
         <li>透明格：{transparentCount}</li>
-        <li>
-          转换模式：{options.gridSize} x {options.gridSize} /{' '}
-          {options.paletteSize} 色
-        </li>
+        <li>当前场景：{scenarioLabel}</li>
+        <li>工作帧数：{frameCount}</li>
+        {materialCountLabel ? <li>{materialCountLabel}</li> : null}
+        <li>调色板上限：{options.paletteSize} 色</li>
         <li>
           抖动：{options.dithering ? '开启' : '关闭'} | 清理：
           {options.cleanupNoise ? '开启' : '关闭'}
@@ -40,10 +46,6 @@ export default function InspectorPanel({
           主体铺满：{options.fillFrame ? '开启' : '关闭'}
         </li>
       </ul>
-
-      <p className="inspector-note">
-        先用它做底稿，再手工微调。
-      </p>
     </section>
   );
 }

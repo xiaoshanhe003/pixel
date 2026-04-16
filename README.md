@@ -1,16 +1,19 @@
 # Pixel Forge
 
-Pixel Forge is a browser-based pixel-art converter focused on deliberate
-low-resolution output instead of generic thumbnail downscaling.
+Pixel Forge is a browser-based pattern studio for pixel art, fuse bead charts,
+and crochet planning. It focuses on deliberate low-resolution conversion, direct
+grid editing, and scenario-aware guidance instead of generic thumbnail
+downscaling.
 
 ## Features
 
+- Three creation scenarios: pixel art, fuse beads, crochet charts
 - Upload PNG, JPG, or WebP source images
 - Convert to `16x16` or `32x32`
 - Extract a source-adaptive palette capped to `16` or `32` colors
-- Toggle conservative ordered dithering and cleanup
-- Preserve silhouette edges during conservative cleanup
-- Inspect output as an editable cell grid with palette and grid stats
+- Edit the resulting grid directly with paint, erase, and sample tools
+- Build frame-by-frame animation drafts in pixel art mode
+- Inspect palette usage, transparency, and scenario-specific export needs
 
 ## Workflow
 
