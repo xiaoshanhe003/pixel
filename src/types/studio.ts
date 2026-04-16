@@ -11,6 +11,14 @@ export type EditorTool =
   | 'sample'
   | 'move';
 
+export type ShapePreviewMode = 'outline';
+
+export type EditorToolSettings = {
+  paintSize: 1 | 2 | 3 | 4;
+  eraseSize: 1 | 2 | 3 | 4;
+  shapePreviewMode: ShapePreviewMode;
+};
+
 export type StudioLayer = {
   id: string;
   name: string;

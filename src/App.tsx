@@ -25,11 +25,13 @@ export default function App() {
           <StudioLeftDock
             activeColor={editor.activeColor}
             activeTool={editor.activeTool}
+            toolSettings={editor.toolSettings}
             activePalette={activePalette}
             conversionOptions={controls.conversionOptions}
             previewUrl={source.previewUrl}
             onActiveColorChange={actions.setActiveColor}
             onActiveToolChange={actions.setActiveTool}
+            onToolSettingsChange={actions.setToolSettings}
             onConversionOptionsChange={actions.setConversionOptions}
             onFileSelected={actions.setSelectedFile}
           />
@@ -40,6 +42,7 @@ export default function App() {
             activeGrid={studio.activeGrid}
             activeColor={editor.activeColor}
             activeTool={editor.activeTool}
+            toolSettings={editor.toolSettings}
             canvasZoom={editor.canvasZoom}
             showGridLines={editor.showGridLines}
             crochetViewMode={output.crochetViewMode}

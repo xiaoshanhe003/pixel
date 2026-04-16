@@ -326,6 +326,22 @@ function buildPointKey(x: number, y: number): string {
   return `${x}:${y}`;
 }
 
+export function buildBrushFootprint(
+  x: number,
+  y: number,
+  size: 1 | 2 | 3 | 4,
+): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = [];
+
+  for (let offsetY = 0; offsetY < size; offsetY += 1) {
+    for (let offsetX = 0; offsetX < size; offsetX += 1) {
+      points.push({ x: x + offsetX, y: y + offsetY });
+    }
+  }
+
+  return points;
+}
+
 function applyColorAtPoints(
   grid: PixelGrid,
   points: Array<{ x: number; y: number }>,
@@ -379,14 +395,22 @@ function applyColorAtPoints(
   };
 }
 
-export function drawLine(
+export function applyBrushStroke(
   grid: PixelGrid,
+  x: number,
+  y: number,
+  size: 1 | 2 | 3 | 4,
+  color: string | null,
+): PixelGrid {
+  return applyColorAtPoints(grid, buildBrushFootprint(x, y, size), color);
+}
+
+export function buildLinePoints(
   startX: number,
   startY: number,
   endX: number,
   endY: number,
-  color: string | null,
-): PixelGrid {
+): Array<{ x: number; y: number }> {
   const points: Array<{ x: number; y: number }> = [];
   let currentX = startX;
   let currentY = startY;
@@ -416,10 +440,10 @@ export function drawLine(
     }
   }
 
-  return applyColorAtPoints(grid, points, color);
+  return points;
 }
 
-export function drawRectangle(
+export function drawLine(
   grid: PixelGrid,
   startX: number,
   startY: number,
@@ -427,6 +451,15 @@ export function drawRectangle(
   endY: number,
   color: string | null,
 ): PixelGrid {
+  return applyColorAtPoints(grid, buildLinePoints(startX, startY, endX, endY), color);
+}
+
+export function buildRectanglePoints(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): Array<{ x: number; y: number }> {
   const minX = Math.min(startX, endX);
   const maxX = Math.max(startX, endX);
   const minY = Math.min(startY, endY);
@@ -443,7 +476,22 @@ export function drawRectangle(
     points.push({ x: maxX, y });
   }
 
-  return applyColorAtPoints(grid, points, color);
+  return points;
+}
+
+export function drawRectangle(
+  grid: PixelGrid,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  color: string | null,
+): PixelGrid {
+  return applyColorAtPoints(
+    grid,
+    buildRectanglePoints(startX, startY, endX, endY),
+    color,
+  );
 }
 
 function updateFrame(
@@ -483,6 +531,39 @@ export function replaceActiveLayerCell(
           },
           x,
           y,
+          color,
+        ).cells,
+      };
+    }),
+  }));
+}
+
+export function applyBrushStrokeOnActiveLayer(
+  document: StudioDocument,
+  x: number,
+  y: number,
+  size: 1 | 2 | 3 | 4,
+  color: string | null,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (layer.id !== frame.activeLayerId || layer.locked) {
+        return layer;
+      }
+
+      return {
+        ...layer,
+        cells: applyBrushStroke(
+          {
+            width: document.width,
+            height: document.height,
+            cells: layer.cells,
+            palette: [],
+          },
+          x,
+          y,
+          size,
           color,
         ).cells,
       };

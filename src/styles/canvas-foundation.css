@@ -48,6 +48,14 @@
   cursor: grabbing;
 }
 
+.pixel-cell[data-active-tool='move'] {
+  cursor: grab;
+}
+
+.pixel-cell[data-active-tool='move']:active {
+  cursor: grabbing;
+}
+
 .pixel-grid {
   display: grid;
   gap: 1px;

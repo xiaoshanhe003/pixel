@@ -1,5 +1,10 @@
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
-import type { EditorTool, ScenarioDefinition, ScenarioId } from '../types/studio';
+import type {
+  EditorTool,
+  EditorToolSettings,
+  ScenarioDefinition,
+  ScenarioId,
+} from '../types/studio';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import CrochetChart from './CrochetChart';
 import FrameStrip from './FrameStrip';
@@ -12,6 +17,7 @@ type StudioCanvasStageProps = {
   activeGrid: PixelGridModel | null;
   activeColor: string;
   activeTool: EditorTool;
+  toolSettings: EditorToolSettings;
   canvasZoom: number;
   showGridLines: boolean;
   crochetViewMode: 'color' | 'symbol';
@@ -54,6 +60,7 @@ export default function StudioCanvasStage({
   activeGrid,
   activeColor,
   activeTool,
+  toolSettings,
   canvasZoom,
   showGridLines,
   crochetViewMode,
@@ -140,6 +147,7 @@ export default function StudioCanvasStage({
                 editable
                 activeColor={activeColor}
                 tool={activeTool}
+                toolSettings={toolSettings}
                 onPaintCell={onPaintCell}
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}
@@ -154,6 +162,7 @@ export default function StudioCanvasStage({
                 editable
                 activeColor={activeColor}
                 tool={activeTool}
+                toolSettings={toolSettings}
                 onPaintCell={onPaintCell}
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { renderApp, uploadMockImage } from '../test/appTestUtils';
+import { createBlankCanvas, renderApp, uploadMockImage } from '../test/appTestUtils';
 
 describe('App rendering', () => {
   it('renders the studio heading, scenario tabs, and size options', () => {
@@ -50,5 +50,34 @@ describe('App rendering', () => {
     await userEvent.click(screen.getByRole('button', { name: /隐藏网格/i }));
 
     expect(screen.getByRole('button', { name: /显示网格/i })).toBeInTheDocument();
+  });
+
+  it('shows brush and eraser size controls for the active tool', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    expect(screen.getByRole('group', { name: /画笔尺寸/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /1 px/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /^橡皮$/i }));
+
+    expect(screen.getByRole('group', { name: /橡皮尺寸/i })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /画笔尺寸/i })).not.toBeInTheDocument();
+  });
+
+  it('renders tool-specific helper controls inside the left dock', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    expect(screen.getByText(/当前设置/i)).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /画笔尺寸/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /线条/i }));
+
+    expect(screen.getAllByText('线条').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('group', { name: /画笔尺寸/i })).not.toBeInTheDocument();
   });
 });

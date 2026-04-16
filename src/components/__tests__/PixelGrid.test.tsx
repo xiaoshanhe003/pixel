@@ -4,24 +4,30 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import PixelGrid from '../PixelGrid';
 
+const defaultToolSettings = {
+  paintSize: 1 as const,
+  eraseSize: 1 as const,
+  shapePreviewMode: 'outline' as const,
+};
+
+function createGrid(color: string | null = null) {
+  return {
+    width: 16,
+    height: 16,
+    palette: color ? [color] : [],
+    cells: Array.from({ length: 256 }, (_, index) => ({
+      x: index % 16,
+      y: Math.floor(index / 16),
+      color,
+      source: { r: 0, g: 0, b: 0 },
+      alpha: color ? 255 : 0,
+    })),
+  };
+}
+
 describe('PixelGrid', () => {
   it('renders one cell per pixel with square dimensions', () => {
-    render(
-      <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: ['#000000'],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: '#000000',
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 255,
-          })),
-        }}
-      />,
-    );
+    render(<PixelGrid grid={createGrid('#000000')} toolSettings={defaultToolSettings} />);
 
     expect(
       screen.getByRole('grid', { name: /像素输出网格/i }),
@@ -30,42 +36,31 @@ describe('PixelGrid', () => {
   });
 
   it('renders transparent cells with a dedicated label', () => {
-    render(
-      <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: ['#000000'],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: index === 0 ? null : '#000000',
-            source: { r: 0, g: 0, b: 0 },
-            alpha: index === 0 ? 0 : 255,
-          })),
-        }}
-      />,
-    );
+    const grid = createGrid('#000000');
+    grid.cells[0] = {
+      ...grid.cells[0],
+      color: null,
+      alpha: 0,
+    };
+
+    render(<PixelGrid grid={grid} toolSettings={defaultToolSettings} />);
 
     expect(screen.getByLabelText(/像素 0,0 透明/i)).toBeInTheDocument();
   });
 
   it('applies flat styling when grid lines are hidden', () => {
+    const grid = createGrid('#000000');
+    grid.cells[0] = {
+      ...grid.cells[0],
+      color: null,
+      alpha: 0,
+    };
+
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: ['#000000'],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: index === 0 ? null : '#000000',
-            source: { r: 0, g: 0, b: 0 },
-            alpha: index === 0 ? 0 : 255,
-          })),
-        }}
+        grid={grid}
         showGrid={false}
+        toolSettings={defaultToolSettings}
       />,
     );
 
@@ -80,21 +75,11 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="paint"
+        toolSettings={defaultToolSettings}
         onPaintCell={handlePaint}
       />,
     );
@@ -110,21 +95,11 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="move"
+        toolSettings={defaultToolSettings}
         onPaintCell={handlePaint}
       />,
     );
@@ -139,21 +114,11 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="paint"
+        toolSettings={defaultToolSettings}
         onPaintCell={handlePaint}
       />,
     );
@@ -176,20 +141,10 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: ['#000000'],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: '#000000',
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 255,
-          })),
-        }}
+        grid={createGrid('#000000')}
         editable
         tool="erase"
+        toolSettings={defaultToolSettings}
         onPaintCell={handlePaint}
       />,
     );
@@ -212,21 +167,11 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="fill"
+        toolSettings={defaultToolSettings}
         onFillArea={handleFill}
       />,
     );
@@ -239,20 +184,10 @@ describe('PixelGrid', () => {
   it('uses a tool-specific cursor on the canvas viewport', () => {
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         tool="fill"
+        toolSettings={defaultToolSettings}
       />,
     );
 
@@ -264,26 +199,31 @@ describe('PixelGrid', () => {
     expect((viewport as HTMLElement).style.cursor).toContain('data:image/svg+xml');
   });
 
+  it('keeps the selected tool cursor while hovering editable cells', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="rectangle"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(
+      (screen.getByLabelText(/像素 0,0 透明/i) as HTMLElement).style.cursor,
+    ).toContain('data:image/svg+xml');
+  });
+
   it('delegates line drawing after a drag selection', () => {
     const handleDrawLine = vi.fn();
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="line"
+        toolSettings={defaultToolSettings}
         onDrawLine={handleDrawLine}
       />,
     );
@@ -303,21 +243,11 @@ describe('PixelGrid', () => {
 
     render(
       <PixelGrid
-        grid={{
-          width: 16,
-          height: 16,
-          palette: [],
-          cells: Array.from({ length: 256 }, (_, index) => ({
-            x: index % 16,
-            y: Math.floor(index / 16),
-            color: null,
-            source: { r: 0, g: 0, b: 0 },
-            alpha: 0,
-          })),
-        }}
+        grid={createGrid()}
         editable
         activeColor="#ff00aa"
         tool="rectangle"
+        toolSettings={defaultToolSettings}
         onDrawRectangle={handleDrawRectangle}
       />,
     );
@@ -330,5 +260,22 @@ describe('PixelGrid', () => {
     fireEvent.pointerUp(last, { pointerId: 5 });
 
     expect(handleDrawRectangle).toHaveBeenCalledWith(1, 1, 3, 3, '#ff00aa');
+  });
+
+  it('shows a rectangle preview before pointer release', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        activeColor="#ff00aa"
+        tool="rectangle"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByLabelText(/像素 1,1 透明/i), { pointerId: 6 });
+    fireEvent.pointerEnter(screen.getByLabelText(/像素 3,3 透明/i), { pointerId: 6 });
+
+    expect(screen.getByLabelText(/预览矩形 1,1 到 3,3/i)).toBeInTheDocument();
   });
 });

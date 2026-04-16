@@ -13,6 +13,19 @@ describe('App canvas editing', () => {
     expect(screen.getAllByText(/#d65a31/i).length).toBeGreaterThan(0);
   });
 
+  it('uses brush size controls to paint a larger footprint', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /2 px/i }));
+    await userEvent.click(screen.getByLabelText(/像素 5,5 透明/i));
+
+    expect(screen.getByLabelText(/像素 5,5 #d65a31/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/像素 6,5 #d65a31/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/像素 5,6 #d65a31/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/像素 6,6 #d65a31/i)).toBeInTheDocument();
+  });
+
   it('fills a contiguous area on the blank canvas', async () => {
     renderApp();
     await createBlankCanvas();
@@ -50,6 +63,9 @@ describe('App canvas editing', () => {
 
     fireEvent.pointerDown(first, { pointerId: 7 });
     fireEvent.pointerEnter(last, { pointerId: 7 });
+
+    expect(screen.getByLabelText(/预览矩形 1,1 到 3,3/i)).toBeInTheDocument();
+
     fireEvent.pointerUp(last, { pointerId: 7 });
 
     expect(screen.getByLabelText(/像素 1,1 #d65a31/i)).toBeInTheDocument();

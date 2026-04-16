@@ -4,6 +4,7 @@ import { DEFAULT_OPTIONS, SCENARIOS } from '../constants/studio';
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
 import type {
   EditorTool,
+  EditorToolSettings,
   ScenarioDefinition,
   ScenarioId,
   StudioDocument,
@@ -17,6 +18,7 @@ import { buildPixelGrid } from '../utils/pixelPipeline';
 import {
   addFrameToDocument,
   addLayerToActiveFrame,
+  applyBrushStrokeOnActiveLayer,
   composeFrame,
   clearActiveLayer,
   countPaletteUsage,
@@ -87,6 +89,7 @@ export type UseStudioAppResult = {
   editor: {
     activeColor: string;
     activeTool: EditorTool;
+    toolSettings: EditorToolSettings;
     canvasZoom: number;
     showGridLines: boolean;
   };
@@ -109,6 +112,9 @@ export type UseStudioAppResult = {
     setActiveScenario: (scenarioId: ScenarioId) => void;
     setActiveColor: (color: string) => void;
     setActiveTool: (tool: EditorTool) => void;
+    setToolSettings: (
+      updater: (current: EditorToolSettings) => EditorToolSettings,
+    ) => void;
     setCanvasZoom: (updater: (current: number) => number) => void;
     toggleGridLines: () => void;
     setPreviewFps: (fps: number) => void;
@@ -354,6 +360,11 @@ export function useStudioApp(): UseStudioAppResult {
   );
   const [activeColor, setActiveColor] = useState('#d65a31');
   const [activeTool, setActiveTool] = useState<EditorTool>('paint');
+  const [toolSettings, setToolSettings] = useState<EditorToolSettings>({
+    paintSize: 1,
+    eraseSize: 1,
+    shapePreviewMode: 'outline',
+  });
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [showGridLines, setShowGridLines] = useState(true);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
@@ -418,6 +429,7 @@ export function useStudioApp(): UseStudioAppResult {
     editor: {
       activeColor,
       activeTool,
+      toolSettings,
       canvasZoom,
       showGridLines,
     },
@@ -440,6 +452,8 @@ export function useStudioApp(): UseStudioAppResult {
       setActiveScenario,
       setActiveColor,
       setActiveTool,
+      setToolSettings: (updater) =>
+        setToolSettings((current) => updater(current)),
       setCanvasZoom,
       toggleGridLines: () => setShowGridLines((current) => !current),
       setPreviewFps,
@@ -473,7 +487,17 @@ export function useStudioApp(): UseStudioAppResult {
         setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
       },
       paintCell: (x, y, color) =>
-        updateActiveLayer((current) => replaceActiveLayerCell(current, x, y, color)),
+        updateActiveLayer((current) =>
+          activeTool === 'paint' || activeTool === 'erase'
+            ? applyBrushStrokeOnActiveLayer(
+                current,
+                x,
+                y,
+                activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                color,
+              )
+            : replaceActiveLayerCell(current, x, y, color),
+        ),
       sampleCell: (color) => {
         if (!color) {
           return;

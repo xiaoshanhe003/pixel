@@ -1,5 +1,5 @@
 import type { ConversionOptions } from '../types/pixel';
-import type { EditorTool } from '../types/studio';
+import type { EditorTool, EditorToolSettings } from '../types/studio';
 import ConversionControls from './ConversionControls';
 import EditingToolbar from './EditingToolbar';
 import ImageUploader from './ImageUploader';
@@ -7,11 +7,15 @@ import ImageUploader from './ImageUploader';
 type StudioLeftDockProps = {
   activeColor: string;
   activeTool: EditorTool;
+  toolSettings: EditorToolSettings;
   activePalette: readonly string[];
   conversionOptions: ConversionOptions;
   previewUrl?: string;
   onActiveColorChange: (color: string) => void;
   onActiveToolChange: (tool: EditorTool) => void;
+  onToolSettingsChange: (
+    updater: (current: EditorToolSettings) => EditorToolSettings,
+  ) => void;
   onConversionOptionsChange: (options: ConversionOptions) => void;
   onFileSelected: (file: File | null) => void;
 };
@@ -19,11 +23,13 @@ type StudioLeftDockProps = {
 export default function StudioLeftDock({
   activeColor,
   activeTool,
+  toolSettings,
   activePalette,
   conversionOptions,
   previewUrl,
   onActiveColorChange,
   onActiveToolChange,
+  onToolSettingsChange,
   onConversionOptionsChange,
   onFileSelected,
 }: StudioLeftDockProps) {
@@ -34,7 +40,9 @@ export default function StudioLeftDock({
         palette={activePalette}
         onColorChange={onActiveColorChange}
         tool={activeTool}
+        toolSettings={toolSettings}
         onToolChange={onActiveToolChange}
+        onToolSettingsChange={onToolSettingsChange}
       />
 
       <section className="panel panel--dock">

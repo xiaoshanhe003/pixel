@@ -1,6 +1,11 @@
-import { useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
-import type { EditorTool } from '../types/studio';
+import type { EditorTool, EditorToolSettings } from '../types/studio';
+import {
+  buildBrushFootprint,
+  buildLinePoints,
+  buildRectanglePoints,
+} from '../utils/studio';
 import { getCursorForTool } from '../utils/toolCursors';
 
 type PixelGridProps = {
@@ -8,6 +13,7 @@ type PixelGridProps = {
   editable?: boolean;
   activeColor?: string;
   tool?: EditorTool;
+  toolSettings: EditorToolSettings;
   onPaintCell?: (x: number, y: number, color: string | null) => void;
   onFillArea?: (x: number, y: number, color: string | null) => void;
   onDrawLine?: (
@@ -36,6 +42,7 @@ export default function PixelGrid({
   editable = false,
   activeColor,
   tool = 'paint',
+  toolSettings,
   onPaintCell,
   onFillArea,
   onDrawLine,
@@ -67,10 +74,39 @@ export default function PixelGrid({
     endY: number;
     tool: 'line' | 'rectangle';
   } | null>(null);
+  const [interactionPreview, setInteractionPreview] = useState<{
+    cells: Array<{ x: number; y: number }>;
+    label: string;
+  } | null>(null);
+  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
 
   function paintCell(x: number, y: number, color: string | null) {
     onPaintCell?.(x, y, color);
   }
+
+  function getBrushPreviewLabel(x: number, y: number) {
+    const size = tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+
+    return `预览${tool === 'erase' ? '橡皮' : '画笔'} ${x},${y} 尺寸 ${size} px`;
+  }
+
+  const toolCursor = getCursorForTool(tool);
+  const hoverPreview =
+    editable && hoverCell && (tool === 'paint' || tool === 'erase')
+      ? {
+          cells: buildBrushFootprint(
+            hoverCell.x,
+            hoverCell.y,
+            tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+          ),
+          label: getBrushPreviewLabel(hoverCell.x, hoverCell.y),
+        }
+      : null;
+  const preview = interactionPreview ?? hoverPreview;
+  const previewLookup = useMemo(
+    () => new Set(preview?.cells.map((cell) => `${cell.x}-${cell.y}`) ?? []),
+    [preview],
+  );
 
   function finalizeShape() {
     if (!shapeStateRef.current) {
@@ -82,10 +118,12 @@ export default function PixelGrid({
 
     if (shapeTool === 'line') {
       onDrawLine?.(startX, startY, endX, endY, nextColor);
+      setInteractionPreview(null);
       return;
     }
 
     onDrawRectangle?.(startX, startY, endX, endY, nextColor);
+    setInteractionPreview(null);
   }
 
   const baseCellSize =
@@ -98,7 +136,7 @@ export default function PixelGrid({
         ref={viewportRef}
         className={`pixel-grid-viewport${tool === 'move' ? ' is-move-mode' : ''}`}
         data-active-tool={tool}
-        style={{ cursor: getCursorForTool(tool) }}
+        style={{ cursor: toolCursor }}
         onPointerDown={(event) => {
           if (tool !== 'move' || !viewportRef.current) {
             return;
@@ -160,8 +198,15 @@ export default function PixelGrid({
           }
 
           paintStateRef.current = null;
+          setHoverCell(null);
+          setInteractionPreview(null);
         }}
       >
+        {preview ? (
+          <div className="pixel-grid-preview" aria-label={preview.label}>
+            {preview.label}
+          </div>
+        ) : null}
         <div
           role="grid"
           aria-label="像素输出网格"
@@ -184,15 +229,19 @@ export default function PixelGrid({
                   ? ` 符号 ${getCellOverlay?.(cell) ?? '?'}`
                   : ''
               }`}
-              style={
-                presentation === 'color' && cell.color
+              data-active-tool={tool}
+              style={{
+                ...(presentation === 'color' && cell.color
                   ? { backgroundColor: cell.color }
-                  : undefined
-              }
+                  : undefined),
+                cursor: toolCursor,
+              }}
               onPointerDown={(event) => {
                 if (!editable || tool === 'move') {
                   return;
                 }
+
+                setHoverCell({ x: cell.x, y: cell.y });
 
                 if (tool === 'sample') {
                   onSampleCell?.(cell.color);
@@ -213,6 +262,13 @@ export default function PixelGrid({
                     endY: cell.y,
                     tool,
                   };
+                  setInteractionPreview({
+                    cells:
+                      tool === 'line'
+                        ? buildLinePoints(cell.x, cell.y, cell.x, cell.y)
+                        : buildRectanglePoints(cell.x, cell.y, cell.x, cell.y),
+                    label: `预览${tool === 'line' ? '线条' : '矩形'} ${cell.x},${cell.y} 到 ${cell.x},${cell.y}`,
+                  });
                   return;
                 }
 
@@ -226,6 +282,8 @@ export default function PixelGrid({
                 paintCell(cell.x, cell.y, nextColor);
               }}
               onPointerEnter={(event) => {
+                setHoverCell({ x: cell.x, y: cell.y });
+
                 if (
                   !editable ||
                   tool === 'move' ||
@@ -240,11 +298,30 @@ export default function PixelGrid({
                   shapeStateRef.current &&
                   shapeStateRef.current.pointerId === event.pointerId
                 ) {
+                  const previewCells =
+                    tool === 'line'
+                      ? buildLinePoints(
+                          shapeStateRef.current.startX,
+                          shapeStateRef.current.startY,
+                          cell.x,
+                          cell.y,
+                        )
+                      : buildRectanglePoints(
+                          shapeStateRef.current.startX,
+                          shapeStateRef.current.startY,
+                          cell.x,
+                          cell.y,
+                        );
+
                   shapeStateRef.current = {
                     ...shapeStateRef.current,
                     endX: cell.x,
                     endY: cell.y,
                   };
+                  setInteractionPreview({
+                    cells: previewCells,
+                    label: `预览${tool === 'line' ? '线条' : '矩形'} ${shapeStateRef.current.startX},${shapeStateRef.current.startY} 到 ${cell.x},${cell.y}`,
+                  });
                   return;
                 }
 
@@ -256,6 +333,11 @@ export default function PixelGrid({
                 }
 
                 paintCell(cell.x, cell.y, paintStateRef.current.color);
+              }}
+              onPointerLeave={() => {
+                if (!shapeStateRef.current) {
+                  setInteractionPreview(null);
+                }
               }}
               onClick={() => {
                 if (
@@ -278,6 +360,9 @@ export default function PixelGrid({
             >
               {presentation === 'symbol' && cell.color ? (
                 <span className="pixel-cell__overlay">{getCellOverlay?.(cell) ?? '?'}</span>
+              ) : null}
+              {previewLookup.has(`${cell.x}-${cell.y}`) ? (
+                <span className="pixel-cell__preview" aria-hidden="true" />
               ) : null}
             </button>
           ))}

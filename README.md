@@ -12,6 +12,9 @@ downscaling.
 - Convert to `16x16` or `32x32`
 - Extract a source-adaptive palette capped to `16` or `32` colors
 - Edit the resulting grid directly with paint, erase, and sample tools
+- Adjust brush and eraser size from the left tool dock
+- Preview line and rectangle results during drag before releasing to commit
+- Keep the canvas cursor aligned with the selected drawing tool inside the stage
 - Build frame-by-frame animation drafts in pixel art mode
 - Inspect palette usage, transparency, and scenario-specific export needs
 

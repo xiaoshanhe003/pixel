@@ -1,6 +1,6 @@
 import PixelGrid from './PixelGrid';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
-import type { EditorTool } from '../types/studio';
+import type { EditorTool, EditorToolSettings } from '../types/studio';
 
 type CrochetChartProps = {
   grid: PixelGridModel;
@@ -9,6 +9,7 @@ type CrochetChartProps = {
   editable?: boolean;
   activeColor?: string;
   tool?: EditorTool;
+  toolSettings: EditorToolSettings;
   onPaintCell?: (x: number, y: number, color: string | null) => void;
   onFillArea?: (x: number, y: number, color: string | null) => void;
   onDrawLine?: (
@@ -37,6 +38,7 @@ export default function CrochetChart({
   editable,
   activeColor,
   tool,
+  toolSettings,
   onPaintCell,
   onFillArea,
   onDrawLine,
@@ -73,6 +75,7 @@ export default function CrochetChart({
         editable={editable}
         activeColor={activeColor}
         tool={tool}
+        toolSettings={toolSettings}
         onPaintCell={onPaintCell}
         onFillArea={onFillArea}
         onDrawLine={onDrawLine}

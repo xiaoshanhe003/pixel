@@ -8,22 +8,23 @@ describe('App layers and frames', () => {
     renderApp();
 
     expect(screen.getByRole('heading', { name: /图层/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /拖动排序 图层 1/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /图层 1 100%/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
 
-    expect(screen.getByRole('button', { name: /拖动排序 图层 2/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /图层 2 100%/i })).toBeInTheDocument();
   });
 
   it('lets the user delete the active layer in pixel mode', async () => {
     renderApp();
 
     await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
-    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /图层 [12] 100%/i })).toHaveLength(2);
 
-    await userEvent.click(screen.getByRole('button', { name: /删除图层/i }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /图层 2 100%/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /删除图层/i }));
 
-    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /图层 1 100%|图层 2 100%/i })).toHaveLength(1);
   });
 
   it('lets the user merge the active layer down in pixel mode', async () => {
@@ -39,11 +40,12 @@ describe('App layers and frames', () => {
     fireEvent.pointerEnter(end, { pointerId: 11 });
     fireEvent.pointerUp(end, { pointerId: 11 });
 
-    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /图层 [12] 100%/i })).toHaveLength(2);
 
-    await userEvent.click(screen.getByRole('button', { name: /合并到下层/i }));
+    fireEvent.contextMenu(screen.getByRole('button', { name: /图层 2 100%/i }));
+    await userEvent.click(screen.getByRole('menuitem', { name: /合并到下层/i }));
 
-    expect(screen.getAllByRole('button', { name: /拖动排序 /i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /图层 1 100%|图层 2 100%/i })).toHaveLength(1);
     expect(screen.getByLabelText(/像素 0,0 #d65a31/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/像素 1,0 #d65a31/i)).toBeInTheDocument();
   });
@@ -55,15 +57,18 @@ describe('App layers and frames', () => {
     await userEvent.click(screen.getByRole('button', { name: /新建图层/i }));
     await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
 
-    await userEvent.click(screen.getByRole('button', { name: /隐藏 图层 2/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /显示 图层 2/i }));
     expect(screen.getByLabelText(/像素 1,0 透明/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /显示 图层 2/i }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /显示 图层 2/i }));
 
-    const opacity = screen.getByRole('slider', { name: /^图层 2 透明度$/i });
+    await userEvent.click(
+      screen.getAllByRole('button', { name: /^100%$/i })[0],
+    );
+    const opacity = screen.getByRole('slider', { name: /^图层 2 不透明度$/i });
     fireEvent.change(opacity, { target: { value: '50' } });
 
-    expect(screen.getByLabelText(/图层 2 透明度数值/i)).toHaveTextContent('50%');
+    expect(screen.getAllByText('50%').length).toBeGreaterThan(0);
   });
 
   it('lets the user rename a layer', async () => {
