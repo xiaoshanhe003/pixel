@@ -5,7 +5,7 @@
 .tool-button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .tool-button__icon {
@@ -20,13 +20,13 @@
 }
 
 .controls-card__header {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-8);
 }
 
 .controls-card__groups,
 .toggle-grid {
   display: grid;
-  gap: 16px;
+  gap: var(--space-7);
 }
 
 .controls-card__note,
@@ -48,7 +48,7 @@
 .toggle-grid legend,
 .tool-section__label,
 .scenario-list h3 {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-4);
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -56,9 +56,9 @@
 .size-control__option {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-4);
   margin: 0;
-  padding: 10px 14px;
+  padding: var(--space-4) var(--space-6);
 }
 
 .size-control__option input,
@@ -68,7 +68,7 @@
 
 .toggle-option {
   display: flex;
-  gap: 10px;
+  gap: var(--space-4);
   align-items: center;
 }
 
@@ -83,7 +83,7 @@
   display: grid;
   place-items: center;
   min-height: 640px;
-  padding: 18px;
+  padding: var(--space-8);
   background:
     radial-gradient(circle at top, rgba(59, 211, 253, 0.08), transparent 34%),
     linear-gradient(180deg, #f8f4ed 0%, #efe8dd 100%);
@@ -95,8 +95,8 @@
 
 .uploader {
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  gap: var(--space-4);
+  padding: var(--space-8);
   border: 1px dashed var(--line);
   border-radius: 20px;
   background: rgba(248, 204, 101, 0.16);
@@ -109,7 +109,7 @@
   overflow: auto;
   display: grid;
   place-items: center;
-  padding: 28px;
+  padding: var(--space-11);
   border-radius: 24px;
   cursor: default;
 }
@@ -126,7 +126,7 @@
   display: grid;
   gap: 1px;
   aspect-ratio: 1;
-  padding: 14px;
+  padding: var(--space-6);
   border-radius: 20px;
   border: 1px solid var(--line-soft);
   background:
@@ -191,7 +191,7 @@
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
   grid-template-rows: 36px minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-5);
   width: 100%;
 }
 
@@ -205,7 +205,7 @@
   display: grid;
   gap: 1px;
   align-items: center;
-  padding: 0 28px;
+  padding: 0 var(--space-11);
 }
 
 .crochet-chart__rows {
@@ -216,7 +216,7 @@
 .crochet-chart__index {
   display: grid;
   place-items: center;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px dashed var(--line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.72);
@@ -226,14 +226,14 @@
 
 .crochet-rows {
   display: grid;
-  gap: 12px;
-  padding: 0 22px 22px;
+  gap: var(--space-5);
+  padding: 0 var(--space-10) var(--space-10);
 }
 
 .crochet-row-card {
   display: grid;
-  gap: 4px;
-  padding: 14px;
+  gap: var(--space-1);
+  padding: var(--space-6);
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.84);
@@ -241,9 +241,9 @@
 
 .export-sheet {
   display: grid;
-  gap: 16px;
-  margin: 0 22px 22px;
-  padding: 18px;
+  gap: var(--space-7);
+  margin: 0 var(--space-10) var(--space-10);
+  padding: var(--space-8);
   border: 1px solid var(--line);
   border-radius: 20px;
   background:
@@ -254,13 +254,13 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-5);
 }
 
 .export-sheet__legend,
 .export-sheet__list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-4);
 }
 
 .export-sheet__legend-item,
@@ -268,8 +268,8 @@
   display: grid;
   grid-template-columns: 28px repeat(2, minmax(0, 1fr)) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   border: 1px dashed var(--line);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.8);
@@ -278,7 +278,7 @@
 .print-grid {
   display: grid;
   gap: 1px;
-  padding: 12px;
+  padding: var(--space-5);
   border: 1px solid var(--line-soft);
   border-radius: 16px;
   background: #e7dfd2;
@@ -344,7 +344,7 @@
   }
 
   .scenario-export-panel .frame-strip__actions {
-    padding: 0 22px 12px;
+    padding: 0 var(--space-10) var(--space-5);
   }
 
   .export-sheet {
@@ -369,18 +369,18 @@
 .tool-panel__body,
 .scenario-panel__body {
   display: grid;
-  gap: 18px;
+  gap: var(--space-8);
 }
 
 .color-picker {
   display: grid;
-  gap: 10px;
+  gap: var(--space-4);
 }
 
 .color-picker__row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-5);
 }
 
 .color-picker input[type='color'] {
@@ -396,13 +396,13 @@
 .frame-strip__list,
 .swatches,
 .scenario-list {
-  padding: 0 22px 22px;
+  padding: 0 var(--space-10) var(--space-10);
 }
 
 .frame-strip__fps {
   display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-3) var(--space-5);
   border: 1px dashed var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
@@ -414,13 +414,13 @@
   grid-auto-flow: column;
   grid-auto-columns: minmax(154px, 154px);
   overflow-x: auto;
-  gap: 12px;
+  gap: var(--space-5);
 }
 
 .frame-card {
   display: grid;
-  gap: 6px;
-  padding: 14px;
+  gap: var(--space-2);
+  padding: var(--space-6);
   text-align: left;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -432,7 +432,7 @@
   gap: 1px;
   width: 100%;
   aspect-ratio: 1;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px solid var(--line-soft);
   border-radius: 12px;
   background:
@@ -457,13 +457,13 @@
 }
 
 .tag-row {
-  margin-top: 8px;
+  margin-top: var(--space-3);
 }
 
 .info-tag {
   display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--space-3) var(--space-5);
   border: 1px dashed var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.8);
@@ -475,19 +475,19 @@
 }
 
 .panel__header--tight {
-  padding: 0 0 16px;
+  padding: 0 0 var(--space-7);
 }
 
 .panel__header--stack {
   align-items: start;
   flex-direction: column;
-  padding-bottom: 16px;
+  padding-bottom: var(--space-7);
 }
 
 .uploader {
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  gap: var(--space-4);
+  padding: var(--space-8);
   border: 1px dashed rgba(31, 28, 23, 0.26);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.52);
@@ -525,6 +525,20 @@
   --cell-border: rgba(0, 0, 0, 0.08);
   --focus: 2px dashed #000000;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+  --space-10: 22px;
+  --space-11: 28px;
+  --space-12: 32px;
+  --space-13: 38px;
 }
 
 html,
@@ -565,17 +579,17 @@ select {
 }
 
 .app-shell {
-  width: min(1600px, calc(100% - 32px));
-  padding: 16px 0 28px;
+  width: min(1600px, calc(100% - var(--space-12)));
+  padding: var(--space-7) 0 var(--space-11);
 }
 
 .studio-app {
-  gap: 16px;
+  gap: var(--space-7);
 }
 
 .app-topbar {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-  padding: 14px 16px;
+  padding: var(--space-6) var(--space-7);
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface-panel-glass);
@@ -608,7 +622,7 @@ select {
 }
 
 .app-brand {
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .app-subtitle {
@@ -622,11 +636,11 @@ select {
 .topbar-cluster {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .scenario-switcher {
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .scenario-tab,
@@ -634,7 +648,7 @@ select {
 .size-control__option,
 .layer-card__select {
   min-height: 40px;
-  padding: 8px 18px 10px;
+  padding: var(--space-3) var(--space-8) var(--space-4);
   border: 1px solid transparent;
   border-radius: 50px;
   background: transparent;
@@ -673,7 +687,7 @@ select {
 .canvas-toolbar,
 .frame-strip__actions,
 .layer-card__actions {
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .topbar-status {
@@ -688,7 +702,7 @@ select {
 .frame-strip__fps,
 .info-tag {
   min-height: 40px;
-  padding: 8px 14px;
+  padding: var(--space-3) var(--space-6);
   border: 1px solid var(--line);
   border-radius: 50px;
   background: var(--panel-strong);
@@ -697,13 +711,13 @@ select {
 
 .studio-layout {
   grid-template-columns: 300px minmax(0, 1fr) 300px;
-  gap: 16px;
+  gap: var(--space-7);
 }
 
 .left-dock,
 .right-dock,
 .canvas-stage {
-  gap: 16px;
+  gap: var(--space-7);
 }
 
 .panel,
@@ -719,7 +733,7 @@ select {
 }
 
 .panel__header {
-  padding: 18px 18px 0;
+  padding: var(--space-8) var(--space-8) 0;
 }
 
 .panel__header h2 {
@@ -730,7 +744,7 @@ select {
 
 .panel-title-block {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .panel__header span,
@@ -744,7 +758,7 @@ select {
 .tool-panel__body,
 .scenario-panel__body,
 .controls-card {
-  padding: 16px 18px 18px;
+  padding: var(--space-7) var(--space-8) var(--space-8);
 }
 
 .tool-section__label,
@@ -786,7 +800,7 @@ select {
 
 .stage-canvas-body {
   min-height: 640px;
-  padding: 18px;
+  padding: var(--space-8);
   background: var(--surface-canvas-glass);
   backdrop-filter: blur(12px);
 }
@@ -828,7 +842,7 @@ select {
 
 .empty-state {
   min-height: 220px;
-  padding: 20px;
+  padding: var(--space-9);
   text-align: center;
 }
 
@@ -837,13 +851,13 @@ select {
 }
 
 .pixel-grid-viewport {
-  padding: 20px;
+  padding: var(--space-9);
   border-radius: 8px;
   background: var(--surface-soft);
 }
 
 .pixel-grid {
-  padding: 10px;
+  padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -908,19 +922,19 @@ select {
 
 .layers-list {
   display: grid;
-  gap: 12px;
-  padding: 0 22px 22px;
+  gap: var(--space-5);
+  padding: 0 var(--space-10) var(--space-10);
 }
 
 .layer-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: var(--space-4);
+  padding: var(--space-6);
 }
 
 .layer-card__input {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-4) var(--space-5);
   color: inherit;
 }
 
@@ -938,8 +952,8 @@ select {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
 }
 
 .swatch-chip {
@@ -949,8 +963,8 @@ select {
 
 .swatches {
   display: grid;
-  gap: 10px;
-  padding: 0 22px 22px;
+  gap: var(--space-4);
+  padding: 0 var(--space-10) var(--space-10);
 }
 
 .swatch code {
@@ -959,18 +973,18 @@ select {
 
 .inspector-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-4);
   margin: 0;
-  padding: 0 22px 18px 38px;
+  padding: 0 var(--space-10) var(--space-8) var(--space-13);
 }
 
 .panel--sidebar {
-  padding-bottom: 22px;
+  padding-bottom: var(--space-10);
 }
 
 .panel--sidebar .sidebar-copy,
 .panel--sidebar .inspector-note {
-  padding: 0 22px;
+  padding: 0 var(--space-10);
 }
 
 .export-sheet {
