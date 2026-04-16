@@ -28,6 +28,16 @@ const TOOL_OPTIONS: Array<{
   { id: 'move', label: '移动' },
 ];
 
+const TOOL_HELP_COPY: Record<EditorTool, string> = {
+  paint: '点击或拖拽连续上色。画笔尺寸会实时影响悬停预览和落点范围。',
+  erase: '点击或拖拽连续擦除。橡皮尺寸会实时影响悬停预览和擦除范围。',
+  fill: '点击一个色块区域即可按当前颜色整体填充相邻区域。',
+  line: '拖拽预览后松开提交。线条只在释放指针时写入画布。',
+  rectangle: '拖拽预览后松开提交。矩形当前以描边模式显示预览和落稿。',
+  sample: '点击任意像素取色，取色后会自动切回画笔继续编辑。',
+  move: '按住并拖动画布视口进行平移，不会改动当前图层内容。',
+};
+
 function renderSizeControls(params: {
   label: string;
   size: EditorToolSettings['paintSize'];
@@ -117,6 +127,7 @@ export default function EditingToolbar({
                   onToolSettingsChange((current) => ({ ...current, eraseSize: size })),
               })
             : null}
+          <p className="tool-setting-help">{TOOL_HELP_COPY[tool]}</p>
         </div>
 
         <label className="color-picker" htmlFor="active-color">

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { PixelGrid as PixelGridModel } from '../../types/pixel';
 import PixelGrid from '../PixelGrid';
 
 const defaultToolSettings = {
@@ -10,7 +11,7 @@ const defaultToolSettings = {
   shapePreviewMode: 'outline' as const,
 };
 
-function createGrid(color: string | null = null) {
+function createGrid(color: string | null = null): PixelGridModel {
   return {
     width: 16,
     height: 16,

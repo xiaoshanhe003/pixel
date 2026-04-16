@@ -54,6 +54,8 @@
 - Modify: `src/App.tsx`
 - Test: `src/hooks/App.rendering.test.tsx`
 
+Status note: historical red-phase steps were not replayed after the implementation had already landed. Current completion evidence is based on green-path regression and build verification.
+
 - [ ] **Step 1: Write the failing rendering test**
 
 ```ts
@@ -72,7 +74,7 @@ it('shows brush and eraser size controls for the active tool', async () => {
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "shows brush and eraser size controls for the active tool"`
 Expected: FAIL because the toolbar does not render any size controls.
 
-- [ ] **Step 3: Define explicit tool settings types**
+- [x] **Step 3: Define explicit tool settings types**
 
 ```ts
 export type ShapePreviewMode = 'outline';
@@ -84,7 +86,7 @@ export type EditorToolSettings = {
 };
 ```
 
-- [ ] **Step 4: Store settings in `useStudioApp` and expose actions**
+- [x] **Step 4: Store settings in `useStudioApp` and expose actions**
 
 ```ts
 const [toolSettings, setToolSettings] = useState<EditorToolSettings>({
@@ -97,7 +99,7 @@ setToolSettings: (updater) =>
   setToolSettings((current) => updater(current)),
 ```
 
-- [ ] **Step 5: Thread settings through `App.tsx`**
+- [x] **Step 5: Thread settings through `App.tsx`**
 
 ```tsx
 <StudioLeftDock
@@ -112,7 +114,7 @@ setToolSettings: (updater) =>
 />
 ```
 
-- [ ] **Step 6: Run the rendering test to verify it passes**
+- [x] **Step 6: Run the rendering test to verify it passes**
 
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "shows brush and eraser size controls for the active tool"`
 Expected: PASS
@@ -132,6 +134,8 @@ git commit -m "feat: model persistent drawing tool settings"
 - Modify: `src/styles/primitives.css`
 - Test: `src/hooks/App.rendering.test.tsx`
 
+Status note: historical red-phase steps were not replayed after the implementation had already landed. Current completion evidence is based on rendered UI coverage and regression verification.
+
 - [ ] **Step 1: Write the failing toolbar test**
 
 ```ts
@@ -149,7 +153,7 @@ it('renders tool-specific helper controls inside the left dock', async () => {
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "renders tool-specific helper controls inside the left dock"`
 Expected: FAIL because the left dock has no helper controls or guidance copy.
 
-- [ ] **Step 3: Add tool-specific controls and copy to `EditingToolbar.tsx`**
+- [x] **Step 3: Add tool-specific controls and copy to `EditingToolbar.tsx`**
 
 ```tsx
 {tool === 'paint' ? (
@@ -169,7 +173,7 @@ Expected: FAIL because the left dock has no helper controls or guidance copy.
 ) : null}
 ```
 
-- [ ] **Step 4: Keep the dock layout compact in `StudioLeftDock.tsx` and `primitives.css`**
+- [x] **Step 4: Keep the dock layout compact in `StudioLeftDock.tsx` and `primitives.css`**
 
 ```css
 .tool-setting-group {
@@ -184,7 +188,7 @@ Expected: FAIL because the left dock has no helper controls or guidance copy.
 }
 ```
 
-- [ ] **Step 5: Run the rendering test to verify it passes**
+- [x] **Step 5: Run the rendering test to verify it passes**
 
 Run: `npm test -- src/hooks/App.rendering.test.tsx -t "renders tool-specific helper controls inside the left dock"`
 Expected: PASS
@@ -205,6 +209,8 @@ git commit -m "feat: add detailed controls to drawing tool dock"
 - Test: `src/components/__tests__/PixelGrid.test.tsx`
 - Test: `src/hooks/App.canvas-editing.test.tsx`
 
+Status note: historical red-phase steps were not replayed after the implementation had already landed. Current completion evidence is based on preview/footprint regression tests and passing app flows.
+
 - [ ] **Step 1: Write the failing `PixelGrid` preview tests**
 
 ```ts
@@ -223,7 +229,7 @@ it('shows a rectangle preview before pointer release', () => {
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx -t "shows a rectangle preview before pointer release"`
 Expected: FAIL because preview markup and `toolSettings` props do not exist.
 
-- [ ] **Step 3: Add transient interaction state in `PixelGrid.tsx`**
+- [x] **Step 3: Add transient interaction state in `PixelGrid.tsx`**
 
 ```ts
 const [interactionPreview, setInteractionPreview] = useState<{
@@ -232,7 +238,7 @@ const [interactionPreview, setInteractionPreview] = useState<{
 } | null>(null);
 ```
 
-- [ ] **Step 4: Update drag logic to compute preview cells before commit**
+- [x] **Step 4: Update drag logic to compute preview cells before commit**
 
 ```ts
 if (tool === 'line' || tool === 'rectangle') {
@@ -248,7 +254,7 @@ if (tool === 'line' || tool === 'rectangle') {
 }
 ```
 
-- [ ] **Step 5: Expand brush and eraser to respect size**
+- [x] **Step 5: Expand brush and eraser to respect size**
 
 ```ts
 const footprint = getBrushFootprint(cell.x, cell.y, tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize);
@@ -258,7 +264,7 @@ for (const target of footprint) {
 }
 ```
 
-- [ ] **Step 6: Render preview cells without mutating the document before release**
+- [x] **Step 6: Render preview cells without mutating the document before release**
 
 ```tsx
 const previewLookup = new Set(interactionPreview?.cells.map((cell) => `${cell.x}-${cell.y}`) ?? []);
@@ -266,7 +272,7 @@ const previewLookup = new Set(interactionPreview?.cells.map((cell) => `${cell.x}
 className={`pixel-cell ...${previewLookup.has(`${cell.x}-${cell.y}`) ? ' is-preview' : ''}`}
 ```
 
-- [ ] **Step 7: Add app-level regression coverage**
+- [x] **Step 7: Add app-level regression coverage**
 
 ```ts
 it('lets the user see rectangle preview before commit and draws after release', async () => {
@@ -281,7 +287,7 @@ it('lets the user see rectangle preview before commit and draws after release', 
 });
 ```
 
-- [ ] **Step 8: Run tests to verify preview and footprint behavior pass**
+- [x] **Step 8: Run tests to verify preview and footprint behavior pass**
 
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx src/hooks/App.canvas-editing.test.tsx`
 Expected: PASS with preview and multi-cell drawing behavior covered.
@@ -301,6 +307,8 @@ git commit -m "feat: add live drawing previews and brush footprints"
 - Modify: `src/styles/canvas.css`
 - Test: `src/components/__tests__/PixelGrid.test.tsx`
 
+Status note: historical red-phase steps were not replayed after the implementation had already landed. Current completion evidence is based on cursor regression tests and full-suite verification.
+
 - [ ] **Step 1: Write the failing cursor test**
 
 ```ts
@@ -317,7 +325,7 @@ it('keeps the rectangle cursor while hovering editable cells', () => {
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx -t "keeps the rectangle cursor while hovering editable cells"`
 Expected: FAIL because only the viewport sets cursor style right now.
 
-- [ ] **Step 3: Apply tool cursor style to both viewport and cells**
+- [x] **Step 3: Apply tool cursor style to both viewport and cells**
 
 ```tsx
 const toolCursor = getCursorForTool(tool);
@@ -334,7 +342,7 @@ const toolCursor = getCursorForTool(tool);
 </div>
 ```
 
-- [ ] **Step 4: Preserve move-tool drag affordance in CSS**
+- [x] **Step 4: Preserve move-tool drag affordance in CSS**
 
 ```css
 .pixel-grid-viewport[data-active-tool='move'] {
@@ -347,7 +355,7 @@ const toolCursor = getCursorForTool(tool);
 }
 ```
 
-- [ ] **Step 5: Run cursor tests to verify they pass**
+- [x] **Step 5: Run cursor tests to verify they pass**
 
 Run: `npm test -- src/components/__tests__/PixelGrid.test.tsx -t "cursor"`
 Expected: PASS with viewport and cell cursor assertions aligned.
@@ -365,7 +373,9 @@ git commit -m "fix: align canvas hover cursor with selected tool"
 - Modify: `src/hooks/App.canvas-editing.test.tsx`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add a focused interaction regression test**
+Status note: the verification and documentation steps are complete. The remaining audit trail item is the final commit that closes this execution pass.
+
+- [x] **Step 1: Add a focused interaction regression test**
 
 ```ts
 it('uses brush size controls to paint a larger footprint', async () => {
@@ -380,12 +390,12 @@ it('uses brush size controls to paint a larger footprint', async () => {
 });
 ```
 
-- [ ] **Step 2: Run the interaction suite**
+- [x] **Step 2: Run the interaction suite**
 
 Run: `npm test -- src/hooks/App.canvas-editing.test.tsx src/hooks/App.rendering.test.tsx src/components/__tests__/PixelGrid.test.tsx`
 Expected: PASS
 
-- [ ] **Step 3: Update `README.md` with the new interaction rules**
+- [x] **Step 3: Update `README.md` with the new interaction rules**
 
 ```md
 - Left tool dock now includes tool-specific settings such as brush size and eraser size.
@@ -393,7 +403,7 @@ Expected: PASS
 - Canvas hover cursor follows the selected tool instead of falling back to generic button hover.
 ```
 
-- [ ] **Step 4: Run the full test suite**
+- [x] **Step 4: Run the full test suite**
 
 Run: `npm test -- --runInBand`
 Expected: PASS across the repo with no regressions in blank-canvas editing.
@@ -404,6 +414,17 @@ Expected: PASS across the repo with no regressions in blank-canvas editing.
 git add src/hooks/App.canvas-editing.test.tsx src/hooks/App.rendering.test.tsx src/components/__tests__/PixelGrid.test.tsx README.md
 git commit -m "test: verify refined drawing tool interactions"
 ```
+
+## Verified Regression Status
+
+- [x] 左侧工具栏已提供画笔/橡皮尺寸控件，并显示当前工具说明文案。
+- [x] 线条与矩形工具支持拖拽中的实时预览，松开后才提交到画布。
+- [x] 画笔与橡皮会按尺寸生成多像素落点/擦除范围。
+- [x] 画布视口与单元格悬停光标会跟随当前工具，移动工具保留 `grab/grabbing` 反馈。
+- [x] `README.md` 已记录新的交互规则，避免重复实现。
+- [x] 2026-04-16 局部回归：`npm test -- src/components/__tests__/PixelGrid.test.tsx src/hooks/App.canvas-editing.test.tsx src/hooks/App.rendering.test.tsx`
+- [x] 2026-04-16 全量验证：`npm test -- --run`
+- [x] 2026-04-16 构建验证：`npm run build`
 
 ## Self-Review
 
