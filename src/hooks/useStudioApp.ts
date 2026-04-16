@@ -18,6 +18,7 @@ import {
   addFrameToDocument,
   addLayerToActiveFrame,
   composeFrame,
+  clearActiveLayer,
   countPaletteUsage,
   createDocumentFromGrid,
   createStudioDocument,
@@ -140,12 +141,13 @@ export type UseStudioAppResult = {
     ) => void;
     selectLayer: (layerId: string) => void;
     addLayer: () => void;
-    duplicateLayer: () => void;
-    deleteLayer: () => void;
-    mergeLayerDown: () => void;
+    duplicateLayer: (layerId?: string) => void;
+    deleteLayer: (layerId?: string) => void;
+    mergeLayerDown: (layerId?: string) => void;
     renameLayer: (layerId: string, name: string) => void;
     toggleLayerVisibility: (layerId: string) => void;
     toggleLayerLock: (layerId: string) => void;
+    clearLayer: (layerId: string) => void;
     moveLayer: (layerId: string, direction: 'up' | 'down') => void;
     reorderLayer: (layerId: string, targetIndex: number) => void;
     setLayerOpacity: (layerId: string, opacity: number) => void;
@@ -493,15 +495,20 @@ export function useStudioApp(): UseStudioAppResult {
       selectLayer: (layerId) =>
         setDocument((current) => setActiveLayer(current, layerId)),
       addLayer: () => setDocument((current) => addLayerToActiveFrame(current)),
-      duplicateLayer: () => setDocument((current) => duplicateActiveLayer(current)),
-      deleteLayer: () => setDocument((current) => deleteActiveLayer(current)),
-      mergeLayerDown: () => setDocument((current) => mergeActiveLayerDown(current)),
+      duplicateLayer: (layerId) =>
+        setDocument((current) => duplicateActiveLayer(current, layerId)),
+      deleteLayer: (layerId) =>
+        setDocument((current) => deleteActiveLayer(current, layerId)),
+      mergeLayerDown: (layerId) =>
+        setDocument((current) => mergeActiveLayerDown(current, layerId)),
       renameLayer: (layerId, name) =>
         setDocument((current) => renameLayer(current, layerId, name)),
       toggleLayerVisibility: (layerId) =>
         setDocument((current) => toggleLayerVisibility(current, layerId)),
       toggleLayerLock: (layerId) =>
         setDocument((current) => toggleLayerLock(current, layerId)),
+      clearLayer: (layerId) =>
+        setDocument((current) => clearActiveLayer(current, layerId)),
       moveLayer: (layerId, direction) =>
         setDocument((current) => moveLayer(current, layerId, direction)),
       reorderLayer: (layerId, targetIndex) =>

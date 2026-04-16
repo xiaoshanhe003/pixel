@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { GridSize } from '../types/pixel';
 import type { StudioLayer } from '../types/studio';
+import { Checkbox } from './ui/checkbox';
 
-const EYE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c5.25 0 9.27 3.11 10 7c-.73 3.89 -4.75 7 -10 7s-9.27 -3.11 -10 -7c.73 -3.89 4.75 -7 10 -7" /><path d="M12 9a3 3 0 1 1 0 6a3 3 0 0 1 0 -6" /></svg>`;
-const EYE_OFF_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18" /><path d="M10.58 10.59a2 2 0 0 0 2.83 2.82" /><path d="M9.88 5.09A10.46 10.46 0 0 1 12 5c5.25 0 9.27 3.11 10 7a11.8 11.8 0 0 1 -3.11 4.62" /><path d="M6.61 6.62C4.62 7.85 3.24 9.74 2 12c.73 3.89 4.75 7 10 7c1.87 0 3.61 -.4 5.11 -1.1" /></svg>`;
 const GRIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>`;
+const COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/><path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"/></svg>`;
+const ARROW_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14"/><path d="M18 11l-6 -6"/><path d="M6 11l6 -6"/></svg>`;
+const ARROW_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14"/><path d="M18 13l-6 6"/><path d="M6 13l6 6"/></svg>`;
+const LOCK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 13m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/><path d="M8 13v-4a4 4 0 1 1 8 0v4"/></svg>`;
+const LOCK_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 13m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/><path d="M8 13v-4a4 4 0 0 1 7.5 -2"/></svg>`;
+const CLEAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19 20h-11.5l-4.5 -4.5a1 1 0 0 1 0 -1.5l9.5 -9.5a1 1 0 0 1 1.5 0l7 7a1 1 0 0 1 0 1.5l-6.5 6.5"/><path d="M18 13.3l-6.3 -6.3"/><path d="M22 21l-5 0"/></svg>`;
+const MERGE_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 18h10"/><path d="M7 6h4"/><path d="M13 6h4"/><path d="M12 8l0 6"/><path d="M9 11l3 3l3 -3"/></svg>`;
+const TRASH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7l1 -3h4l1 3"/></svg>`;
 
 type LayersPanelProps = {
   layers: StudioLayer[];
@@ -13,12 +20,13 @@ type LayersPanelProps = {
   activeLayerId: string;
   onSelectLayer: (layerId: string) => void;
   onAddLayer: () => void;
-  onDuplicateLayer: () => void;
-  onDeleteLayer: () => void;
-  onMergeLayerDown: () => void;
+  onDuplicateLayer: (layerId?: string) => void;
+  onDeleteLayer: (layerId?: string) => void;
+  onMergeLayerDown: (layerId?: string) => void;
   onRenameLayer: (layerId: string, name: string) => void;
   onToggleVisibility: (layerId: string) => void;
   onToggleLock: (layerId: string) => void;
+  onClearLayer: (layerId: string) => void;
   onMoveLayer: (layerId: string, direction: 'up' | 'down') => void;
   onReorderLayer: (layerId: string, targetIndex: number) => void;
   onOpacityChange: (layerId: string, opacity: number) => void;
@@ -37,6 +45,7 @@ export default function LayersPanel({
   onRenameLayer,
   onToggleVisibility,
   onToggleLock,
+  onClearLayer,
   onMoveLayer,
   onReorderLayer,
   onOpacityChange,
@@ -44,45 +53,40 @@ export default function LayersPanel({
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
-  const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[0];
-  const activeLayerIndex = layers.findIndex((layer) => layer.id === activeLayer?.id);
+  const [contextMenuLayerId, setContextMenuLayerId] = useState<string | null>(null);
+  const [expandedOpacityLayerId, setExpandedOpacityLayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handlePointerDown = () => setContextMenuLayerId(null);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenuLayerId(null);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   return (
     <section className="panel panel--sidebar" aria-label="图层面板">
       <div className="panel__header">
         <h2>图层</h2>
-        <span>{layers.length} 个</span>
+        <div className="panel__header-actions">
+          <button type="button" className="chip-button" onClick={onAddLayer}>
+            新建图层
+          </button>
+        </div>
       </div>
-
-      <div className="frame-strip__actions">
-        <button type="button" className="chip-button" onClick={onAddLayer}>
-          新建图层
-        </button>
-        <button type="button" className="chip-button" onClick={onDuplicateLayer}>
-          复制图层
-        </button>
-        <button
-          type="button"
-          className="chip-button"
-          onClick={onDeleteLayer}
-          disabled={layers.length <= 1}
-        >
-          删除图层
-        </button>
-        <button
-          type="button"
-          className="chip-button"
-          onClick={onMergeLayerDown}
-          disabled={layers.length <= 1}
-        >
-          合并到下层
-        </button>
-      </div>
-
       <div className="layers-list" aria-label="图层列表">
         {layers.map((layer, index) => (
-          <div
-            key={layer.id}
+          <div key={layer.id} className="layer-item">
+            <div
             className={`layer-row${layer.id === activeLayerId ? ' is-active' : ''}${
               draggedLayerId === layer.id ? ' is-dragging' : ''
             }${dropTargetIndex === index ? ' is-drop-target' : ''}${
@@ -92,6 +96,12 @@ export default function LayersPanel({
             tabIndex={0}
             aria-pressed={layer.id === activeLayerId}
             onClick={() => onSelectLayer(layer.id)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSelectLayer(layer.id);
+              setContextMenuLayerId((current) => (current === layer.id ? null : layer.id));
+            }}
             onDoubleClick={() => {
               onSelectLayer(layer.id);
               setEditingLayerId(layer.id);
@@ -100,6 +110,12 @@ export default function LayersPanel({
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 onSelectLayer(layer.id);
+              }
+
+              if (event.key === 'ContextMenu') {
+                event.preventDefault();
+                onSelectLayer(layer.id);
+                setContextMenuLayerId(layer.id);
               }
             }}
             onDragOver={(event) => event.preventDefault()}
@@ -117,18 +133,27 @@ export default function LayersPanel({
               }
             }}
           >
+            <span
+              className="layer-row__handle layer-row__icon"
+              aria-hidden="true"
+              dangerouslySetInnerHTML={{ __html: GRIP_SVG }}
+            />
             <div
-              className="layer-row__handle icon-button--ghost"
-              role="button"
-              tabIndex={-1}
+              className="layer-row__main"
               draggable
-              aria-label={`拖动排序 ${layer.name}`}
-              onClick={(event) => event.stopPropagation()}
               onDragStart={(event) => {
+                const target = event.target as HTMLElement | null;
+
+                if (target?.closest('.layer-row__name-input')) {
+                  event.preventDefault();
+                  return;
+                }
+
                 setDraggedLayerId(layer.id);
                 setDropTargetIndex(index);
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', layer.id);
+
                 const row = event.currentTarget.closest('.layer-row');
 
                 if (row instanceof HTMLElement) {
@@ -145,13 +170,6 @@ export default function LayersPanel({
                 setDropTargetIndex(null);
               }}
             >
-              <span
-                className="layer-row__icon"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: GRIP_SVG }}
-              />
-            </div>
-            <div className="layer-row__main">
               <div
                 className="layer-row__thumbnail"
                 style={{
@@ -187,97 +205,196 @@ export default function LayersPanel({
                 ) : (
                   <span className="layer-row__name">{layer.name}</span>
                 )}
-                <span
-                  className={`layer-row__meta${
-                    Math.round(layer.opacity * 100) !== 100 ? ' is-emphasized' : ''
-                  }`}
-                >
-                  {Math.round(layer.opacity * 100)}%
-                </span>
               </div>
             </div>
             <button
               type="button"
-              className={`layer-row__visibility icon-button--ghost${layer.visible ? '' : ' is-muted'}`}
+              className={`layer-row__opacity-trigger${
+                Math.round(layer.opacity * 100) !== 100 ? ' is-emphasized' : ''
+              }`}
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
-                onToggleVisibility(layer.id);
+                setExpandedOpacityLayerId((current) =>
+                  current === layer.id ? null : layer.id,
+                );
               }}
-              aria-label={`${layer.visible ? '隐藏' : '显示'} ${layer.name}`}
+              onDoubleClick={(event) => event.stopPropagation()}
+              aria-expanded={expandedOpacityLayerId === layer.id}
+              aria-controls={`layer-opacity-${layer.id}`}
             >
-              <span
-                className="layer-row__icon"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: layer.visible ? EYE_SVG : EYE_OFF_SVG }}
-              />
+              {Math.round(layer.opacity * 100)}%
             </button>
+            <Checkbox
+              className="layer-row__visibility-checkbox"
+              checked={layer.visible}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+              onCheckedChange={() => onToggleVisibility(layer.id)}
+              aria-label={`显示 ${layer.name}`}
+            />
+            {contextMenuLayerId === layer.id ? (
+              <div
+                className="layer-row__context-menu"
+                role="menu"
+                aria-label={`${layer.name} 操作`}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onDuplicateLayer(layer.id);
+                    setContextMenuLayerId(null);
+                  }}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: COPY_SVG }}
+                  />
+                  复制图层
+                </button>
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onToggleLock(layer.id);
+                    setContextMenuLayerId(null);
+                  }}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: layer.locked ? LOCK_OPEN_SVG : LOCK_SVG }}
+                  />
+                  {layer.locked ? '解锁图层' : '锁定图层'}
+                </button>
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onMoveLayer(layer.id, 'up');
+                    setContextMenuLayerId(null);
+                  }}
+                  disabled={index === 0}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: ARROW_UP_SVG }}
+                  />
+                  上移
+                </button>
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onMoveLayer(layer.id, 'down');
+                    setContextMenuLayerId(null);
+                  }}
+                  disabled={index === layers.length - 1}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: ARROW_DOWN_SVG }}
+                  />
+                  下移
+                </button>
+                <div className="layer-row__context-divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onClearLayer(layer.id);
+                    setContextMenuLayerId(null);
+                  }}
+                  disabled={layer.locked}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: CLEAR_SVG }}
+                  />
+                  清除图层
+                </button>
+                <button
+                  type="button"
+                  className="layer-row__context-action"
+                  role="menuitem"
+                  onClick={() => {
+                    onMergeLayerDown(layer.id);
+                    setContextMenuLayerId(null);
+                  }}
+                  disabled={layers.length <= 1 || index === layers.length - 1 || layer.locked}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: MERGE_DOWN_SVG }}
+                  />
+                  合并到下层
+                </button>
+                <div className="layer-row__context-divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="layer-row__context-action layer-row__context-action--danger"
+                  role="menuitem"
+                  onClick={() => {
+                    onDeleteLayer(layer.id);
+                    setContextMenuLayerId(null);
+                  }}
+                  disabled={layers.length <= 1}
+                >
+                  <span
+                    className="layer-row__context-icon"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{ __html: TRASH_SVG }}
+                  />
+                  删除图层
+                </button>
+              </div>
+            ) : null}
+            </div>
+            {expandedOpacityLayerId === layer.id ? (
+              <div
+                id={`layer-opacity-${layer.id}`}
+                className="layer-row__opacity-panel"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <label className="layer-row__opacity-control">
+                  <span className="layer-row__opacity-label">不透明度</span>
+                  <div className="layer-row__opacity-slider">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={Math.round(layer.opacity * 100)}
+                      onChange={(event) =>
+                        onOpacityChange(layer.id, Number(event.target.value) / 100)
+                      }
+                      aria-label={`${layer.name} 不透明度`}
+                    />
+                    <span className="layer-row__opacity-value">
+                      {Math.round(layer.opacity * 100)}%
+                    </span>
+                  </div>
+                </label>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
-
-      {activeLayer ? (
-        <div className="layer-detail">
-          <span className="layer-detail__label">当前图层</span>
-          <input
-            aria-label={`${activeLayer.name} 名称`}
-            className="layer-card__input"
-            value={activeLayer.name}
-            onClick={() => setEditingLayerId(activeLayer.id)}
-            onChange={(event) => onRenameLayer(activeLayer.id, event.target.value)}
-          />
-          <label className="layer-detail__opacity">
-            <span>透明度</span>
-            <div className="layer-detail__opacity-control">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={Math.round(activeLayer.opacity * 100)}
-                onChange={(event) =>
-                  onOpacityChange(activeLayer.id, Number(event.target.value) / 100)
-                }
-                aria-label={`${activeLayer.name} 透明度`}
-              />
-              <span aria-label={`${activeLayer.name} 透明度数值`}>
-                {Math.round(activeLayer.opacity * 100)}%
-              </span>
-            </div>
-          </label>
-          <div className="layer-card__actions">
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => onToggleVisibility(activeLayer.id)}
-            >
-              {activeLayer.visible ? '隐藏' : '显示'}
-            </button>
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => onToggleLock(activeLayer.id)}
-            >
-              {activeLayer.locked ? '解锁' : '锁定'}
-            </button>
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => onMoveLayer(activeLayer.id, 'up')}
-              disabled={activeLayerIndex === 0}
-            >
-              上移
-            </button>
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => onMoveLayer(activeLayer.id, 'down')}
-              disabled={activeLayerIndex === layers.length - 1}
-            >
-              下移
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

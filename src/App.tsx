@@ -89,6 +89,7 @@ export default function App() {
             onLayerRename={actions.renameLayer}
             onLayerToggleVisibility={actions.toggleLayerVisibility}
             onLayerToggleLock={actions.toggleLayerLock}
+            onLayerClear={actions.clearLayer}
             onLayerMove={actions.moveLayer}
             onLayerReorder={actions.reorderLayer}
             onLayerOpacityChange={actions.setLayerOpacity}

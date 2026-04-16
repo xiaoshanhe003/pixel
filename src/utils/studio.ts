@@ -606,9 +606,12 @@ export function addLayerToActiveFrame(document: StudioDocument): StudioDocument 
   });
 }
 
-export function duplicateActiveLayer(document: StudioDocument): StudioDocument {
+export function duplicateActiveLayer(
+  document: StudioDocument,
+  layerId = document.frames.find((frame) => frame.id === document.activeFrameId)?.activeLayerId,
+): StudioDocument {
   return updateFrame(document, document.activeFrameId, (frame) => {
-    const source = frame.layers.find((layer) => layer.id === frame.activeLayerId);
+    const source = frame.layers.find((layer) => layer.id === layerId);
 
     if (!source) {
       return frame;
@@ -630,22 +633,23 @@ export function duplicateActiveLayer(document: StudioDocument): StudioDocument {
   });
 }
 
-export function deleteActiveLayer(document: StudioDocument): StudioDocument {
+export function deleteActiveLayer(
+  document: StudioDocument,
+  layerId = document.frames.find((frame) => frame.id === document.activeFrameId)?.activeLayerId,
+): StudioDocument {
   return updateFrame(document, document.activeFrameId, (frame) => {
     if (frame.layers.length <= 1) {
       return frame;
     }
 
-    const activeIndex = frame.layers.findIndex(
-      (layer) => layer.id === frame.activeLayerId,
-    );
+    const activeIndex = frame.layers.findIndex((layer) => layer.id === layerId);
 
     if (activeIndex === -1) {
       return frame;
     }
 
     const nextLayers = frame.layers.filter(
-      (layer) => layer.id !== frame.activeLayerId,
+      (layer) => layer.id !== layerId,
     );
     const nextActiveLayer =
       nextLayers[Math.min(activeIndex, nextLayers.length - 1)] ?? nextLayers[0];
@@ -658,11 +662,12 @@ export function deleteActiveLayer(document: StudioDocument): StudioDocument {
   });
 }
 
-export function mergeActiveLayerDown(document: StudioDocument): StudioDocument {
+export function mergeActiveLayerDown(
+  document: StudioDocument,
+  layerId = document.frames.find((frame) => frame.id === document.activeFrameId)?.activeLayerId,
+): StudioDocument {
   return updateFrame(document, document.activeFrameId, (frame) => {
-    const activeIndex = frame.layers.findIndex(
-      (layer) => layer.id === frame.activeLayerId,
-    );
+    const activeIndex = frame.layers.findIndex((layer) => layer.id === layerId);
 
     if (
       activeIndex === -1 ||
@@ -743,6 +748,27 @@ export function toggleLayerLock(
     ...frame,
     layers: frame.layers.map((layer) =>
       layer.id === layerId ? { ...layer, locked: !layer.locked } : layer,
+    ),
+  }));
+}
+
+export function clearActiveLayer(
+  document: StudioDocument,
+  layerId: string,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) =>
+      layer.id === layerId && !layer.locked
+        ? {
+            ...layer,
+            cells: layer.cells.map((cell) => ({
+              ...cell,
+              color: null,
+              source: { ...cell.source },
+            })),
+          }
+        : layer,
     ),
   }));
 }

@@ -33,12 +33,13 @@ type StudioRightDockProps = {
   conversionOptions: ConversionOptions;
   onLayerSelect: (layerId: string) => void;
   onLayerAdd: () => void;
-  onLayerDuplicate: () => void;
-  onLayerDelete: () => void;
-  onLayerMergeDown: () => void;
+  onLayerDuplicate: (layerId?: string) => void;
+  onLayerDelete: (layerId?: string) => void;
+  onLayerMergeDown: (layerId?: string) => void;
   onLayerRename: (layerId: string, name: string) => void;
   onLayerToggleVisibility: (layerId: string) => void;
   onLayerToggleLock: (layerId: string) => void;
+  onLayerClear: (layerId: string) => void;
   onLayerMove: (layerId: string, direction: 'up' | 'down') => void;
   onLayerReorder: (layerId: string, targetIndex: number) => void;
   onLayerOpacityChange: (layerId: string, opacity: number) => void;
@@ -73,6 +74,7 @@ export default function StudioRightDock({
   onLayerRename,
   onLayerToggleVisibility,
   onLayerToggleLock,
+  onLayerClear,
   onLayerMove,
   onLayerReorder,
   onLayerOpacityChange,
@@ -96,6 +98,7 @@ export default function StudioRightDock({
           onRenameLayer={onLayerRename}
           onToggleVisibility={onLayerToggleVisibility}
           onToggleLock={onLayerToggleLock}
+          onClearLayer={onLayerClear}
           onMoveLayer={onLayerMove}
           onReorderLayer={onLayerReorder}
           onOpacityChange={onLayerOpacityChange}

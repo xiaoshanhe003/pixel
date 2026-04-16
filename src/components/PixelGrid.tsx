@@ -88,6 +88,10 @@ export default function PixelGrid({
     onDrawRectangle?.(startX, startY, endX, endY, nextColor);
   }
 
+  const baseCellSize =
+    grid.width === 16 ? 42 : grid.width === 32 ? 24 : 12;
+  const baseGridSize = grid.width * baseCellSize;
+
   return (
     <section className="pixel-grid-card" aria-label="像素输出面板">
       <div
@@ -165,8 +169,8 @@ export default function PixelGrid({
           style={{
             gridTemplateColumns: `repeat(${grid.width}, minmax(0, 1fr))`,
             transform: `scale(${zoom})`,
-            width: `${grid.width * 24}px`,
-            minWidth: `${grid.width * 24}px`,
+            width: `${baseGridSize}px`,
+            minWidth: `${baseGridSize}px`,
           }}
         >
           {grid.cells.map((cell) => (

@@ -14,6 +14,7 @@ import {
   mergeActiveLayerDown,
   replaceActiveLayerCell,
   replaceCellColor,
+  setActiveLayer,
   toggleLayerVisibility,
 } from '../studio';
 
@@ -120,6 +121,23 @@ describe('studio grid helpers', () => {
     document = replaceActiveLayerCell(document, 1, 0, '#ff00aa');
 
     const next = mergeActiveLayerDown(document);
+    const preview = composeFrame(next.frames[0], next.width, next.height);
+
+    expect(next.frames[0].layers).toHaveLength(1);
+    expect(preview.cells[0].color).toBe('#111111');
+    expect(preview.cells[1].color).toBe('#ff00aa');
+  });
+
+  it('merges a specific layer into the lower layer by id', () => {
+    let document = createStudioDocument('pixel', 16);
+    document = replaceActiveLayerCell(document, 0, 0, '#111111');
+    document = addLayerToActiveFrame(document);
+    document = replaceActiveLayerCell(document, 1, 0, '#ff00aa');
+
+    const topLayerId = document.frames[0].activeLayerId;
+    document = setActiveLayer(document, document.frames[0].layers[1].id);
+
+    const next = mergeActiveLayerDown(document, topLayerId);
     const preview = composeFrame(next.frames[0], next.width, next.height);
 
     expect(next.frames[0].layers).toHaveLength(1);
