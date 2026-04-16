@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
 import type { EditorTool, EditorToolSettings } from '../types/studio';
 import {
@@ -84,12 +84,6 @@ export default function PixelGrid({
     onPaintCell?.(x, y, color);
   }
 
-  function getBrushPreviewLabel(x: number, y: number) {
-    const size = tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
-
-    return `预览${tool === 'erase' ? '橡皮' : '画笔'} ${x},${y} 尺寸 ${size} px`;
-  }
-
   const toolCursor = getCursorForTool(tool);
   const hoverPreview =
     editable && hoverCell && (tool === 'paint' || tool === 'erase')
@@ -99,16 +93,15 @@ export default function PixelGrid({
             hoverCell.y,
             tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
           ),
-          label: getBrushPreviewLabel(hoverCell.x, hoverCell.y),
         }
       : null;
-  const preview = interactionPreview ?? hoverPreview;
+  const previewCells = interactionPreview?.cells ?? hoverPreview?.cells ?? [];
   const previewLookup = useMemo(
-    () => new Set(preview?.cells.map((cell) => `${cell.x}-${cell.y}`) ?? []),
-    [preview],
+    () => new Set(previewCells.map((cell) => `${cell.x}-${cell.y}`)),
+    [previewCells],
   );
 
-  function finalizeShape() {
+  const finalizeShape = useCallback(() => {
     if (!shapeStateRef.current) {
       return;
     }
@@ -124,7 +117,34 @@ export default function PixelGrid({
 
     onDrawRectangle?.(startX, startY, endX, endY, nextColor);
     setInteractionPreview(null);
-  }
+  }, [activeColor, onDrawLine, onDrawRectangle]);
+
+  useEffect(() => {
+    function handleGlobalPointerEnd(event: PointerEvent) {
+      if (
+        paintStateRef.current &&
+        paintStateRef.current.pointerId === event.pointerId
+      ) {
+        paintStateRef.current = null;
+      }
+
+      if (
+        shapeStateRef.current &&
+        shapeStateRef.current.pointerId === event.pointerId
+      ) {
+        finalizeShape();
+        shapeStateRef.current = null;
+      }
+    }
+
+    window.addEventListener('pointerup', handleGlobalPointerEnd);
+    window.addEventListener('pointercancel', handleGlobalPointerEnd);
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerEnd);
+      window.removeEventListener('pointercancel', handleGlobalPointerEnd);
+    };
+  }, [finalizeShape]);
 
   const baseCellSize =
     grid.width === 16 ? 42 : grid.width === 32 ? 24 : 12;
@@ -197,14 +217,16 @@ export default function PixelGrid({
             return;
           }
 
-          paintStateRef.current = null;
           setHoverCell(null);
-          setInteractionPreview(null);
+
+          if (!shapeStateRef.current) {
+            setInteractionPreview(null);
+          }
         }}
       >
-        {preview ? (
-          <div className="pixel-grid-preview" aria-label={preview.label}>
-            {preview.label}
+        {interactionPreview ? (
+          <div className="pixel-grid-preview" aria-label={interactionPreview.label}>
+            {interactionPreview.label}
           </div>
         ) : null}
         <div

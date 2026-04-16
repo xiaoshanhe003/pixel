@@ -72,6 +72,19 @@
   gap: var(--space-7);
 }
 
+.tool-section,
+.size-control {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tool-row,
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
 .controls-card__note,
 .control-help,
 .sidebar-copy,
@@ -112,7 +125,7 @@
 .tool-setting-card,
 .tool-setting-group {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .tool-setting-card {
@@ -141,7 +154,7 @@
 }
 
 .tool-setting-group legend {
-  margin-bottom: 0;
+  margin-bottom: var(--space-2);
   font-size: 0.9rem;
   font-weight: 600;
 }

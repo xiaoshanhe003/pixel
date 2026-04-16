@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import StudioCanvasStage from './components/StudioCanvasStage';
 import StudioLeftDock from './components/StudioLeftDock';
 import StudioRightDock from './components/StudioRightDock';
@@ -7,6 +8,7 @@ import { DEFAULT_PALETTES } from './data/defaultPalettes';
 import { useStudioApp } from './hooks/useStudioApp';
 
 export default function App() {
+  const [isTabletInspectorOpen, setIsTabletInspectorOpen] = useState(false);
   const { controls, source, editor, studio, output, stats, actions } = useStudioApp();
   const activePalette = DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
 
@@ -36,74 +38,135 @@ export default function App() {
             onFileSelected={actions.setSelectedFile}
           />
 
-          <StudioCanvasStage
-            activeScenario={studio.activeScenario}
-            scenario={studio.scenario}
-            activeGrid={studio.activeGrid}
-            activeColor={editor.activeColor}
-            activeTool={editor.activeTool}
-            toolSettings={editor.toolSettings}
-            canvasZoom={editor.canvasZoom}
-            showGridLines={editor.showGridLines}
-            crochetViewMode={output.crochetViewMode}
-            crochetAnalysis={output.crochetAnalysis}
-            framePreviews={studio.framePreviews}
-            activeFrameId={studio.document.activeFrameId}
-            previewIsPlaying={studio.previewIsPlaying}
-            previewFps={studio.previewFps}
-            onCrochetViewModeChange={actions.setCrochetViewMode}
-            onCanvasZoomChange={actions.setCanvasZoom}
-            onToggleGridLines={actions.toggleGridLines}
-            onPaintCell={actions.paintCell}
-            onFillArea={actions.fillArea}
-            onDrawLine={actions.drawLine}
-            onDrawRectangle={actions.drawRectangle}
-            onSampleCell={actions.sampleCell}
-            onSelectFrame={actions.selectFrame}
-            onAddFrame={actions.addFrame}
-            onDuplicateFrame={actions.duplicateFrame}
-            onDeleteFrame={actions.deleteFrame}
-            onTogglePlayback={actions.togglePlayback}
-            onPreviewFpsChange={actions.setPreviewFps}
-          />
+          <section className="canvas-column">
+            <div className="tablet-inspector-toggle">
+              <button
+                type="button"
+                className={`chip-button${isTabletInspectorOpen ? ' is-active' : ''}`}
+                aria-expanded={isTabletInspectorOpen}
+                aria-controls="tablet-inspector-panel"
+                onClick={() => setIsTabletInspectorOpen((current) => !current)}
+              >
+                {isTabletInspectorOpen ? '收起右侧面板' : '打开右侧面板'}
+              </button>
+            </div>
 
-          <StudioRightDock
-            activeScenario={studio.activeScenario}
-            scenario={studio.scenario}
-            documentWidth={studio.document.width}
-            documentHeight={studio.document.height}
-            frameCount={studio.document.frames.length}
-            activeFrame={studio.activeFrame}
-            activeGrid={studio.activeGrid}
-            paletteCounts={stats.paletteCounts}
-            transparentCount={stats.transparentCount}
-            beadBrand={output.beadBrand}
-            beadUsage={output.beadUsage}
-            crochetAnalysis={output.crochetAnalysis}
-            exportMode={
-              studio.activeScenario === 'beads'
-                ? output.beadExportMode
-                : output.crochetExportMode
-            }
-            materialCountLabel={stats.materialCountLabel}
-            conversionOptions={controls.conversionOptions}
-            onFileSelected={actions.setSelectedFile}
-            onLayerSelect={actions.selectLayer}
-            onLayerAdd={actions.addLayer}
-            onLayerDuplicate={actions.duplicateLayer}
-            onLayerDelete={actions.deleteLayer}
-            onLayerMergeDown={actions.mergeLayerDown}
-            onLayerRename={actions.renameLayer}
-            onLayerToggleVisibility={actions.toggleLayerVisibility}
-            onLayerToggleLock={actions.toggleLayerLock}
-            onLayerClear={actions.clearLayer}
-            onLayerMove={actions.moveLayer}
-            onLayerReorder={actions.reorderLayer}
-            onLayerOpacityChange={actions.setLayerOpacity}
-            onBeadBrandChange={actions.setBeadBrand}
-            onExportModeChange={actions.setExportMode}
-            onPrint={actions.printExport}
-          />
+            {isTabletInspectorOpen ? (
+              <div
+                id="tablet-inspector-panel"
+                className="tablet-inspector-panel"
+              >
+                <StudioRightDock
+                  activeScenario={studio.activeScenario}
+                  scenario={studio.scenario}
+                  documentWidth={studio.document.width}
+                  documentHeight={studio.document.height}
+                  frameCount={studio.document.frames.length}
+                  activeFrame={studio.activeFrame}
+                  activeGrid={studio.activeGrid}
+                  paletteCounts={stats.paletteCounts}
+                  transparentCount={stats.transparentCount}
+                  beadBrand={output.beadBrand}
+                  beadUsage={output.beadUsage}
+                  crochetAnalysis={output.crochetAnalysis}
+                  exportMode={
+                    studio.activeScenario === 'beads'
+                      ? output.beadExportMode
+                      : output.crochetExportMode
+                  }
+                  materialCountLabel={stats.materialCountLabel}
+                  conversionOptions={controls.conversionOptions}
+                  onFileSelected={actions.setSelectedFile}
+                  onLayerSelect={actions.selectLayer}
+                  onLayerAdd={actions.addLayer}
+                  onLayerDuplicate={actions.duplicateLayer}
+                  onLayerDelete={actions.deleteLayer}
+                  onLayerMergeDown={actions.mergeLayerDown}
+                  onLayerRename={actions.renameLayer}
+                  onLayerToggleVisibility={actions.toggleLayerVisibility}
+                  onLayerToggleLock={actions.toggleLayerLock}
+                  onLayerClear={actions.clearLayer}
+                  onLayerMove={actions.moveLayer}
+                  onLayerReorder={actions.reorderLayer}
+                  onLayerOpacityChange={actions.setLayerOpacity}
+                  onBeadBrandChange={actions.setBeadBrand}
+                  onExportModeChange={actions.setExportMode}
+                  onPrint={actions.printExport}
+                />
+              </div>
+            ) : null}
+
+            <StudioCanvasStage
+              activeScenario={studio.activeScenario}
+              scenario={studio.scenario}
+              activeGrid={studio.activeGrid}
+              activeColor={editor.activeColor}
+              activeTool={editor.activeTool}
+              toolSettings={editor.toolSettings}
+              canvasZoom={editor.canvasZoom}
+              showGridLines={editor.showGridLines}
+              crochetViewMode={output.crochetViewMode}
+              crochetAnalysis={output.crochetAnalysis}
+              framePreviews={studio.framePreviews}
+              activeFrameId={studio.document.activeFrameId}
+              previewIsPlaying={studio.previewIsPlaying}
+              previewFps={studio.previewFps}
+              onCrochetViewModeChange={actions.setCrochetViewMode}
+              onCanvasZoomChange={actions.setCanvasZoom}
+              onToggleGridLines={actions.toggleGridLines}
+              onPaintCell={actions.paintCell}
+              onFillArea={actions.fillArea}
+              onDrawLine={actions.drawLine}
+              onDrawRectangle={actions.drawRectangle}
+              onSampleCell={actions.sampleCell}
+              onSelectFrame={actions.selectFrame}
+              onAddFrame={actions.addFrame}
+              onDuplicateFrame={actions.duplicateFrame}
+              onDeleteFrame={actions.deleteFrame}
+              onTogglePlayback={actions.togglePlayback}
+              onPreviewFpsChange={actions.setPreviewFps}
+            />
+          </section>
+
+          <div className="desktop-right-dock">
+            <StudioRightDock
+              activeScenario={studio.activeScenario}
+              scenario={studio.scenario}
+              documentWidth={studio.document.width}
+              documentHeight={studio.document.height}
+              frameCount={studio.document.frames.length}
+              activeFrame={studio.activeFrame}
+              activeGrid={studio.activeGrid}
+              paletteCounts={stats.paletteCounts}
+              transparentCount={stats.transparentCount}
+              beadBrand={output.beadBrand}
+              beadUsage={output.beadUsage}
+              crochetAnalysis={output.crochetAnalysis}
+              exportMode={
+                studio.activeScenario === 'beads'
+                  ? output.beadExportMode
+                  : output.crochetExportMode
+              }
+              materialCountLabel={stats.materialCountLabel}
+              conversionOptions={controls.conversionOptions}
+              onFileSelected={actions.setSelectedFile}
+              onLayerSelect={actions.selectLayer}
+              onLayerAdd={actions.addLayer}
+              onLayerDuplicate={actions.duplicateLayer}
+              onLayerDelete={actions.deleteLayer}
+              onLayerMergeDown={actions.mergeLayerDown}
+              onLayerRename={actions.renameLayer}
+              onLayerToggleVisibility={actions.toggleLayerVisibility}
+              onLayerToggleLock={actions.toggleLayerLock}
+              onLayerClear={actions.clearLayer}
+              onLayerMove={actions.moveLayer}
+              onLayerReorder={actions.reorderLayer}
+              onLayerOpacityChange={actions.setLayerOpacity}
+              onBeadBrandChange={actions.setBeadBrand}
+              onExportModeChange={actions.setExportMode}
+              onPrint={actions.printExport}
+            />
+          </div>
         </section>
       </section>
     </main>

@@ -137,6 +137,35 @@ describe('PixelGrid', () => {
     expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
   });
 
+  it('keeps painting after the pointer leaves and re-enters the stage mid-drag', () => {
+    const handlePaint = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        activeColor="#ff00aa"
+        tool="paint"
+        toolSettings={defaultToolSettings}
+        onPaintCell={handlePaint}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport');
+    const first = screen.getByLabelText(/像素 0,0 透明/i);
+    const second = screen.getByLabelText(/像素 1,0 透明/i);
+
+    fireEvent.pointerDown(first, { pointerId: 12 });
+    fireEvent.pointerLeave(viewport as HTMLElement, { pointerId: 12 });
+    fireEvent.pointerEnter(second, { pointerId: 12 });
+    fireEvent.pointerUp(window, { pointerId: 12 });
+
+    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, '#ff00aa');
+    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
+  });
+
   it('erases continuously while dragging across cells', () => {
     const handlePaint = vi.fn();
 
@@ -161,6 +190,22 @@ describe('PixelGrid', () => {
 
     expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, null);
     expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, null);
+  });
+
+  it('does not show the floating tooltip while hovering in paint mode', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        activeColor="#ff00aa"
+        tool="paint"
+        toolSettings={{ ...defaultToolSettings, paintSize: 2 }}
+      />,
+    );
+
+    fireEvent.pointerEnter(screen.getByLabelText(/像素 5,5 透明/i), { pointerId: 9 });
+
+    expect(screen.queryByText(/预览画笔/i)).not.toBeInTheDocument();
   });
 
   it('delegates to fill behavior when fill tool is active', () => {

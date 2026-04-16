@@ -124,20 +124,29 @@
 
 .left-dock,
 .right-dock,
+.desktop-right-dock,
+.canvas-column,
 .canvas-stage {
   display: grid;
   gap: var(--space-7);
 }
 
 .left-dock > *,
-.right-dock > * {
+.right-dock > *,
+.desktop-right-dock > * {
   width: 100%;
 }
 
 .left-dock,
-.right-dock {
+.right-dock,
+.desktop-right-dock {
   position: sticky;
   top: var(--space-7);
+}
+
+.tablet-inspector-toggle,
+.tablet-inspector-panel {
+  display: none;
 }
 
 .panel,
@@ -161,7 +170,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-8) var(--space-8) 0;
+  padding: var(--space-8) var(--space-8) var(--space-5);
   text-align: left;
 }
 
@@ -208,7 +217,7 @@
 .tool-panel__body,
 .scenario-panel__body,
 .controls-card {
-  padding: var(--space-7) var(--space-8) var(--space-8);
+  padding: var(--space-4) var(--space-8) var(--space-8);
 }
 
 .tool-section__label,

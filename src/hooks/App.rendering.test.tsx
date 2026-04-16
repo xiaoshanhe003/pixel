@@ -74,12 +74,11 @@ describe('App rendering', () => {
 
     expect(screen.getByText(/当前设置/i)).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /画笔尺寸/i })).toBeInTheDocument();
-    expect(screen.getByText(/点击或拖拽连续上色/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /线条/i }));
 
     expect(screen.getAllByText('线条').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/当前设置/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /画笔尺寸/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/拖拽预览后松开提交/i)).toBeInTheDocument();
   });
 });

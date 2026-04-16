@@ -60,7 +60,7 @@
 .layers-list,
 .inspector-list,
 .crochet-rows {
-  padding: 0 var(--space-8) var(--space-8);
+  padding: var(--space-3) var(--space-8) var(--space-8);
 }
 
 .frame-strip__fps {
