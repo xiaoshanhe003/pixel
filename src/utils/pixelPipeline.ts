@@ -11,12 +11,9 @@ import {
   shiftRgb,
 } from './color';
 import {
-  estimateEdgeBackgroundColor,
+  createSubjectFocusImageData,
   fitImageDataContain,
   fitImageDataCover,
-  resizeImageDataBilinear,
-  trimSolidBackgroundBounds,
-  trimTransparentBounds,
 } from './image';
 
 const BAYER_4X4 = [
@@ -83,15 +80,12 @@ function sampleImageData(
   gridSize: number,
   fillFrame: boolean,
 ): SampledCell[][] {
-  const transparentTrimmed = trimTransparentBounds(imageData, TRANSPARENT_ALPHA_THRESHOLD);
-  const baseImage =
-    transparentTrimmed.width === imageData.width &&
-    transparentTrimmed.height === imageData.height
-      ? trimSolidBackgroundBounds(
-          imageData,
-          estimateEdgeBackgroundColor(imageData),
-        )
-      : transparentTrimmed;
+  const baseImage = createSubjectFocusImageData(
+    imageData,
+    1,
+    fillFrame,
+    TRANSPARENT_ALPHA_THRESHOLD,
+  );
   const padding = fillFrame
     ? Math.max(0, Math.round(gridSize * 0.03))
     : Math.max(1, Math.round(gridSize * 0.08));

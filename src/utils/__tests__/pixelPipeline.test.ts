@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nearestPaletteColor } from '../color';
 import {
+  createSubjectFocusImageData,
   estimateEdgeBackgroundColor,
   fitImageDataCover,
   fitImageDataContain,
@@ -126,6 +127,44 @@ describe('fitImageDataCover', () => {
 
     expect(fitted.data[3]).toBeGreaterThan(0);
     expect(fitted.data[(7 * 8 + 7) * 4 + 3]).toBeGreaterThan(0);
+  });
+});
+
+describe('createSubjectFocusImageData', () => {
+  it('uses the subject bounds to keep context instead of collapsing to a tight transparent crop', () => {
+    const pixels: [number, number, number, number][] = [];
+
+    for (let y = 0; y < 12; y += 1) {
+      for (let x = 0; x < 12; x += 1) {
+        const isSubject = x >= 7 && x <= 8 && y >= 3 && y <= 8;
+        pixels.push(isSubject ? [255, 220, 80, 255] : [0, 0, 0, 0]);
+      }
+    }
+
+    const imageData = createImageData(12, 12, pixels);
+    const focused = createSubjectFocusImageData(imageData, 1, false);
+
+    expect(focused.width).toBeGreaterThan(2);
+    expect(focused.height).toBeGreaterThan(6);
+    expect(focused.width).toBeLessThan(12);
+    expect(focused.height).toBeLessThan(12);
+  });
+
+  it('keeps the original frame when the subject already fills most of it', () => {
+    const pixels: [number, number, number, number][] = [];
+
+    for (let y = 0; y < 8; y += 1) {
+      for (let x = 0; x < 8; x += 1) {
+        const isSubject = x >= 1 && x <= 6 && y >= 1 && y <= 6;
+        pixels.push(isSubject ? [255, 220, 80, 255] : [0, 0, 0, 0]);
+      }
+    }
+
+    const imageData = createImageData(8, 8, pixels);
+    const focused = createSubjectFocusImageData(imageData, 1, false);
+
+    expect(focused.width).toBe(8);
+    expect(focused.height).toBe(8);
   });
 });
 
@@ -391,7 +430,7 @@ describe('buildPixelGrid', () => {
 
     const opaqueCells = grid.cells.filter((cell) => cell.color !== null);
     const darkLineCells = opaqueCells.filter(
-      (cell) => cell.source.r < 32 && cell.source.g < 32 && cell.source.b < 32,
+      (cell) => cell.source.r < 48 && cell.source.g < 48 && cell.source.b < 48,
     );
     const occupiedColumns = new Set(darkLineCells.map((cell) => cell.x));
     const occupiedRows = new Set(darkLineCells.map((cell) => cell.y));

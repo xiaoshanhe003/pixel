@@ -1,6 +1,15 @@
 import type { RGB } from '../types/pixel';
 import { clampByte, colorDistance } from './color';
 
+type Bounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+};
+
 function createImageData(width: number, height: number, data?: Uint8ClampedArray): ImageData {
   const pixels = data ?? new Uint8ClampedArray(width * height * 4);
 
@@ -43,6 +52,129 @@ function readPixelRgb(imageData: ImageData, x: number, y: number): RGB {
     g: imageData.data[index + 1] ?? 0,
     b: imageData.data[index + 2] ?? 0,
   };
+}
+
+function createBounds(minX: number, minY: number, maxX: number, maxY: number): Bounds {
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
+}
+
+function cropImageData(imageData: ImageData, bounds: Bounds): ImageData {
+  const cropped = createImageData(bounds.width, bounds.height);
+
+  for (let y = 0; y < bounds.height; y += 1) {
+    for (let x = 0; x < bounds.width; x += 1) {
+      copyPixel(imageData, bounds.minX + x, bounds.minY + y, cropped, x, y);
+    }
+  }
+
+  return cropped;
+}
+
+function measureOpaqueBounds(imageData: ImageData, alphaThreshold = 24): Bounds | null {
+  let minX = imageData.width;
+  let minY = imageData.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < imageData.height; y += 1) {
+    for (let x = 0; x < imageData.width; x += 1) {
+      const alpha = imageData.data[(y * imageData.width + x) * 4 + 3] ?? 0;
+
+      if (alpha < alphaThreshold) {
+        continue;
+      }
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX === -1 || maxY === -1) {
+    return null;
+  }
+
+  return createBounds(minX, minY, maxX, maxY);
+}
+
+function measureSolidForegroundBounds(
+  imageData: ImageData,
+  backgroundColor: RGB,
+  tolerance = 0.04,
+): Bounds | null {
+  let minX = imageData.width;
+  let minY = imageData.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < imageData.height; y += 1) {
+    for (let x = 0; x < imageData.width; x += 1) {
+      const alpha = imageData.data[(y * imageData.width + x) * 4 + 3] ?? 255;
+      const rgb = readPixelRgb(imageData, x, y);
+
+      if (alpha >= 24 && colorDistance(rgb, backgroundColor) > tolerance) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX === -1 || maxY === -1) {
+    return null;
+  }
+
+  return createBounds(minX, minY, maxX, maxY);
+}
+
+function clampWindowStart(start: number, length: number, fullLength: number): number {
+  if (length >= fullLength) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(fullLength - length, Math.round(start)));
+}
+
+function buildFocusBounds(
+  imageData: ImageData,
+  subjectBounds: Bounds,
+  targetAspectRatio: number,
+  fillFrame: boolean,
+): Bounds {
+  const widthCoverage = fillFrame ? 0.92 : 0.78;
+  const heightCoverage = fillFrame ? 0.92 : 0.78;
+  const subjectWidthRatio = subjectBounds.width / imageData.width;
+  const subjectHeightRatio = subjectBounds.height / imageData.height;
+
+  if (subjectWidthRatio >= widthCoverage && subjectHeightRatio >= heightCoverage) {
+    return createBounds(0, 0, imageData.width - 1, imageData.height - 1);
+  }
+
+  const requiredWidth = Math.max(
+    subjectBounds.width / widthCoverage,
+    (subjectBounds.height / heightCoverage) * targetAspectRatio,
+  );
+  const requiredHeight = Math.max(
+    subjectBounds.height / heightCoverage,
+    (subjectBounds.width / widthCoverage) / targetAspectRatio,
+  );
+  const windowWidth = Math.min(imageData.width, Math.max(subjectBounds.width, Math.round(requiredWidth)));
+  const windowHeight = Math.min(imageData.height, Math.max(subjectBounds.height, Math.round(requiredHeight)));
+  const centerX = (subjectBounds.minX + subjectBounds.maxX + 1) / 2;
+  const centerY = (subjectBounds.minY + subjectBounds.maxY + 1) / 2;
+  const minX = clampWindowStart(centerX - windowWidth / 2, windowWidth, imageData.width);
+  const minY = clampWindowStart(centerY - windowHeight / 2, windowHeight, imageData.height);
+
+  return createBounds(minX, minY, minX + windowWidth - 1, minY + windowHeight - 1);
 }
 
 export function createCanvas(width: number, height: number): HTMLCanvasElement {
@@ -183,41 +315,13 @@ export function trimTransparentBounds(
   imageData: ImageData,
   alphaThreshold = 24,
 ): ImageData {
-  let minX = imageData.width;
-  let minY = imageData.height;
-  let maxX = -1;
-  let maxY = -1;
+  const bounds = measureOpaqueBounds(imageData, alphaThreshold);
 
-  for (let y = 0; y < imageData.height; y += 1) {
-    for (let x = 0; x < imageData.width; x += 1) {
-      const alpha = imageData.data[(y * imageData.width + x) * 4 + 3] ?? 0;
-
-      if (alpha < alphaThreshold) {
-        continue;
-      }
-
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-  }
-
-  if (maxX === -1 || maxY === -1) {
+  if (!bounds) {
     return createImageData(1, 1);
   }
 
-  const width = maxX - minX + 1;
-  const height = maxY - minY + 1;
-  const trimmed = createImageData(width, height);
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      copyPixel(imageData, minX + x, minY + y, trimmed, x, y);
-    }
-  }
-
-  return trimmed;
+  return cropImageData(imageData, bounds);
 }
 
 export function estimateEdgeBackgroundColor(imageData: ImageData): RGB {
@@ -259,40 +363,44 @@ export function trimSolidBackgroundBounds(
   backgroundColor: RGB,
   tolerance = 0.04,
 ): ImageData {
-  let minX = imageData.width;
-  let minY = imageData.height;
-  let maxX = -1;
-  let maxY = -1;
+  const bounds = measureSolidForegroundBounds(imageData, backgroundColor, tolerance);
 
-  for (let y = 0; y < imageData.height; y += 1) {
-    for (let x = 0; x < imageData.width; x += 1) {
-      const alpha = imageData.data[(y * imageData.width + x) * 4 + 3] ?? 255;
-      const rgb = readPixelRgb(imageData, x, y);
-
-      if (alpha >= 24 && colorDistance(rgb, backgroundColor) > tolerance) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-
-  if (maxX === -1 || maxY === -1) {
+  if (!bounds) {
     return imageData;
   }
 
-  const width = maxX - minX + 1;
-  const height = maxY - minY + 1;
-  const trimmed = createImageData(width, height);
+  return cropImageData(imageData, bounds);
+}
 
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      copyPixel(imageData, minX + x, minY + y, trimmed, x, y);
-    }
+export function createSubjectFocusImageData(
+  imageData: ImageData,
+  targetAspectRatio: number,
+  fillFrame: boolean,
+  alphaThreshold = 24,
+): ImageData {
+  const opaqueBounds = measureOpaqueBounds(imageData, alphaThreshold);
+  const subjectBounds =
+    opaqueBounds &&
+    (opaqueBounds.width < imageData.width || opaqueBounds.height < imageData.height)
+      ? opaqueBounds
+      : measureSolidForegroundBounds(imageData, estimateEdgeBackgroundColor(imageData)) ?? opaqueBounds;
+
+  if (!subjectBounds) {
+    return imageData;
   }
 
-  return trimmed;
+  const focusBounds = buildFocusBounds(imageData, subjectBounds, targetAspectRatio, fillFrame);
+
+  if (
+    focusBounds.width === imageData.width &&
+    focusBounds.height === imageData.height &&
+    focusBounds.minX === 0 &&
+    focusBounds.minY === 0
+  ) {
+    return imageData;
+  }
+
+  return cropImageData(imageData, focusBounds);
 }
 
 export function fitImageDataContain(
