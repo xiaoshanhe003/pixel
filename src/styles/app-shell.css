@@ -1,0 +1,233 @@
+.app-shell {
+  width: min(1600px, calc(100% - var(--space-12)));
+  margin: 0 auto;
+  padding: var(--space-7) 0 var(--space-11);
+}
+
+.studio-app {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.app-topbar {
+  display: grid;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: var(--space-5) var(--space-7);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-panel-glass);
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.app-kicker,
+.topbar-cluster__label,
+.panel-title-block__label {
+  font-family: var(--font-mono-ui);
+  font-size: var(--label-size);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.topbar-cluster {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.scenario-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.scenario-tab,
+.chip-button,
+.size-control__option,
+.layer-card__select {
+  min-height: var(--control-height);
+  padding: var(--space-3) var(--space-8) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  transform: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.scenario-tab:hover,
+.chip-button:hover,
+.size-control__option:hover,
+.layer-card__select:hover {
+  transform: none;
+  background: var(--surface-soft-strong);
+}
+
+.scenario-tab.is-active,
+.chip-button.is-active {
+  background: var(--ink);
+  color: var(--ink-inverse);
+  box-shadow: none;
+  transform: none;
+}
+
+.scenario-tab.is-active:hover,
+.chip-button.is-active:hover {
+  background: var(--ink);
+}
+
+.topbar-status,
+.canvas-toolbar,
+.frame-strip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.topbar-status {
+  justify-content: flex-end;
+}
+
+.topbar-actions {
+  justify-items: end;
+}
+
+.canvas-toolbar__value,
+.frame-strip__fps,
+.info-tag {
+  min-height: var(--control-height);
+  padding: var(--space-3) var(--space-6);
+  border: var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--panel-strong);
+  color: var(--ink);
+}
+
+.studio-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1.4fr) 320px;
+  gap: var(--space-7);
+  align-items: start;
+}
+
+.left-dock,
+.right-dock,
+.canvas-stage {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.left-dock > *,
+.right-dock > * {
+  width: 100%;
+}
+
+.left-dock,
+.right-dock {
+  position: sticky;
+  top: var(--space-7);
+}
+
+.panel,
+.controls-card {
+  width: 100%;
+  border: var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel-strong);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.panel--dock {
+  background: var(--panel-strong);
+}
+
+.panel__header,
+.controls-card__header {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-8) 0;
+  text-align: left;
+}
+
+.panel__header h2,
+.controls-card__header .eyebrow {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 480;
+  letter-spacing: -0.18px;
+  text-transform: none;
+  color: var(--ink);
+  font-family:
+    figmaSans,
+    'figmaSans Fallback',
+    'SF Pro Display',
+    system-ui,
+    Helvetica,
+    sans-serif;
+}
+
+.panel-title-block {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  justify-items: start;
+  text-align: left;
+}
+
+.panel__header span,
+.uploader__copy,
+.sidebar-copy,
+.inspector-note {
+  color: var(--muted);
+}
+
+.panel__header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.panel__body,
+.tool-panel__body,
+.scenario-panel__body,
+.controls-card {
+  padding: var(--space-7) var(--space-8) var(--space-8);
+}
+
+.tool-section__label,
+.size-control legend,
+.toggle-grid legend,
+.scenario-list h3 {
+  font-family: var(--font-mono-ui);
+  font-size: var(--label-size);
+  font-weight: 400;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+}
+
+.size-control__option,
+.toggle-option {
+  border-color: var(--line);
+}
+
+.size-control__option input,
+.toggle-option input {
+  accent-color: var(--ink);
+}

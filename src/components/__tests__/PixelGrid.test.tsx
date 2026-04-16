@@ -50,6 +50,30 @@ describe('PixelGrid', () => {
     expect(screen.getByLabelText(/像素 0,0 透明/i)).toBeInTheDocument();
   });
 
+  it('applies flat styling when grid lines are hidden', () => {
+    render(
+      <PixelGrid
+        grid={{
+          width: 16,
+          height: 16,
+          palette: ['#000000'],
+          cells: Array.from({ length: 256 }, (_, index) => ({
+            x: index % 16,
+            y: Math.floor(index / 16),
+            color: index === 0 ? null : '#000000',
+            source: { r: 0, g: 0, b: 0 },
+            alpha: index === 0 ? 0 : 255,
+          })),
+        }}
+        showGrid={false}
+      />,
+    );
+
+    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toHaveClass('pixel-grid--flat');
+    expect(screen.getByLabelText(/像素 0,0 透明/i)).toHaveClass('pixel-cell--flat');
+    expect(screen.getByLabelText(/像素 1,0 #000000/i)).toHaveClass('pixel-cell--flat');
+  });
+
   it('lets the user paint a cell when editable', async () => {
     const user = userEvent.setup();
     const handlePaint = vi.fn();

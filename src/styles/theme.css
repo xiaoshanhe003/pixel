@@ -1,0 +1,96 @@
+/* Figma-inspired override */
+:root {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --ink: #000000;
+  --ink-inverse: #ffffff;
+  --muted: rgba(0, 0, 0, 0.62);
+  --line: rgba(0, 0, 0, 0.12);
+  --line-soft: rgba(0, 0, 0, 0.08);
+  --surface-soft: rgba(0, 0, 0, 0.04);
+  --surface-soft-strong: rgba(0, 0, 0, 0.06);
+  --surface-glass: rgba(0, 0, 0, 0.08);
+  --surface-panel-glass: rgba(255, 255, 255, 0.92);
+  --surface-canvas-glass: rgba(255, 255, 255, 0.76);
+  --surface-panel-strong: rgba(255, 255, 255, 0.98);
+  --surface-white-08: rgba(255, 255, 255, 0.08);
+  --surface-white-24: rgba(255, 255, 255, 0.24);
+  --surface-white-90: rgba(255, 255, 255, 0.9);
+  --gradient-accent-green: rgba(173, 255, 47, 0.18);
+  --gradient-accent-pink: rgba(255, 0, 153, 0.14);
+  --gradient-accent-purple: rgba(128, 0, 255, 0.12);
+  --gradient-canvas-green: rgba(151, 255, 70, 0.16);
+  --gradient-canvas-yellow: rgba(255, 230, 0, 0.22);
+  --gradient-canvas-purple: rgba(166, 0, 255, 0.14);
+  --gradient-canvas-pink: rgba(255, 0, 153, 0.16);
+  --checker-dark: rgba(0, 0, 0, 0.08);
+  --checker-dark-soft: rgba(0, 0, 0, 0.05);
+  --cell-border: rgba(0, 0, 0, 0.08);
+  --border-default: 1px solid var(--line);
+  --focus: 2px dashed #000000;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --radius-panel: 8px;
+  --radius-control: 12px;
+  --radius-pill: 50px;
+  --control-height: 40px;
+  --font-mono-ui:
+    figmaMono,
+    'figmaMono Fallback',
+    'SF Mono',
+    Menlo,
+    monospace;
+  --label-size: 0.75rem;
+  --label-tracking: 0.6px;
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+  --space-10: 22px;
+  --space-11: 28px;
+  --space-12: 32px;
+  --space-13: 38px;
+}
+
+html,
+body,
+#root {
+  background: #fff;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, var(--gradient-accent-green), transparent 22%),
+    radial-gradient(circle at top right, var(--gradient-accent-pink), transparent 20%),
+    radial-gradient(circle at bottom left, var(--gradient-accent-purple), transparent 24%),
+    var(--bg);
+  font-family:
+    figmaSans,
+    'figmaSans Fallback',
+    'SF Pro Display',
+    system-ui,
+    Helvetica,
+    sans-serif;
+  font-feature-settings: 'kern' 1;
+  letter-spacing: -0.14px;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-feature-settings: 'kern' 1;
+}
+
+:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}

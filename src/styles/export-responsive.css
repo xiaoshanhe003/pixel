@@ -1,0 +1,33 @@
+.panel--sidebar {
+  padding-bottom: var(--space-10);
+}
+
+.panel--sidebar .sidebar-copy,
+.panel--sidebar .inspector-note {
+  padding: 0 var(--space-10);
+}
+
+.export-sheet {
+  border: var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--panel-strong);
+}
+
+.print-grid {
+  background: var(--surface-soft);
+}
+
+.print-grid--symbols .print-grid__cell {
+  background: var(--panel-strong);
+}
+
+@media (max-width: 1180px) {
+  .topbar-status,
+  .topbar-actions {
+    justify-items: start;
+  }
+
+  .studio-layout {
+    grid-template-columns: 1fr;
+  }
+}
