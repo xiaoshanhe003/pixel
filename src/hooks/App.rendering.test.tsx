@@ -36,6 +36,16 @@ describe('App rendering', () => {
     expect(screen.getByText(/当前调色板/i)).toBeInTheDocument();
   });
 
+  it('allows clearing the uploaded source image from the left dock', async () => {
+    renderApp();
+    await uploadMockImage();
+
+    await userEvent.click(screen.getByRole('button', { name: /删除/i }));
+
+    expect(screen.queryByAltText(/已上传原图预览/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/无参考图/i)).toBeInTheDocument();
+  });
+
   it('keeps pre-processing behind a single confirm action before upload', async () => {
     renderApp();
 

@@ -5,7 +5,7 @@ import { cropImageFile, fileToImageElement } from '../utils/image';
 
 type ImageUploaderProps = {
   selectedFile: File | null;
-  onFileSelected: (file: File) => void;
+  onFileSelected: (file: File | null) => void;
   previewUrl?: string;
 };
 
@@ -304,6 +304,20 @@ export default function ImageUploader({
             }}
           >
             裁切
+          </button>
+        ) : null}
+
+        {selectedFile && !isCropping ? (
+          <button
+            type="button"
+            className="chip-button"
+            onClick={() => {
+              setPendingFile(null);
+              setIsCropping(false);
+              onFileSelected(null);
+            }}
+          >
+            删除
           </button>
         ) : null}
 
