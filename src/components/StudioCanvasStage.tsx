@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
 import type {
+  EditorSelection,
   EditorTool,
   EditorToolSettings,
   ScenarioDefinition,
@@ -9,7 +10,6 @@ import type {
 } from '../types/studio';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { ACTUAL_SIZE_ZOOM, FIT_WINDOW_ZOOM } from '../constants/studio';
-import { measureLayerContentBounds } from '../utils/studio';
 import { ZOOM_IN_SVG, ZOOM_OUT_SVG } from '../utils/toolIcons';
 import CrochetChart from './CrochetChart';
 import EditingToolbar from './EditingToolbar';
@@ -62,6 +62,7 @@ type StudioCanvasStageProps = {
   activePalette: readonly string[];
   canvasZoom: number;
   showGridLines: boolean;
+  selection: EditorSelection | null;
   crochetViewMode: 'color' | 'symbol';
   crochetAnalysis: CrochetPatternAnalysis | null;
   framePreviews: StudioFramePreview[];
@@ -103,6 +104,9 @@ type StudioCanvasStageProps = {
     endY: number,
     color: string | null,
   ) => void;
+  onSelectionChange: (selection: EditorSelection | null) => void;
+  onPreviewMoveSelection: (offsetX: number, offsetY: number) => void;
+  onCommitMoveSelection: (offsetX: number, offsetY: number) => void;
   onPreviewScaleSelection: (targetWidth: number, targetHeight: number) => void;
   onCommitScaleSelection: (targetWidth: number, targetHeight: number) => void;
   onSampleCell: (color: string | null) => void;
@@ -126,6 +130,7 @@ export default function StudioCanvasStage({
   activePalette,
   canvasZoom,
   showGridLines,
+  selection,
   crochetViewMode,
   crochetAnalysis,
   framePreviews: _framePreviews,
@@ -147,6 +152,9 @@ export default function StudioCanvasStage({
   onFillArea,
   onDrawLine,
   onDrawRectangle,
+  onSelectionChange,
+  onPreviewMoveSelection,
+  onCommitMoveSelection,
   onPreviewScaleSelection,
   onCommitScaleSelection,
   onSampleCell,
@@ -215,14 +223,6 @@ export default function StudioCanvasStage({
   );
   const stepDownZoom = isFitWindowZoom ? 0.75 : clampZoom(zoomFactor - 0.25);
   const stepUpZoom = isFitWindowZoom ? 1.25 : clampZoom(zoomFactor + 0.25);
-  const selectionBounds = useMemo(
-    () =>
-      activeLayer
-        ? measureLayerContentBounds(activeLayer.cells, activeGrid?.width ?? 16, activeGrid?.height ?? 16)
-        : null,
-    [activeGrid?.height, activeGrid?.width, activeLayer],
-  );
-
   return (
     <section className="canvas-stage" aria-label="主画布工作区">
       <EditingToolbar
@@ -339,13 +339,16 @@ export default function StudioCanvasStage({
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}
                 onDrawRectangle={onDrawRectangle}
+                onSelectionChange={onSelectionChange}
+                onPreviewMoveSelection={onPreviewMoveSelection}
+                onCommitMoveSelection={onCommitMoveSelection}
                 onPreviewScaleSelection={onPreviewScaleSelection}
                 onCommitScaleSelection={onCommitScaleSelection}
                 onSampleCell={onSampleCell}
                 zoom={appliedZoom}
                 showGrid={showGridLines}
                 onViewportSizeChange={handleViewportSizeChange}
-                selectionBounds={selectionBounds}
+                selectionBounds={selection}
               />
             ) : (
               <PixelGrid
@@ -359,13 +362,16 @@ export default function StudioCanvasStage({
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}
                 onDrawRectangle={onDrawRectangle}
+                onSelectionChange={onSelectionChange}
+                onPreviewMoveSelection={onPreviewMoveSelection}
+                onCommitMoveSelection={onCommitMoveSelection}
                 onPreviewScaleSelection={onPreviewScaleSelection}
                 onCommitScaleSelection={onCommitScaleSelection}
                 onSampleCell={onSampleCell}
                 zoom={appliedZoom}
                 showGrid={showGridLines}
                 onViewportSizeChange={handleViewportSizeChange}
-                selectionBounds={selectionBounds}
+                selectionBounds={selection}
               />
             )
           ) : (

@@ -479,4 +479,59 @@ describe('PixelGrid', () => {
 
     expect(screen.getByLabelText(/预览矩形 1,1 到 3,3/i)).toBeInTheDocument();
   });
+
+  it('creates a marquee selection while dragging in select mode', () => {
+    const handleSelectionChange = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="select"
+        toolSettings={defaultToolSettings}
+        onSelectionChange={handleSelectionChange}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByLabelText(/像素 1,1 透明/i), { pointerId: 8 });
+    fireEvent.pointerEnter(screen.getByLabelText(/像素 3,2 透明/i), { pointerId: 8 });
+    fireEvent.pointerUp(screen.getByLabelText(/像素 3,2 透明/i), { pointerId: 8 });
+
+    expect(handleSelectionChange).toHaveBeenLastCalledWith({
+      minX: 1,
+      minY: 1,
+      maxX: 3,
+      maxY: 2,
+      width: 3,
+      height: 2,
+    });
+  });
+
+  it('delegates moving the current selection', () => {
+    const handlePreviewMoveSelection = vi.fn();
+    const handleCommitMoveSelection = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        editable
+        tool="select"
+        toolSettings={defaultToolSettings}
+        selectionBounds={{ minX: 1, minY: 1, maxX: 2, maxY: 2, width: 2, height: 2 }}
+        onPreviewMoveSelection={handlePreviewMoveSelection}
+        onCommitMoveSelection={handleCommitMoveSelection}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /移动选区/i }), {
+      pointerId: 10,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.pointerMove(screen.getByLabelText(/像素 3,2 #000000/i), { pointerId: 10 });
+    fireEvent.pointerUp(screen.getByLabelText(/像素 3,2 #000000/i), { pointerId: 10 });
+
+    expect(handlePreviewMoveSelection).toHaveBeenCalledWith(2, 1);
+    expect(handleCommitMoveSelection).toHaveBeenCalledWith(2, 1);
+  });
 });

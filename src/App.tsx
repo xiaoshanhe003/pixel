@@ -19,12 +19,8 @@ export default function App() {
           document={studio.document}
           activeScenario={studio.activeScenario}
           scenarios={SCENARIOS}
-          canUndo={controls.canUndo}
-          canRedo={controls.canRedo}
           onScenarioChange={actions.setActiveScenario}
           onCreateBlankCanvas={actions.createBlankCanvas}
-          onUndo={actions.undo}
-          onRedo={actions.redo}
         />
 
         <section className="studio-layout">
@@ -98,6 +94,7 @@ export default function App() {
               activeScenario={studio.activeScenario}
               scenario={studio.scenario}
               activeGrid={studio.activeGrid}
+              activeLayer={studio.activeLayer}
               isProcessingUpload={source.isProcessingUpload}
               activeColor={editor.activeColor}
               activeTool={editor.activeTool}
@@ -105,22 +102,33 @@ export default function App() {
               activePalette={activePalette}
               canvasZoom={editor.canvasZoom}
               showGridLines={editor.showGridLines}
+              selection={editor.selection}
               crochetViewMode={output.crochetViewMode}
               crochetAnalysis={output.crochetAnalysis}
               framePreviews={studio.framePreviews}
               activeFrameId={studio.document.activeFrameId}
               previewIsPlaying={studio.previewIsPlaying}
               previewFps={studio.previewFps}
+              canUndo={controls.canUndo}
+              canRedo={controls.canRedo}
               onActiveColorChange={actions.setActiveColor}
               onActiveToolChange={actions.setActiveTool}
               onToolSettingsChange={actions.setToolSettings}
+              onUndo={actions.undo}
+              onRedo={actions.redo}
               onCrochetViewModeChange={actions.setCrochetViewMode}
               onCanvasZoomChange={actions.setCanvasZoom}
               onToggleGridLines={actions.toggleGridLines}
-              onPaintCell={actions.paintCell}
+              onPreviewPaintStroke={actions.previewPaintStroke}
+              onCommitPaintStroke={actions.commitPaintStroke}
               onFillArea={actions.fillArea}
               onDrawLine={actions.drawLine}
               onDrawRectangle={actions.drawRectangle}
+              onSelectionChange={actions.setSelection}
+              onPreviewMoveSelection={actions.previewMoveSelection}
+              onCommitMoveSelection={actions.commitMoveSelection}
+              onPreviewScaleSelection={actions.previewScaleSelection}
+              onCommitScaleSelection={actions.commitScaleSelection}
               onSampleCell={actions.sampleCell}
               onSelectFrame={actions.selectFrame}
               onAddFrame={actions.addFrame}

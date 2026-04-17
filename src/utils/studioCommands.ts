@@ -3,11 +3,13 @@ import {
   addFrameToDocument,
   addLayerToActiveFrame,
   applyBrushStrokeOnActiveLayer,
+  applyBrushStrokePathOnActiveLayer,
   clearActiveLayer,
   deleteActiveFrame,
   deleteActiveLayer,
   drawLineOnActiveLayer,
   drawRectangleOnActiveLayer,
+  moveActiveLayerSelection,
   duplicateActiveFrame,
   duplicateActiveLayer,
   fillActiveLayerArea,
@@ -16,9 +18,11 @@ import {
   moveLayerToIndex,
   renameLayer,
   replaceActiveLayerCell,
+  scaleActiveLayerSelection,
   setLayerOpacity,
   toggleLayerLock,
   toggleLayerVisibility,
+  type LayerContentBounds,
 } from './studio';
 
 export type StudioCommand =
@@ -26,6 +30,12 @@ export type StudioCommand =
       type: 'paintCell';
       x: number;
       y: number;
+      color: string | null;
+      size: 1 | 2 | 3 | 4;
+    }
+  | {
+      type: 'paintStroke';
+      points: Array<{ x: number; y: number }>;
       color: string | null;
       size: 1 | 2 | 3 | 4;
     }
@@ -56,6 +66,18 @@ export type StudioCommand =
       endX: number;
       endY: number;
       color: string | null;
+    }
+  | {
+      type: 'scaleSelection';
+      bounds: LayerContentBounds;
+      targetWidth: number;
+      targetHeight: number;
+    }
+  | {
+      type: 'moveSelection';
+      bounds: LayerContentBounds;
+      offsetX: number;
+      offsetY: number;
     }
   | { type: 'addLayer' }
   | { type: 'duplicateLayer'; layerId?: string }
@@ -114,6 +136,13 @@ export function executeStudioCommand(
         command.size,
         command.color,
       );
+    case 'paintStroke':
+      return applyBrushStrokePathOnActiveLayer(
+        document,
+        command.points,
+        command.size,
+        command.color,
+      );
     case 'replaceCell':
       return replaceActiveLayerCell(document, command.x, command.y, command.color);
     case 'fillArea':
@@ -135,6 +164,20 @@ export function executeStudioCommand(
         command.endX,
         command.endY,
         command.color,
+      );
+    case 'scaleSelection':
+      return scaleActiveLayerSelection(
+        document,
+        command.bounds,
+        command.targetWidth,
+        command.targetHeight,
+      );
+    case 'moveSelection':
+      return moveActiveLayerSelection(
+        document,
+        command.bounds,
+        command.offsetX,
+        command.offsetY,
       );
     case 'addLayer':
       return addLayerToActiveFrame(document);
@@ -205,6 +248,30 @@ export function applyStudioTransientUpdate(
   return {
     ...history,
     present: cloneDocument(nextDocument),
+  };
+}
+
+export function applyStudioCommandFromBaseToHistory(
+  history: StudioHistoryState,
+  baseDocument: StudioDocument,
+  command: StudioCommand,
+): StudioHistoryState {
+  const nextDocument = executeStudioCommand(baseDocument, command);
+
+  if (
+    nextDocument === baseDocument ||
+    areDocumentsEqual(nextDocument, baseDocument)
+  ) {
+    return {
+      ...history,
+      present: cloneDocument(baseDocument),
+    };
+  }
+
+  return {
+    past: [...history.past, cloneDocument(baseDocument)].slice(-MAX_HISTORY_ENTRIES),
+    present: cloneDocument(nextDocument),
+    future: [],
   };
 }
 

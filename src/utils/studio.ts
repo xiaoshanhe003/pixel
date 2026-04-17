@@ -1,11 +1,14 @@
 import type { GridSize, PixelCell, PixelGrid } from '../types/pixel';
 import type {
+  EditorSelection,
   ScenarioId,
   StudioDocument,
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
 import { clampByte, hexToRgb, rgbToHex } from './color';
+
+export type LayerContentBounds = EditorSelection;
 
 let nextStudioId = 0;
 
@@ -245,6 +248,224 @@ function getCellIndex(width: number, x: number, y: number): number {
   return y * width + x;
 }
 
+export function measureLayerContentBounds(
+  cells: PixelCell[],
+  width: number,
+  height: number,
+): LayerContentBounds | null {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (const cell of cells) {
+    if (!cell.color || cell.alpha <= 0) {
+      continue;
+    }
+
+    minX = Math.min(minX, cell.x);
+    minY = Math.min(minY, cell.y);
+    maxX = Math.max(maxX, cell.x);
+    maxY = Math.max(maxY, cell.y);
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return null;
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
+}
+
+function clearCellsInBounds(
+  cells: PixelCell[],
+  gridWidth: number,
+  bounds: LayerContentBounds,
+) {
+  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
+    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+      const index = getCellIndex(gridWidth, x, y);
+      const currentCell = cells[index];
+
+      if (!currentCell) {
+        continue;
+      }
+
+      cells[index] = {
+        ...currentCell,
+        color: null,
+        alpha: 0,
+      };
+    }
+  }
+}
+
+function createClampedBounds(
+  grid: PixelGrid,
+  minX: number,
+  minY: number,
+  width: number,
+  height: number,
+): LayerContentBounds {
+  const nextMinX = Math.max(0, Math.min(grid.width - 1, minX));
+  const nextMinY = Math.max(0, Math.min(grid.height - 1, minY));
+  const nextWidth = Math.max(1, Math.min(width, grid.width - nextMinX));
+  const nextHeight = Math.max(1, Math.min(height, grid.height - nextMinY));
+
+  return {
+    minX: nextMinX,
+    minY: nextMinY,
+    maxX: nextMinX + nextWidth - 1,
+    maxY: nextMinY + nextHeight - 1,
+    width: nextWidth,
+    height: nextHeight,
+  };
+}
+
+function moveGridSelection(
+  grid: PixelGrid,
+  bounds: LayerContentBounds,
+  offsetX: number,
+  offsetY: number,
+): PixelGrid {
+  if (offsetX === 0 && offsetY === 0) {
+    return grid;
+  }
+
+  const nextCells = grid.cells.map((cell) => ({
+    ...cell,
+    source: { ...cell.source },
+  }));
+  const nextBounds = createClampedBounds(
+    grid,
+    bounds.minX + offsetX,
+    bounds.minY + offsetY,
+    bounds.width,
+    bounds.height,
+  );
+  const unionBounds = {
+    minX: Math.min(bounds.minX, nextBounds.minX),
+    minY: Math.min(bounds.minY, nextBounds.minY),
+    maxX: Math.max(bounds.maxX, nextBounds.maxX),
+    maxY: Math.max(bounds.maxY, nextBounds.maxY),
+    width: 0,
+    height: 0,
+  };
+  unionBounds.width = unionBounds.maxX - unionBounds.minX + 1;
+  unionBounds.height = unionBounds.maxY - unionBounds.minY + 1;
+
+  clearCellsInBounds(nextCells, grid.width, unionBounds);
+
+  for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
+    for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+      const sourceCell = grid.cells[getCellIndex(grid.width, x, y)];
+
+      if (!sourceCell || !sourceCell.color || sourceCell.alpha <= 0) {
+        continue;
+      }
+
+      const targetX = x + offsetX;
+      const targetY = y + offsetY;
+
+      if (
+        targetX < 0 ||
+        targetX >= grid.width ||
+        targetY < 0 ||
+        targetY >= grid.height
+      ) {
+        continue;
+      }
+
+      const targetIndex = getCellIndex(grid.width, targetX, targetY);
+      nextCells[targetIndex] = {
+        ...nextCells[targetIndex],
+        color: sourceCell.color,
+        source: { ...sourceCell.source },
+        alpha: sourceCell.alpha,
+      };
+    }
+  }
+
+  return {
+    ...grid,
+    cells: nextCells,
+    palette: buildPalette(nextCells),
+  };
+}
+
+function scaleGridSelection(
+  grid: PixelGrid,
+  bounds: LayerContentBounds,
+  targetWidth: number,
+  targetHeight: number,
+): PixelGrid {
+  const nextCells = grid.cells.map((cell) => ({
+    ...cell,
+    source: { ...cell.source },
+  }));
+  const nextBounds: LayerContentBounds = {
+    minX: bounds.minX,
+    minY: bounds.minY,
+    maxX: Math.min(grid.width - 1, bounds.minX + targetWidth - 1),
+    maxY: Math.min(grid.height - 1, bounds.minY + targetHeight - 1),
+    width: Math.min(targetWidth, grid.width - bounds.minX),
+    height: Math.min(targetHeight, grid.height - bounds.minY),
+  };
+  const unionBounds: LayerContentBounds = {
+    minX: Math.min(bounds.minX, nextBounds.minX),
+    minY: Math.min(bounds.minY, nextBounds.minY),
+    maxX: Math.max(bounds.maxX, nextBounds.maxX),
+    maxY: Math.max(bounds.maxY, nextBounds.maxY),
+    width: 0,
+    height: 0,
+  };
+  unionBounds.width = unionBounds.maxX - unionBounds.minX + 1;
+  unionBounds.height = unionBounds.maxY - unionBounds.minY + 1;
+
+  clearCellsInBounds(nextCells, grid.width, unionBounds);
+
+  for (let y = 0; y < nextBounds.height; y += 1) {
+    for (let x = 0; x < nextBounds.width; x += 1) {
+      const sourceX = bounds.minX + Math.min(
+        bounds.width - 1,
+        Math.floor((x * bounds.width) / nextBounds.width),
+      );
+      const sourceY = bounds.minY + Math.min(
+        bounds.height - 1,
+        Math.floor((y * bounds.height) / nextBounds.height),
+      );
+      const sourceCell = grid.cells[getCellIndex(grid.width, sourceX, sourceY)];
+
+      if (!sourceCell || !sourceCell.color || sourceCell.alpha <= 0) {
+        continue;
+      }
+
+      const targetX = bounds.minX + x;
+      const targetY = bounds.minY + y;
+      const targetIndex = getCellIndex(grid.width, targetX, targetY);
+
+      nextCells[targetIndex] = {
+        ...nextCells[targetIndex],
+        color: sourceCell.color,
+        source: { ...sourceCell.source },
+        alpha: sourceCell.alpha,
+      };
+    }
+  }
+
+  return {
+    ...grid,
+    cells: nextCells,
+    palette: buildPalette(nextCells),
+  };
+}
+
 export function fillCellArea(
   grid: PixelGrid,
   x: number,
@@ -403,6 +624,19 @@ export function applyBrushStroke(
   color: string | null,
 ): PixelGrid {
   return applyColorAtPoints(grid, buildBrushFootprint(x, y, size), color);
+}
+
+export function applyBrushStrokePath(
+  grid: PixelGrid,
+  points: Array<{ x: number; y: number }>,
+  size: 1 | 2 | 3 | 4,
+  color: string | null,
+): PixelGrid {
+  return applyColorAtPoints(
+    grid,
+    points.flatMap((point) => buildBrushFootprint(point.x, point.y, size)),
+    color,
+  );
 }
 
 export function buildLinePoints(
@@ -571,6 +805,37 @@ export function applyBrushStrokeOnActiveLayer(
   }));
 }
 
+export function applyBrushStrokePathOnActiveLayer(
+  document: StudioDocument,
+  points: Array<{ x: number; y: number }>,
+  size: 1 | 2 | 3 | 4,
+  color: string | null,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (layer.id !== frame.activeLayerId || layer.locked) {
+        return layer;
+      }
+
+      return {
+        ...layer,
+        cells: applyBrushStrokePath(
+          {
+            width: document.width,
+            height: document.height,
+            cells: layer.cells,
+            palette: [],
+          },
+          points,
+          size,
+          color,
+        ).cells,
+      };
+    }),
+  }));
+}
+
 export function fillActiveLayerArea(
   document: StudioDocument,
   x: number,
@@ -666,6 +931,68 @@ export function drawRectangleOnActiveLayer(
           endX,
           endY,
           color,
+        ).cells,
+      };
+    }),
+  }));
+}
+
+export function scaleActiveLayerSelection(
+  document: StudioDocument,
+  bounds: LayerContentBounds,
+  targetWidth: number,
+  targetHeight: number,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (layer.id !== frame.activeLayerId || layer.locked) {
+        return layer;
+      }
+
+      return {
+        ...layer,
+        cells: scaleGridSelection(
+          {
+            width: document.width,
+            height: document.height,
+            cells: layer.cells,
+            palette: [],
+          },
+          bounds,
+          Math.max(1, targetWidth),
+          Math.max(1, targetHeight),
+        ).cells,
+      };
+    }),
+  }));
+}
+
+export function moveActiveLayerSelection(
+  document: StudioDocument,
+  bounds: LayerContentBounds,
+  offsetX: number,
+  offsetY: number,
+): StudioDocument {
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (layer.id !== frame.activeLayerId || layer.locked) {
+        return layer;
+      }
+
+      return {
+        ...layer,
+        cells: moveGridSelection(
+          {
+            width: document.width,
+            height: document.height,
+            cells: layer.cells,
+            palette: [],
+          },
+          bounds,
+          offsetX,
+          offsetY,
         ).cells,
       };
     }),

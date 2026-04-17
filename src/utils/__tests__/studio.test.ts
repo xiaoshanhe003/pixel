@@ -12,8 +12,11 @@ import {
   fillActiveLayerArea,
   fillCellArea,
   mergeActiveLayerDown,
+  measureLayerContentBounds,
+  moveActiveLayerSelection,
   replaceActiveLayerCell,
   replaceCellColor,
+  scaleActiveLayerSelection,
   setActiveLayer,
   toggleLayerVisibility,
 } from '../studio';
@@ -179,5 +182,70 @@ describe('studio grid helpers', () => {
     expect(preview.cells[2].color).toBe('#ff00aa');
     expect(preview.cells[17].color).toBeNull();
     expect(preview.cells[34].color).toBe('#ff00aa');
+  });
+
+  it('measures the non-transparent bounds of a layer', () => {
+    let document = createStudioDocument('pixel', 16);
+    document = replaceActiveLayerCell(document, 2, 3, '#111111');
+    document = replaceActiveLayerCell(document, 4, 6, '#ff00aa');
+
+    const bounds = measureLayerContentBounds(
+      document.frames[0].layers[0].cells,
+      document.width,
+      document.height,
+    );
+
+    expect(bounds).toEqual({
+      minX: 2,
+      minY: 3,
+      maxX: 4,
+      maxY: 6,
+      width: 3,
+      height: 4,
+    });
+  });
+
+  it('scales the active layer selection using nearest-neighbor sampling', () => {
+    let document = createStudioDocument('pixel', 16);
+    document = replaceActiveLayerCell(document, 0, 0, '#111111');
+    document = replaceActiveLayerCell(document, 1, 0, '#ff00aa');
+    document = replaceActiveLayerCell(document, 0, 1, '#00ffaa');
+    document = replaceActiveLayerCell(document, 1, 1, '#3366ff');
+
+    const next = scaleActiveLayerSelection(
+      document,
+      { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 2, height: 2 },
+      4,
+      4,
+    );
+    const preview = composeFrame(next.frames[0], next.width, next.height);
+
+    expect(preview.cells[0].color).toBe('#111111');
+    expect(preview.cells[1].color).toBe('#111111');
+    expect(preview.cells[2].color).toBe('#ff00aa');
+    expect(preview.cells[16].color).toBe('#111111');
+    expect(preview.cells[17].color).toBe('#111111');
+    expect(preview.cells[18].color).toBe('#ff00aa');
+    expect(preview.cells[32].color).toBe('#00ffaa');
+    expect(preview.cells[34].color).toBe('#3366ff');
+  });
+
+  it('moves the active layer selection by an offset', () => {
+    let document = createStudioDocument('pixel', 16);
+    document = replaceActiveLayerCell(document, 1, 1, '#111111');
+    document = replaceActiveLayerCell(document, 2, 1, '#ff00aa');
+
+    const next = moveActiveLayerSelection(
+      document,
+      { minX: 1, minY: 1, maxX: 2, maxY: 1, width: 2, height: 1 },
+      2,
+      1,
+    );
+    const preview = composeFrame(next.frames[0], next.width, next.height);
+
+    expect(preview.cells[17].color).toBeNull();
+    expect(preview.cells[18].color).toBeNull();
+    expect(preview.cells[35].color).toBe('#111111');
+    expect(preview.cells[36].color).toBe('#ff00aa');
   });
 });

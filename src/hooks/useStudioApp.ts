@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BeadBrand } from '../data/beadPalettes';
 import { DEFAULT_OPTIONS, FIT_WINDOW_ZOOM, SCENARIOS } from '../constants/studio';
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
 import type {
+  EditorSelection,
   EditorTool,
   EditorToolSettings,
   ScenarioDefinition,
@@ -26,6 +27,8 @@ import {
 } from '../utils/studio';
 import {
   applyStudioCommandToHistory,
+  applyStudioCommandFromBaseToHistory,
+  executeStudioCommand,
   applyStudioTransientUpdate,
   createStudioHistoryState,
   redoStudioHistory,
@@ -35,6 +38,25 @@ import {
 } from '../utils/studioCommands';
 
 type ExportMode = 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows';
+
+function clampSelectionToDocument(
+  selection: EditorSelection,
+  document: StudioDocument,
+): EditorSelection {
+  const minX = Math.max(0, Math.min(document.width - selection.width, selection.minX));
+  const minY = Math.max(0, Math.min(document.height - selection.height, selection.minY));
+  const width = Math.max(1, Math.min(selection.width, document.width - minX));
+  const height = Math.max(1, Math.min(selection.height, document.height - minY));
+
+  return {
+    minX,
+    minY,
+    maxX: minX + width - 1,
+    maxY: minY + height - 1,
+    width,
+    height,
+  };
+}
 
 export type StudioFramePreview = {
   frame: StudioFrame;
@@ -85,6 +107,7 @@ export type UseStudioAppResult = {
     toolSettings: EditorToolSettings;
     canvasZoom: number;
     showGridLines: boolean;
+    selection: EditorSelection | null;
   };
   studio: {
     document: StudioDocument;
@@ -124,6 +147,14 @@ export type UseStudioAppResult = {
     setBeadBrand: (brand: BeadBrand) => void;
     setExportMode: (mode: ExportMode) => void;
     paintCell: (x: number, y: number, color: string | null) => void;
+    previewPaintStroke: (
+      points: Array<{ x: number; y: number }>,
+      color: string | null,
+    ) => void;
+    commitPaintStroke: (
+      points: Array<{ x: number; y: number }>,
+      color: string | null,
+    ) => void;
     sampleCell: (color: string | null) => void;
     fillArea: (x: number, y: number, color: string | null) => void;
     drawLine: (
@@ -140,6 +171,11 @@ export type UseStudioAppResult = {
       endY: number,
       color: string | null,
     ) => void;
+    setSelection: (selection: EditorSelection | null) => void;
+    previewMoveSelection: (offsetX: number, offsetY: number) => void;
+    commitMoveSelection: (offsetX: number, offsetY: number) => void;
+    previewScaleSelection: (targetWidth: number, targetHeight: number) => void;
+    commitScaleSelection: (targetWidth: number, targetHeight: number) => void;
     selectLayer: (layerId: string) => void;
     addLayer: () => void;
     duplicateLayer: (layerId?: string) => void;
@@ -380,6 +416,7 @@ export function useStudioApp(): UseStudioAppResult {
   });
   const [canvasZoom, setCanvasZoom] = useState(FIT_WINDOW_ZOOM);
   const [showGridLines, setShowGridLines] = useState(true);
+  const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewFps, setPreviewFps] = useState(6);
   const [beadBrand, setBeadBrand] = useState<BeadBrand>('perler');
@@ -390,6 +427,8 @@ export function useStudioApp(): UseStudioAppResult {
   const [crochetExportMode, setCrochetExportMode] = useState<
     'crochet-chart' | 'crochet-rows'
   >('crochet-chart');
+  const strokeBaseDocumentRef = useRef<StudioDocument | null>(null);
+  const selectionBaseDocumentRef = useRef<StudioDocument | null>(null);
 
   const document = history.present;
 
@@ -436,11 +475,18 @@ export function useStudioApp(): UseStudioAppResult {
     crochetExportMode,
   });
 
+  useEffect(() => {
+    setSelection(null);
+    selectionBaseDocumentRef.current = null;
+  }, [document.activeFrameId, document.width, document.height, derived.activeLayer?.id]);
+
   function dispatchCommand(command: Parameters<typeof applyStudioCommandToHistory>[1]) {
     if (!derived.activeFrame || !derived.activeLayer) {
       return;
     }
 
+    strokeBaseDocumentRef.current = null;
+    selectionBaseDocumentRef.current = null;
     setHistory((current) => applyStudioCommandToHistory(current, command));
   }
 
@@ -487,6 +533,7 @@ export function useStudioApp(): UseStudioAppResult {
       toolSettings,
       canvasZoom,
       showGridLines,
+      selection,
     },
     studio: {
       document,
@@ -507,6 +554,10 @@ export function useStudioApp(): UseStudioAppResult {
       setActiveScenario,
       setActiveColor,
       setActiveTool,
+      setSelection: (nextSelection) => {
+        selectionBaseDocumentRef.current = null;
+        setSelection(nextSelection);
+      },
       setToolSettings: (updater) =>
         setToolSettings((current) => updater(current)),
       setCanvasZoom,
@@ -517,11 +568,24 @@ export function useStudioApp(): UseStudioAppResult {
       createBlankCanvas: () => {
         setSelectedFile(null);
         setPreviewUrl(undefined);
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
         resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
         setCanvasZoom(FIT_WINDOW_ZOOM);
       },
-      undo: () => setHistory((current) => undoStudioHistory(current)),
-      redo: () => setHistory((current) => redoStudioHistory(current)),
+      undo: () => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setHistory((current) => undoStudioHistory(current));
+      },
+      redo: () => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setHistory((current) => redoStudioHistory(current));
+      },
       addFrame: () => dispatchCommand({ type: 'addFrame' }),
       duplicateFrame: () => dispatchCommand({ type: 'duplicateFrame' }),
       deleteFrame: () => dispatchCommand({ type: 'deleteFrame' }),
@@ -555,6 +619,57 @@ export function useStudioApp(): UseStudioAppResult {
               }
             : { type: 'replaceCell', x, y, color },
         ),
+      previewPaintStroke: (points, color) => {
+        if (
+          !derived.activeFrame ||
+          !derived.activeLayer ||
+          (activeTool !== 'paint' && activeTool !== 'erase') ||
+          points.length === 0
+        ) {
+          return;
+        }
+
+        const size = activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+
+        setHistory((current) => {
+          const baseDocument =
+            strokeBaseDocumentRef.current ?? structuredClone(current.present);
+          strokeBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'paintStroke',
+              points,
+              size,
+              color,
+            }),
+          );
+        });
+      },
+      commitPaintStroke: (points, color) => {
+        if (
+          !derived.activeFrame ||
+          !derived.activeLayer ||
+          (activeTool !== 'paint' && activeTool !== 'erase') ||
+          points.length === 0
+        ) {
+          return;
+        }
+
+        const size = activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+
+        setHistory((current) => {
+          const baseDocument = strokeBaseDocumentRef.current ?? current.present;
+          strokeBaseDocumentRef.current = null;
+
+          return applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'paintStroke',
+            points,
+            size,
+            color,
+          });
+        });
+      },
       sampleCell: (color) => {
         if (!color) {
           return;
@@ -568,6 +683,100 @@ export function useStudioApp(): UseStudioAppResult {
         dispatchCommand({ type: 'drawLine', startX, startY, endX, endY, color }),
       drawRectangle: (startX, startY, endX, endY, color) =>
         dispatchCommand({ type: 'drawRectangle', startX, startY, endX, endY, color }),
+      previewMoveSelection: (offsetX, offsetY) => {
+        if (!derived.activeLayer || !selection) {
+          return;
+        }
+
+        setHistory((current) => {
+          const baseDocument =
+            selectionBaseDocumentRef.current ?? structuredClone(current.present);
+          selectionBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'moveSelection',
+              bounds: selection,
+              offsetX,
+              offsetY,
+            }),
+          );
+        });
+      },
+      commitMoveSelection: (offsetX, offsetY) => {
+        const baseDocument = selectionBaseDocumentRef.current ?? history.present;
+        selectionBaseDocumentRef.current = null;
+
+        if (!selection) {
+          return;
+        }
+
+        setHistory((current) =>
+          applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'moveSelection',
+            bounds: selection,
+            offsetX,
+            offsetY,
+          }),
+        );
+        setSelection(
+          clampSelectionToDocument(
+            {
+              ...selection,
+              minX: selection.minX + offsetX,
+              minY: selection.minY + offsetY,
+            },
+            document,
+          ),
+        );
+      },
+      previewScaleSelection: (targetWidth, targetHeight) => {
+        if (!derived.activeLayer || !selection) {
+          return;
+        }
+
+        setHistory((current) => {
+          const baseDocument =
+            selectionBaseDocumentRef.current ?? structuredClone(current.present);
+          selectionBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'scaleSelection',
+              bounds: selection,
+              targetWidth,
+              targetHeight,
+            }),
+          );
+        });
+      },
+      commitScaleSelection: (targetWidth, targetHeight) => {
+        const baseDocument = selectionBaseDocumentRef.current ?? history.present;
+        selectionBaseDocumentRef.current = null;
+
+        if (!selection) {
+          return;
+        }
+
+        setHistory((current) =>
+          applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'scaleSelection',
+            bounds: selection,
+            targetWidth,
+            targetHeight,
+          }),
+        );
+        setSelection(
+          clampSelectionToDocument(
+            {
+              ...selection,
+              width: targetWidth,
+              height: targetHeight,
+            },
+            document,
+          ),
+        );
+      },
       selectLayer: (layerId) =>
         setDocument((current) => setActiveLayer(current, layerId)),
       addLayer: () => dispatchCommand({ type: 'addLayer' }),

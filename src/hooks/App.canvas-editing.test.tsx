@@ -85,4 +85,37 @@ describe('App canvas editing', () => {
 
     expect(screen.getByLabelText(/像素 0,0 #d65a31/i)).toBeInTheDocument();
   });
+
+  it('moves and scales a marquee selection on the blank canvas', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByLabelText(/像素 1,1 透明/i));
+    await userEvent.click(screen.getByRole('button', { name: /^选择$/i }));
+
+    fireEvent.pointerDown(screen.getByLabelText(/像素 1,1 #d65a31/i), { pointerId: 20 });
+    fireEvent.pointerUp(screen.getByLabelText(/像素 1,1 #d65a31/i), { pointerId: 20 });
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /移动选区/i }), {
+      pointerId: 21,
+      clientX: 0,
+      clientY: 0,
+    });
+    const moveTarget = screen.getByLabelText(/像素 2,2 透明/i);
+    fireEvent.pointerMove(moveTarget, { pointerId: 21 });
+    fireEvent.pointerUp(moveTarget, { pointerId: 21 });
+
+    expect(screen.getByLabelText(/像素 2,2 #d65a31/i)).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /缩放选区/i }), {
+      pointerId: 22,
+      clientX: 0,
+      clientY: 0,
+    });
+    const scaleTarget = screen.getByLabelText(/像素 4,3 透明/i);
+    fireEvent.pointerMove(scaleTarget, { pointerId: 22 });
+    fireEvent.pointerUp(scaleTarget, { pointerId: 22 });
+
+    expect(screen.getByLabelText(/像素 4,3 #d65a31/i)).toBeInTheDocument();
+  });
 });
