@@ -110,6 +110,72 @@ describe('PixelGrid', () => {
     expect(handlePaint).not.toHaveBeenCalled();
   });
 
+  it('pans the canvas internally on wheel input instead of relying on scrollbars', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
+
+    expect(grid.style.transform).toContain('-30px');
+    expect(grid.style.transform).toContain('-40px');
+  });
+
+  it('assigns explicit row and cell sizes when zoom changes', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i) as HTMLElement;
+
+    expect(grid.style.gridTemplateColumns).toContain('84px');
+    expect(grid.style.gridTemplateRows).toContain('84px');
+    expect(firstCell.style.width).toBe('84px');
+    expect(firstCell.style.height).toBe('84px');
+  });
+
+  it('hides transparency texture when cells become too small', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        zoom={0.02}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toHaveClass(
+      'pixel-grid--hide-transparency-texture',
+    );
+  });
+
   it('paints continuously while dragging across cells', () => {
     const handlePaint = vi.fn();
 

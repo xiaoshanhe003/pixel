@@ -37,6 +37,10 @@ type PixelGridProps = {
   getCellOverlay?: (cell: PixelGridModel['cells'][number]) => string | undefined;
 };
 
+export function getBaseCellSize(width: number) {
+  return width === 16 ? 42 : width === 32 ? 24 : 12;
+}
+
 export default function PixelGrid({
   grid,
   editable = false,
@@ -58,8 +62,8 @@ export default function PixelGrid({
     pointerId: number;
     startX: number;
     startY: number;
-    scrollLeft: number;
-    scrollTop: number;
+    offsetX: number;
+    offsetY: number;
   } | null>(null);
   const paintStateRef = useRef<{
     pointerId: number;
@@ -79,6 +83,7 @@ export default function PixelGrid({
     label: string;
   } | null>(null);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   function paintCell(x: number, y: number, color: string | null) {
     onPaintCell?.(x, y, color);
@@ -146,101 +151,162 @@ export default function PixelGrid({
     };
   }, [finalizeShape]);
 
-  const baseCellSize =
-    grid.width === 16 ? 42 : grid.width === 32 ? 24 : 12;
-  const baseGridSize = grid.width * baseCellSize;
+  useEffect(() => {
+    setPanOffset({ x: 0, y: 0 });
+  }, [grid.width, grid.height, zoom]);
+
+  const baseCellSize = getBaseCellSize(grid.width);
+  const scaledCellSize = baseCellSize * zoom;
+  const scaledGridWidth = grid.width * scaledCellSize;
+  const scaledGridHeight = grid.height * scaledCellSize;
+  const hideTransparencyTexture = scaledCellSize < 6;
+  const clampPanOffset = useCallback(
+    (nextOffset: { x: number; y: number }) => {
+      const viewport = viewportRef.current;
+
+      if (!viewport) {
+        return nextOffset;
+      }
+
+      const computedStyle = window.getComputedStyle(viewport);
+      const horizontalPadding =
+        (Number.parseFloat(computedStyle.paddingLeft) || 0) +
+        (Number.parseFloat(computedStyle.paddingRight) || 0);
+      const verticalPadding =
+        (Number.parseFloat(computedStyle.paddingTop) || 0) +
+        (Number.parseFloat(computedStyle.paddingBottom) || 0);
+      const availableWidth = Math.max(0, viewport.clientWidth - horizontalPadding);
+      const availableHeight = Math.max(0, viewport.clientHeight - verticalPadding);
+      const canPan =
+        scaledGridWidth > availableWidth || scaledGridHeight > availableHeight;
+
+      if (!canPan) {
+        return { x: 0, y: 0 };
+      }
+
+      return nextOffset;
+    },
+    [scaledGridHeight, scaledGridWidth],
+  );
+
+  useEffect(() => {
+    setPanOffset((current) => clampPanOffset(current));
+  }, [clampPanOffset]);
 
   return (
-    <section className="pixel-grid-card" aria-label="像素输出面板">
+    <section
+      ref={viewportRef}
+      className={`pixel-grid-viewport${tool === 'move' ? ' is-move-mode' : ''}`}
+      aria-label="像素输出面板"
+      data-active-tool={tool}
+      style={{ cursor: toolCursor }}
+      onPointerDown={(event) => {
+        if (tool !== 'move' || !viewportRef.current) {
+          return;
+        }
+
+        dragStateRef.current = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          offsetX: panOffset.x,
+          offsetY: panOffset.y,
+        };
+        viewportRef.current.setPointerCapture?.(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (
+          tool !== 'move' ||
+          !viewportRef.current ||
+          !dragStateRef.current ||
+          dragStateRef.current.pointerId !== event.pointerId
+        ) {
+          return;
+        }
+
+        const deltaX = event.clientX - dragStateRef.current.startX;
+        const deltaY = event.clientY - dragStateRef.current.startY;
+        setPanOffset(
+          clampPanOffset({
+            x: dragStateRef.current.offsetX + deltaX,
+            y: dragStateRef.current.offsetY + deltaY,
+          }),
+        );
+      }}
+      onPointerUp={(event) => {
+        if (
+          tool === 'move' &&
+          viewportRef.current &&
+          dragStateRef.current &&
+          dragStateRef.current.pointerId === event.pointerId
+        ) {
+          viewportRef.current.releasePointerCapture?.(event.pointerId);
+          dragStateRef.current = null;
+        }
+
+        if (
+          paintStateRef.current &&
+          paintStateRef.current.pointerId === event.pointerId
+        ) {
+          paintStateRef.current = null;
+        }
+
+        if (
+          shapeStateRef.current &&
+          shapeStateRef.current.pointerId === event.pointerId
+        ) {
+          finalizeShape();
+          shapeStateRef.current = null;
+        }
+      }}
+      onPointerLeave={() => {
+        if (tool === 'move') {
+          return;
+        }
+
+        setHoverCell(null);
+
+        if (!shapeStateRef.current) {
+          setInteractionPreview(null);
+        }
+      }}
+      onWheel={(event) => {
+        if (Math.abs(event.deltaX) < 0.01 && Math.abs(event.deltaY) < 0.01) {
+          return;
+        }
+
+        event.preventDefault();
+        setPanOffset((current) =>
+          clampPanOffset({
+            x: current.x - event.deltaX,
+            y: current.y - event.deltaY,
+          }),
+        );
+      }}
+    >
+      {interactionPreview ? (
+        <div className="pixel-grid-preview" aria-label={interactionPreview.label}>
+          {interactionPreview.label}
+        </div>
+      ) : null}
       <div
-        ref={viewportRef}
-        className={`pixel-grid-viewport${tool === 'move' ? ' is-move-mode' : ''}`}
-        data-active-tool={tool}
-        style={{ cursor: toolCursor }}
-        onPointerDown={(event) => {
-          if (tool !== 'move' || !viewportRef.current) {
-            return;
-          }
-
-          dragStateRef.current = {
-            pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            scrollLeft: viewportRef.current.scrollLeft,
-            scrollTop: viewportRef.current.scrollTop,
-          };
-          viewportRef.current.setPointerCapture?.(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          if (
-            tool !== 'move' ||
-            !viewportRef.current ||
-            !dragStateRef.current ||
-            dragStateRef.current.pointerId !== event.pointerId
-          ) {
-            return;
-          }
-
-          const deltaX = event.clientX - dragStateRef.current.startX;
-          const deltaY = event.clientY - dragStateRef.current.startY;
-          viewportRef.current.scrollLeft = dragStateRef.current.scrollLeft - deltaX;
-          viewportRef.current.scrollTop = dragStateRef.current.scrollTop - deltaY;
-        }}
-        onPointerUp={(event) => {
-          if (
-            tool === 'move' &&
-            viewportRef.current &&
-            dragStateRef.current &&
-            dragStateRef.current.pointerId === event.pointerId
-          ) {
-            viewportRef.current.releasePointerCapture?.(event.pointerId);
-            dragStateRef.current = null;
-          }
-
-          if (
-            paintStateRef.current &&
-            paintStateRef.current.pointerId === event.pointerId
-          ) {
-            paintStateRef.current = null;
-          }
-
-          if (
-            shapeStateRef.current &&
-            shapeStateRef.current.pointerId === event.pointerId
-          ) {
-            finalizeShape();
-            shapeStateRef.current = null;
-          }
-        }}
-        onPointerLeave={() => {
-          if (tool === 'move') {
-            return;
-          }
-
-          setHoverCell(null);
-
-          if (!shapeStateRef.current) {
-            setInteractionPreview(null);
-          }
+        role="grid"
+        aria-label="像素输出网格"
+        className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}${
+          hideTransparencyTexture ? ' pixel-grid--hide-transparency-texture' : ''
+        }`}
+        style={{
+          gridTemplateColumns: `repeat(${grid.width}, ${scaledCellSize}px)`,
+          gridTemplateRows: `repeat(${grid.height}, ${scaledCellSize}px)`,
+          top: '50%',
+          left: '50%',
+          transform: `translate(calc(-50% + ${panOffset.x}px), calc(-50% + ${panOffset.y}px))`,
+          width: `${scaledGridWidth}px`,
+          minWidth: `${scaledGridWidth}px`,
+          height: `${scaledGridHeight}px`,
         }}
       >
-        {interactionPreview ? (
-          <div className="pixel-grid-preview" aria-label={interactionPreview.label}>
-            {interactionPreview.label}
-          </div>
-        ) : null}
-        <div
-          role="grid"
-          aria-label="像素输出网格"
-          className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}`}
-          style={{
-            gridTemplateColumns: `repeat(${grid.width}, minmax(0, 1fr))`,
-            transform: `scale(${zoom})`,
-            width: `${baseGridSize}px`,
-            minWidth: `${baseGridSize}px`,
-          }}
-        >
-          {grid.cells.map((cell) => (
+        {grid.cells.map((cell) => (
             <button
               key={`${cell.x}-${cell.y}`}
               type="button"
@@ -256,6 +322,8 @@ export default function PixelGrid({
                 ...(presentation === 'color' && cell.color
                   ? { backgroundColor: cell.color }
                   : undefined),
+                width: `${scaledCellSize}px`,
+                height: `${scaledCellSize}px`,
                 cursor: toolCursor,
               }}
               onPointerDown={(event) => {
@@ -387,8 +455,7 @@ export default function PixelGrid({
                 <span className="pixel-cell__preview" aria-hidden="true" />
               ) : null}
             </button>
-          ))}
-        </div>
+        ))}
       </div>
     </section>
   );

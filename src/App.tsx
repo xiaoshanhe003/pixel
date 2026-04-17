@@ -29,15 +29,8 @@ export default function App() {
 
         <section className="studio-layout">
           <StudioLeftDock
-            activeColor={editor.activeColor}
-            activeTool={editor.activeTool}
-            toolSettings={editor.toolSettings}
-            activePalette={activePalette}
             conversionOptions={controls.conversionOptions}
             previewUrl={source.previewUrl}
-            onActiveColorChange={actions.setActiveColor}
-            onActiveToolChange={actions.setActiveTool}
-            onToolSettingsChange={actions.setToolSettings}
             onConversionOptionsChange={actions.setConversionOptions}
             onFileSelected={actions.setSelectedFile}
           />
@@ -107,6 +100,7 @@ export default function App() {
               activeColor={editor.activeColor}
               activeTool={editor.activeTool}
               toolSettings={editor.toolSettings}
+              activePalette={activePalette}
               canvasZoom={editor.canvasZoom}
               showGridLines={editor.showGridLines}
               crochetViewMode={output.crochetViewMode}
@@ -115,6 +109,9 @@ export default function App() {
               activeFrameId={studio.document.activeFrameId}
               previewIsPlaying={studio.previewIsPlaying}
               previewFps={studio.previewFps}
+              onActiveColorChange={actions.setActiveColor}
+              onActiveToolChange={actions.setActiveTool}
+              onToolSettingsChange={actions.setToolSettings}
               onCrochetViewModeChange={actions.setCrochetViewMode}
               onCanvasZoomChange={actions.setCanvasZoom}
               onToggleGridLines={actions.toggleGridLines}

@@ -6,10 +6,14 @@ import type {
   ScenarioId,
 } from '../types/studio';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
+import { FIT_WINDOW_ZOOM } from '../constants/studio';
 import CrochetChart from './CrochetChart';
-import FrameStrip from './FrameStrip';
-import PixelGrid from './PixelGrid';
+import EditingToolbar from './EditingToolbar';
+import PixelGrid, { getBaseCellSize } from './PixelGrid';
+import { DropdownField } from './ui/dropdown';
 import type { StudioFramePreview } from '../hooks/useStudioApp';
+
+const ZOOM_OPTIONS = [25, 50, 75, 100, 200] as const;
 
 type StudioCanvasStageProps = {
   activeScenario: ScenarioId;
@@ -18,6 +22,7 @@ type StudioCanvasStageProps = {
   activeColor: string;
   activeTool: EditorTool;
   toolSettings: EditorToolSettings;
+  activePalette: readonly string[];
   canvasZoom: number;
   showGridLines: boolean;
   crochetViewMode: 'color' | 'symbol';
@@ -26,6 +31,11 @@ type StudioCanvasStageProps = {
   activeFrameId: string;
   previewIsPlaying: boolean;
   previewFps: number;
+  onActiveColorChange: (color: string) => void;
+  onActiveToolChange: (tool: EditorTool) => void;
+  onToolSettingsChange: (
+    updater: (current: EditorToolSettings) => EditorToolSettings,
+  ) => void;
   onCrochetViewModeChange: (mode: 'color' | 'symbol') => void;
   onCanvasZoomChange: (updater: (current: number) => number) => void;
   onToggleGridLines: () => void;
@@ -61,14 +71,18 @@ export default function StudioCanvasStage({
   activeColor,
   activeTool,
   toolSettings,
+  activePalette,
   canvasZoom,
   showGridLines,
   crochetViewMode,
   crochetAnalysis,
-  framePreviews,
-  activeFrameId,
-  previewIsPlaying,
-  previewFps,
+  framePreviews: _framePreviews,
+  activeFrameId: _activeFrameId,
+  previewIsPlaying: _previewIsPlaying,
+  previewFps: _previewFps,
+  onActiveColorChange,
+  onActiveToolChange,
+  onToolSettingsChange,
   onCrochetViewModeChange,
   onCanvasZoomChange,
   onToggleGridLines,
@@ -77,15 +91,69 @@ export default function StudioCanvasStage({
   onDrawLine,
   onDrawRectangle,
   onSampleCell,
-  onSelectFrame,
-  onAddFrame,
-  onDuplicateFrame,
-  onDeleteFrame,
-  onTogglePlayback,
-  onPreviewFpsChange,
+  onSelectFrame: _onSelectFrame,
+  onAddFrame: _onAddFrame,
+  onDuplicateFrame: _onDuplicateFrame,
+  onDeleteFrame: _onDeleteFrame,
+  onTogglePlayback: _onTogglePlayback,
+  onPreviewFpsChange: _onPreviewFpsChange,
 }: StudioCanvasStageProps) {
+  const actualSizeZoom = activeGrid ? 1 / getBaseCellSize(activeGrid.width) : 1;
+  const isFitWindowZoom = Math.abs(canvasZoom - FIT_WINDOW_ZOOM) < 0.001;
+  const actualSizePercent = Math.round(actualSizeZoom * 100);
+  const currentZoomPercent = isFitWindowZoom ? 100 : Math.round(canvasZoom * 100);
+  const zoomDropdownValue =
+    Math.abs(canvasZoom - actualSizeZoom) < 0.001
+      ? 'actual'
+      : isFitWindowZoom
+        ? '100'
+        : String(currentZoomPercent);
+  const zoomOptions = [
+    ...ZOOM_OPTIONS.map((value) => ({
+      label: `${value}%`,
+      value: String(value),
+    })),
+  ];
+
+  if (
+    zoomDropdownValue !== 'actual' &&
+    !zoomOptions.some((option) => option.value === zoomDropdownValue)
+  ) {
+    const insertIndex = zoomOptions.findIndex(
+      (option) => Number(option.value) > currentZoomPercent,
+    );
+    const currentOption = {
+      label: `${currentZoomPercent}%`,
+      value: zoomDropdownValue,
+    };
+
+    if (insertIndex === -1) {
+      zoomOptions.push(currentOption);
+    } else {
+      zoomOptions.splice(insertIndex, 0, currentOption);
+    }
+  }
+
+  const zoomDropdownOptions = zoomOptions.map((option) =>
+    option.value === '100'
+      ? { label: '100%（适配窗口）', value: option.value }
+      : option,
+  );
+  const stepDownZoom = isFitWindowZoom ? 0.75 : Math.max(0.5, canvasZoom - 0.25);
+  const stepUpZoom = isFitWindowZoom ? 1.25 : Math.min(4, canvasZoom + 0.25);
+
   return (
     <section className="canvas-stage" aria-label="主画布工作区">
+      <EditingToolbar
+        activeColor={activeColor}
+        palette={activePalette}
+        onColorChange={onActiveColorChange}
+        tool={activeTool}
+        toolSettings={toolSettings}
+        onToolChange={onActiveToolChange}
+        onToolSettingsChange={onToolSettingsChange}
+      />
+
       <section className="panel stage-canvas-panel">
         <div className="panel__header">
           <div className="canvas-toolbar">
@@ -111,20 +179,37 @@ export default function StudioCanvasStage({
             <button
               type="button"
               className="chip-button"
-              onClick={() => onCanvasZoomChange((current) => Math.max(0.5, current - 0.25))}
+              onClick={() => onCanvasZoomChange(() => stepDownZoom)}
             >
               缩小
             </button>
-            <span
-              className="canvas-toolbar__value"
-              aria-label={`当前缩放 ${Math.round(canvasZoom * 100)}%`}
-            >
-              {Math.round(canvasZoom * 100)}%
-            </span>
+            <DropdownField
+              className="canvas-zoom-dropdown"
+              selectClassName="canvas-zoom-dropdown__select"
+              label="缩放比例"
+              ariaLabel={`当前缩放 ${currentZoomPercent}%`}
+              value={zoomDropdownValue}
+              options={[
+                ...zoomDropdownOptions,
+                {
+                  label: `${actualSizePercent}%（实际尺寸）`,
+                  value: 'actual',
+                },
+              ]}
+              onChange={(value) =>
+                onCanvasZoomChange(() =>
+                  value === 'actual'
+                    ? actualSizeZoom
+                    : value === '100'
+                      ? FIT_WINDOW_ZOOM
+                      : Number(value) / 100,
+                )
+              }
+            />
             <button
               type="button"
               className="chip-button"
-              onClick={() => onCanvasZoomChange((current) => Math.min(4, current + 0.25))}
+              onClick={() => onCanvasZoomChange(() => stepUpZoom)}
             >
               放大
             </button>
@@ -177,21 +262,6 @@ export default function StudioCanvasStage({
           )}
         </div>
       </section>
-
-      {activeScenario === 'pixel' ? (
-        <FrameStrip
-          frames={framePreviews}
-          activeFrameId={activeFrameId}
-          isPlaying={previewIsPlaying}
-          fps={previewFps}
-          onSelectFrame={onSelectFrame}
-          onAddFrame={onAddFrame}
-          onDuplicateFrame={onDuplicateFrame}
-          onDeleteFrame={onDeleteFrame}
-          onTogglePlayback={onTogglePlayback}
-          onFpsChange={onPreviewFpsChange}
-        />
-      ) : null}
     </section>
   );
 }

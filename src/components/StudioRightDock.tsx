@@ -10,8 +10,6 @@ import type { countBeadUsage } from '../utils/beads';
 import type { countPaletteUsage } from '../utils/studio';
 import BeadPalettePanel from './BeadPalettePanel';
 import CrochetPatternPanel from './CrochetPatternPanel';
-import InspectorPanel from './InspectorPanel';
-import LayersPanel from './LayersPanel';
 import PalettePanel from './PalettePanel';
 import ScenarioExportPanel from './ScenarioExportPanel';
 
@@ -120,28 +118,6 @@ export default function StudioRightDock({
 
   return (
     <aside className="right-dock" aria-label="右侧属性栏">
-      {activeScenario === 'pixel' && activeFrame ? (
-        <LayersPanel
-          layers={activeFrame.layers}
-          width={documentWidth}
-          height={documentHeight}
-          activeLayerId={activeFrame.activeLayerId}
-          onUploadImage={onFileSelected}
-          onSelectLayer={onLayerSelect}
-          onAddLayer={onLayerAdd}
-          onDuplicateLayer={onLayerDuplicate}
-          onDeleteLayer={onLayerDelete}
-          onMergeLayerDown={onLayerMergeDown}
-          onRenameLayer={onLayerRename}
-          onToggleVisibility={onLayerToggleVisibility}
-          onToggleLock={onLayerToggleLock}
-          onClearLayer={onLayerClear}
-          onMoveLayer={onLayerMove}
-          onReorderLayer={onLayerReorder}
-          onOpacityChange={onLayerOpacityChange}
-        />
-      ) : null}
-
       {activeScenario !== 'pixel' && activeGrid ? (
         <ScenarioExportPanel
           scenario={activeScenario}
@@ -185,22 +161,14 @@ export default function StudioRightDock({
               transparentCount={activeScenario === 'pixel' ? 0 : transparentCount}
             />
           )}
-          <InspectorPanel
-            grid={activeGrid}
-            options={conversionOptions}
-            transparentCount={transparentCount}
-            scenarioLabel={scenario.label}
-            frameCount={frameCount}
-            materialCountLabel={materialCountLabel}
-          />
         </>
       ) : (
         <section className="panel panel--sidebar">
           <div className="panel__header">
-            <h2>检查器</h2>
+            <h2>调色板</h2>
           </div>
           <p className="panel__body panel__body--compact">
-            生成草稿后，这里会显示调色板、参数和图纸建议。
+            生成草稿后，这里会显示调色板和导出建议。
           </p>
         </section>
       )}

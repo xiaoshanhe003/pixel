@@ -36,15 +36,10 @@ describe('App history', () => {
     expect(screen.getByLabelText(/像素 1,1 #d65a31/i)).toBeInTheDocument();
   });
 
-  it('does not record frame selection changes in history', async () => {
+  it('keeps frame controls hidden from the current workspace', async () => {
     renderApp();
-    await userEvent.click(screen.getByRole('button', { name: /复制当前帧/i }));
 
-    await userEvent.click(screen.getByRole('button', { name: /第 1 帧/i }));
-    expect(screen.getByRole('button', { name: /第 1 帧/i }).className).toContain('is-active');
-
-    await userEvent.click(screen.getByRole('button', { name: /^撤销$/i }));
-
-    expect(screen.getAllByRole('button', { name: /第 .* 帧/i })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /复制当前帧/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /第 1 帧/i })).not.toBeInTheDocument();
   });
 });

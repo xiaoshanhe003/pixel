@@ -14,7 +14,6 @@ describe('App output modes', () => {
     expect(screen.getByRole('heading', { name: /拼豆色板/i })).toBeInTheDocument();
     expect(screen.getByText(/Perler 映射/i)).toBeInTheDocument();
     expect(screen.getAllByText(/255 颗/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/材料总数：255 颗/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /打印导出/i })).toBeInTheDocument();
     expect(screen.getByText(/拼豆打印图纸/i)).toBeInTheDocument();
 

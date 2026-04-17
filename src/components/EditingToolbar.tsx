@@ -1,4 +1,5 @@
 import type { EditorTool, EditorToolSettings } from '../types/studio';
+import { DropdownField } from './ui/dropdown';
 import { TOOL_ICON_SVGS } from '../utils/toolIcons';
 
 type EditingToolbarProps = {
@@ -25,7 +26,7 @@ const TOOL_OPTIONS: Array<{
   { id: 'line', label: '线条' },
   { id: 'rectangle', label: '矩形' },
   { id: 'sample', label: '取色' },
-  { id: 'move', label: '移动' },
+  { id: 'move', label: '抓手' },
 ];
 
 function renderSizeControls(params: {
@@ -36,22 +37,16 @@ function renderSizeControls(params: {
   const { label, size, onChange } = params;
 
   return (
-    <fieldset className="tool-setting-group">
-      <legend>{label}</legend>
-      <div className="tool-setting-group__options" role="list" aria-label={label}>
-        {TOOL_SIZE_OPTIONS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`chip-button tool-size-chip${size === option ? ' is-active' : ''}`}
-            onClick={() => onChange(option)}
-            aria-pressed={size === option}
-          >
-            {option} px
-          </button>
-        ))}
-      </div>
-    </fieldset>
+    <DropdownField
+      className="toolbar-select"
+      label={label}
+      value={size}
+      options={TOOL_SIZE_OPTIONS.map((option) => ({
+        label: `${option} px`,
+        value: option,
+      }))}
+      onChange={onChange}
+    />
   );
 }
 
@@ -78,50 +73,38 @@ export default function EditingToolbar({
             size: toolSettings.eraseSize,
             onChange: (size) =>
               onToolSettingsChange((current) => ({ ...current, eraseSize: size })),
-          })
-        : null;
+        })
+      : null;
 
   return (
-    <section className="panel tool-panel" aria-label="编辑工具">
-      <div className="panel__header">
-        <div className="panel-title-block">
-          <h2>工具</h2>
-        </div>
-      </div>
-
-      <div className="tool-panel__body">
-        <div className="tool-section">
-          <span className="tool-section__label">当前工具</span>
-          <div className="tool-row">
-            {TOOL_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`chip-button tool-button${tool === option.id ? ' is-active' : ''}`}
-                onClick={() => onToolChange(option.id)}
-              >
-                <span
-                  className="tool-button__icon"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: TOOL_ICON_SVGS[option.id] }}
-                />
+    <section className="panel tool-panel tool-panel--inline" aria-label="编辑工具">
+      <div className="tool-panel__inline-row">
+        <div className="tool-row tool-row--inline">
+          {TOOL_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`chip-button tool-button${tool === option.id ? ' is-active' : ''}`}
+              onClick={() => onToolChange(option.id)}
+              aria-pressed={tool === option.id}
+              aria-label={option.label}
+            >
+              <span
+                className="tool-button__icon"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: TOOL_ICON_SVGS[option.id] }}
+              />
+              <span className="tool-button__tooltip" aria-hidden="true">
                 {option.label}
-              </button>
-            ))}
-          </div>
+              </span>
+            </button>
+          ))}
         </div>
 
-        {toolSettingsContent ? (
-          <div className="tool-setting-card" aria-live="polite">
-            <div className="tool-setting-card__header">
-              <span className="tool-section__label">当前设置</span>
-            </div>
-            {toolSettingsContent}
-          </div>
-        ) : null}
+        {toolSettingsContent}
 
-        <label className="color-picker" htmlFor="active-color">
-          <span className="tool-section__label">当前颜色</span>
+        <label className="color-picker color-picker--inline" htmlFor="active-color">
+          <span>颜色</span>
           <div className="color-picker__row">
             <input
               id="active-color"
@@ -131,27 +114,28 @@ export default function EditingToolbar({
             />
             <code>{activeColor}</code>
           </div>
-          {palette.length > 0 ? (
-            <div className="color-palette" role="list" aria-label="当前色板">
-              {palette.map((color) => {
-                const isActive = activeColor.toLowerCase() === color.toLowerCase();
-
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`color-palette__swatch${isActive ? ' is-active' : ''}`}
-                    onClick={() => onColorChange(color)}
-                    aria-label={`选择颜色 ${color}`}
-                    aria-pressed={isActive}
-                    title={color}
-                    style={{ backgroundColor: color }}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
         </label>
+
+        {palette.length > 0 ? (
+          <div className="color-palette color-palette--inline" role="list" aria-label="当前色板">
+            {palette.map((color) => {
+              const isActive = activeColor.toLowerCase() === color.toLowerCase();
+
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  className={`color-palette__swatch${isActive ? ' is-active' : ''}`}
+                  onClick={() => onColorChange(color)}
+                  aria-label={`选择颜色 ${color}`}
+                  aria-pressed={isActive}
+                  title={color}
+                  style={{ backgroundColor: color }}
+                />
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </section>
   );

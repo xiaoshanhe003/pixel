@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BeadBrand } from '../data/beadPalettes';
-import { DEFAULT_OPTIONS, SCENARIOS } from '../constants/studio';
+import { DEFAULT_OPTIONS, FIT_WINDOW_ZOOM, SCENARIOS } from '../constants/studio';
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
 import type {
   EditorTool,
@@ -371,7 +371,7 @@ export function useStudioApp(): UseStudioAppResult {
     eraseSize: 1,
     shapePreviewMode: 'outline',
   });
-  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [canvasZoom, setCanvasZoom] = useState(FIT_WINDOW_ZOOM);
   const [showGridLines, setShowGridLines] = useState(true);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewFps, setPreviewFps] = useState(6);
@@ -507,7 +507,7 @@ export function useStudioApp(): UseStudioAppResult {
         setSelectedFile(null);
         setPreviewUrl(undefined);
         resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
-        setCanvasZoom(1);
+        setCanvasZoom(FIT_WINDOW_ZOOM);
       },
       undo: () => setHistory((current) => undoStudioHistory(current)),
       redo: () => setHistory((current) => redoStudioHistory(current)),

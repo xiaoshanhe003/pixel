@@ -26,9 +26,13 @@
   --gradient-canvas-pink: rgba(255, 0, 153, 0.16);
   --checker-dark: rgba(0, 0, 0, 0.08);
   --checker-dark-soft: rgba(0, 0, 0, 0.05);
+  --checker-size-stage: 24px;
+  --checker-size-cell: 12px;
+  --checker-offset-stage: 12px;
+  --checker-offset-cell: 6px;
   --cell-border: rgba(0, 0, 0, 0.08);
   --border-default: 1px solid var(--line);
-  --focus: 2px dashed #000000;
+  --focus: 2px solid rgba(0, 0, 0, 0.24);
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
   --radius-panel: 8px;
   --radius-control: 12px;
