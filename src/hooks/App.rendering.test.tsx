@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createBlankCanvas, renderApp, uploadMockImage } from '../test/appTestUtils';
+import { cropImageFile } from '../utils/image';
 
 describe('App rendering', () => {
   it('renders the studio heading, scenario tabs, and project settings', () => {
@@ -14,13 +15,10 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /拼豆图纸/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /钩织图纸/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /网格尺寸/i })).toHaveValue('16');
-    expect(screen.getByRole('combobox', { name: /调色板数量/i })).toHaveValue('16');
-    expect(screen.getByLabelText(/启用抖动/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/清理杂点/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/保留轮廓/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/简化形状/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/线稿角色模式/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/主体铺满画幅/i)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
+    expect(screen.getByRole('combobox', { name: /细节等级/i })).toHaveValue('clean');
+    expect(screen.getByRole('combobox', { name: /图像类型/i })).toHaveValue('line-art-character');
+    expect(screen.getByRole('combobox', { name: /画面构图/i })).toHaveValue('full-composition');
     expect(screen.getByRole('button', { name: /填充桶/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /线条/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /矩形/i })).toBeInTheDocument();
@@ -36,6 +34,22 @@ describe('App rendering', () => {
     expect(screen.getByAltText(/已上传原图预览/i)).toBeInTheDocument();
     expect(screen.getByRole('grid', { name: /像素输出网格/i })).toBeInTheDocument();
     expect(screen.getByText(/当前调色板/i)).toBeInTheDocument();
+  });
+
+  it('keeps pre-processing behind a single confirm action before upload', async () => {
+    renderApp();
+
+    const input = screen.getByLabelText(/上传图片/i) as HTMLInputElement;
+    const file = new File(['fake'], 'sprite.png', { type: 'image/png' });
+
+    await userEvent.upload(input, file);
+
+    expect(screen.getByRole('button', { name: /^确认$/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /^确认$/i }));
+
+    expect(cropImageFile).not.toHaveBeenCalled();
+    await screen.findByRole('grid', { name: /像素输出网格/i });
   });
 
   it('updates canvas zoom and grid visibility controls', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BeadBrand } from '../data/beadPalettes';
 import { DEFAULT_OPTIONS, FIT_WINDOW_ZOOM, SCENARIOS } from '../constants/studio';
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
@@ -44,6 +44,7 @@ export type StudioFramePreview = {
 type StudioSourceState = {
   selectedFile: File | null;
   previewUrl?: string;
+  isProcessingUpload: boolean;
 };
 
 type StudioOutputState = {
@@ -167,9 +168,11 @@ function useStudioDocumentSync(params: {
   const { document, activeScenario, conversionOptions, selectedFile, resetDocument, setDocument } =
     params;
   const [previewUrl, setPreviewUrl] = useState<string>();
+  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
 
   useEffect(() => {
     if (!selectedFile) {
+      setIsProcessingUpload(false);
       setPreviewUrl(undefined);
       return;
     }
@@ -177,6 +180,7 @@ function useStudioDocumentSync(params: {
     const nextPreviewUrl = URL.createObjectURL(selectedFile);
     let cancelled = false;
 
+    setIsProcessingUpload(true);
     setPreviewUrl(nextPreviewUrl);
 
     void (async () => {
@@ -192,19 +196,22 @@ function useStudioDocumentSync(params: {
 
         if (!cancelled) {
           resetDocument(createDocumentFromGrid(activeScenario, nextGrid));
+          setIsProcessingUpload(false);
         }
       } catch {
         if (!cancelled) {
           resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+          setIsProcessingUpload(false);
         }
       }
     })();
 
     return () => {
       cancelled = true;
+      setIsProcessingUpload(false);
       URL.revokeObjectURL(nextPreviewUrl);
     };
-  }, [activeScenario, conversionOptions, selectedFile, setDocument]);
+  }, [activeScenario, conversionOptions, resetDocument, selectedFile]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -236,7 +243,7 @@ function useStudioDocumentSync(params: {
     );
   }, [activeScenario, setDocument]);
 
-  return { previewUrl, setPreviewUrl };
+  return { previewUrl, setPreviewUrl, isProcessingUpload };
 }
 
 function useStudioPlayback(params: {
@@ -386,15 +393,18 @@ export function useStudioApp(): UseStudioAppResult {
 
   const document = history.present;
 
-  const setDocument = (updater: (current: StudioDocument) => StudioDocument) => {
-    setHistory((current) => applyStudioTransientUpdate(current, updater));
-  };
+  const setDocument = useCallback(
+    (updater: (current: StudioDocument) => StudioDocument) => {
+      setHistory((current) => applyStudioTransientUpdate(current, updater));
+    },
+    [],
+  );
 
-  const resetDocument = (nextDocument: StudioDocument) => {
+  const resetDocument = useCallback((nextDocument: StudioDocument) => {
     setHistory(resetStudioHistory(nextDocument));
-  };
+  }, []);
 
-  const { previewUrl, setPreviewUrl } = useStudioDocumentSync({
+  const { previewUrl, setPreviewUrl, isProcessingUpload } = useStudioDocumentSync({
     document,
     activeScenario,
     conversionOptions,
@@ -469,6 +479,7 @@ export function useStudioApp(): UseStudioAppResult {
     source: {
       selectedFile,
       previewUrl,
+      isProcessingUpload,
     },
     editor: {
       activeColor,

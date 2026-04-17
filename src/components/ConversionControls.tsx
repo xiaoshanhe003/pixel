@@ -1,6 +1,16 @@
 import type { ConversionOptions, GridSize, PaletteSize } from '../types/pixel';
-import { CheckboxField } from './ui/checkbox';
 import { DropdownField } from './ui/dropdown';
+import {
+  applyDetailPreset,
+  applyFramingPreset,
+  applyImageKindPreset,
+  inferDetailPreset,
+  inferFramingPreset,
+  inferImageKindPreset,
+  type DetailPreset,
+  type FramingPreset,
+  type ImageKindPreset,
+} from '../utils/conversionPresets';
 
 type ConversionControlsProps = {
   value: ConversionOptions;
@@ -20,6 +30,9 @@ export default function ConversionControls({
 
   const sizeOptions: GridSize[] = [16, 32, 64];
   const paletteOptions: PaletteSize[] = [16, 32];
+  const detailPreset = inferDetailPreset(value);
+  const imageKindPreset = inferImageKindPreset(value);
+  const framingPreset = inferFramingPreset(value);
 
   return (
     <section className="controls-card" aria-label="项目设置">
@@ -43,9 +56,9 @@ export default function ConversionControls({
         </fieldset>
 
         <fieldset className="size-control">
-          <legend>调色板数量</legend>
+          <legend>颜色数量</legend>
           <DropdownField
-            label="调色板数量"
+            label="颜色数量"
             hideLabel
             value={value.paletteSize}
             options={paletteOptions.map((size) => ({
@@ -57,42 +70,47 @@ export default function ConversionControls({
         </fieldset>
 
         <fieldset className="toggle-grid">
-          <legend>处理选项</legend>
-          <CheckboxField
-            label="启用抖动"
-            checked={value.dithering}
-            onCheckedChange={(checked) => updateValue('dithering', checked === true)}
+          <legend>转绘偏好</legend>
+          <DropdownField
+            label="细节等级"
+            value={detailPreset}
+            options={[
+              { label: '简洁', value: 'clean' satisfies DetailPreset },
+              { label: '平衡', value: 'balanced' satisfies DetailPreset },
+              { label: '细节', value: 'detailed' satisfies DetailPreset },
+            ]}
+            onChange={(preset) => onChange(applyDetailPreset(value, preset as DetailPreset))}
           />
-          <CheckboxField
-            label="清理杂点"
-            checked={value.cleanupNoise}
-            onCheckedChange={(checked) =>
-              updateValue('cleanupNoise', checked === true)
+          <DropdownField
+            label="图像类型"
+            value={imageKindPreset}
+            options={[
+              { label: '通用图像', value: 'general' satisfies ImageKindPreset },
+              {
+                label: '角色线稿',
+                value: 'line-art-character' satisfies ImageKindPreset,
+              },
+            ]}
+            onChange={(preset) =>
+              onChange(applyImageKindPreset(value, preset as ImageKindPreset))
             }
           />
-          <CheckboxField
-            label="保留轮廓"
-            checked={value.preserveSilhouette}
-            onCheckedChange={(checked) =>
-              updateValue('preserveSilhouette', checked === true)
+          <DropdownField
+            label="画面构图"
+            value={framingPreset}
+            options={[
+              {
+                label: '完整构图',
+                value: 'full-composition' satisfies FramingPreset,
+              },
+              {
+                label: '主体突出',
+                value: 'subject-focus' satisfies FramingPreset,
+              },
+            ]}
+            onChange={(preset) =>
+              onChange(applyFramingPreset(value, preset as FramingPreset))
             }
-          />
-          <CheckboxField
-            label="简化形状"
-            checked={value.simplifyShapes}
-            onCheckedChange={(checked) =>
-              updateValue('simplifyShapes', checked === true)
-            }
-          />
-          <CheckboxField
-            label="线稿角色模式"
-            checked={value.animeMode}
-            onCheckedChange={(checked) => updateValue('animeMode', checked === true)}
-          />
-          <CheckboxField
-            label="主体铺满画幅"
-            checked={value.fillFrame}
-            onCheckedChange={(checked) => updateValue('fillFrame', checked === true)}
           />
         </fieldset>
       </div>

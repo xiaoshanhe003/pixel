@@ -19,6 +19,7 @@ type StudioCanvasStageProps = {
   activeScenario: ScenarioId;
   scenario: ScenarioDefinition;
   activeGrid: PixelGridModel | null;
+  isProcessingUpload: boolean;
   activeColor: string;
   activeTool: EditorTool;
   toolSettings: EditorToolSettings;
@@ -68,6 +69,7 @@ export default function StudioCanvasStage({
   activeScenario,
   scenario,
   activeGrid,
+  isProcessingUpload,
   activeColor,
   activeTool,
   toolSettings,
@@ -223,7 +225,9 @@ export default function StudioCanvasStage({
           </div>
         </div>
         <div className="panel__body stage-canvas-body">
-          {activeGrid ? (
+          {isProcessingUpload ? (
+            <div aria-busy="true" />
+          ) : activeGrid ? (
             activeScenario === 'crochet' && crochetAnalysis ? (
               <CrochetChart
                 grid={activeGrid}

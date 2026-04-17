@@ -1,4 +1,9 @@
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
+import {
+  inferDetailPreset,
+  inferFramingPreset,
+  inferImageKindPreset,
+} from '../utils/conversionPresets';
 
 type InspectorPanelProps = {
   grid: PixelGrid;
@@ -17,6 +22,18 @@ export default function InspectorPanel({
   frameCount,
   materialCountLabel,
 }: InspectorPanelProps) {
+  const detailPreset = inferDetailPreset(options);
+  const imageKindPreset = inferImageKindPreset(options);
+  const framingPreset = inferFramingPreset(options);
+  const detailPresetLabel =
+    detailPreset === 'clean'
+      ? '简洁'
+      : detailPreset === 'detailed'
+        ? '细节'
+        : '平衡';
+  const imageKindLabel = imageKindPreset === 'line-art-character' ? '角色线稿' : '通用图像';
+  const framingLabel = framingPreset === 'subject-focus' ? '主体突出' : '完整构图';
+
   return (
     <section className="panel panel--sidebar">
       <div className="panel__header">
@@ -31,20 +48,10 @@ export default function InspectorPanel({
         <li>当前场景：{scenarioLabel}</li>
         <li>工作帧数：{frameCount}</li>
         {materialCountLabel ? <li>{materialCountLabel}</li> : null}
-        <li>调色板上限：{options.paletteSize} 色</li>
-        <li>
-          抖动：{options.dithering ? '开启' : '关闭'} | 清理：
-          {options.cleanupNoise ? '开启' : '关闭'}
-        </li>
-        <li>
-          形状简化：{options.simplifyShapes ? '开启' : '关闭'}
-        </li>
-        <li>
-          线稿角色模式：{options.animeMode ? '开启' : '关闭'}
-        </li>
-        <li>
-          主体铺满：{options.fillFrame ? '开启' : '关闭'}
-        </li>
+        <li>颜色上限：{options.paletteSize} 色</li>
+        <li>细节等级：{detailPresetLabel}</li>
+        <li>图像类型：{imageKindLabel}</li>
+        <li>画面构图：{framingLabel}</li>
       </ul>
     </section>
   );

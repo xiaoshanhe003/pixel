@@ -4,6 +4,7 @@ import ImageUploader from './ImageUploader';
 
 type StudioLeftDockProps = {
   conversionOptions: ConversionOptions;
+  selectedFile: File | null;
   previewUrl?: string;
   onConversionOptionsChange: (options: ConversionOptions) => void;
   onFileSelected: (file: File | null) => void;
@@ -11,6 +12,7 @@ type StudioLeftDockProps = {
 
 export default function StudioLeftDock({
   conversionOptions,
+  selectedFile,
   previewUrl,
   onConversionOptionsChange,
   onFileSelected,
@@ -22,7 +24,11 @@ export default function StudioLeftDock({
           <h2>素材</h2>
         </div>
         <div className="panel__body panel__body--compact">
-          <ImageUploader onFileSelected={onFileSelected} previewUrl={previewUrl} />
+          <ImageUploader
+            selectedFile={selectedFile}
+            onFileSelected={onFileSelected}
+            previewUrl={previewUrl}
+          />
         </div>
       </section>
 

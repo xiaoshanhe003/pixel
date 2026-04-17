@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { createBlankCanvas, renderApp } from '../test/appTestUtils';
+import { createBlankCanvas, renderApp, uploadMockImage } from '../test/appTestUtils';
 
 describe('App canvas editing', () => {
   it('creates a blank canvas and allows painting on it', async () => {
@@ -76,5 +76,13 @@ describe('App canvas editing', () => {
     expect(screen.getByLabelText(/像素 3,1 #d65a31/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/像素 2,2 透明/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/像素 3,3 #d65a31/i)).toBeInTheDocument();
+  });
+
+  it('allows direct painting after uploading an image from the left dock', async () => {
+    renderApp();
+    await uploadMockImage();
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+
+    expect(screen.getByLabelText(/像素 0,0 #d65a31/i)).toBeInTheDocument();
   });
 });

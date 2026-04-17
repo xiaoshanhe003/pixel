@@ -30,6 +30,7 @@ export default function App() {
         <section className="studio-layout">
           <StudioLeftDock
             conversionOptions={controls.conversionOptions}
+            selectedFile={source.selectedFile}
             previewUrl={source.previewUrl}
             onConversionOptionsChange={actions.setConversionOptions}
             onFileSelected={actions.setSelectedFile}
@@ -97,6 +98,7 @@ export default function App() {
               activeScenario={studio.activeScenario}
               scenario={studio.scenario}
               activeGrid={studio.activeGrid}
+              isProcessingUpload={source.isProcessingUpload}
               activeColor={editor.activeColor}
               activeTool={editor.activeTool}
               toolSettings={editor.toolSettings}

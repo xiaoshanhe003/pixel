@@ -28,6 +28,13 @@
   background: rgba(248, 204, 101, 0.16);
 }
 
+.uploader-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
 .pixel-grid-viewport {
   position: relative;
   display: block;
