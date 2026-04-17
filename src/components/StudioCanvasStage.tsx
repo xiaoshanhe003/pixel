@@ -1,24 +1,60 @@
+import { useMemo, useState } from 'react';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
 import type {
   EditorTool,
   EditorToolSettings,
   ScenarioDefinition,
   ScenarioId,
+  StudioLayer,
 } from '../types/studio';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
-import { FIT_WINDOW_ZOOM } from '../constants/studio';
+import { ACTUAL_SIZE_ZOOM, FIT_WINDOW_ZOOM } from '../constants/studio';
+import { measureLayerContentBounds } from '../utils/studio';
+import { ZOOM_IN_SVG, ZOOM_OUT_SVG } from '../utils/toolIcons';
 import CrochetChart from './CrochetChart';
 import EditingToolbar from './EditingToolbar';
 import PixelGrid, { getBaseCellSize } from './PixelGrid';
+import { CheckboxField } from './ui/checkbox';
 import { DropdownField } from './ui/dropdown';
 import type { StudioFramePreview } from '../hooks/useStudioApp';
 
 const ZOOM_OPTIONS = [25, 50, 75, 100, 200] as const;
+const FIT_WINDOW_SAFE_MARGIN = 24;
+
+function clampZoom(zoom: number) {
+  return Math.max(0.25, Math.min(4, zoom));
+}
+
+function computeFitWindowZoom(
+  grid: PixelGridModel | null,
+  viewportWidth: number,
+  viewportHeight: number,
+) {
+  if (!grid) {
+    return FIT_WINDOW_ZOOM;
+  }
+
+  const baseCellSize = getBaseCellSize(grid.width);
+  const availableWidth = Math.max(0, viewportWidth - FIT_WINDOW_SAFE_MARGIN * 2);
+  const availableHeight = Math.max(0, viewportHeight - FIT_WINDOW_SAFE_MARGIN * 2);
+
+  if (availableWidth === 0 || availableHeight === 0) {
+    return FIT_WINDOW_ZOOM;
+  }
+
+  return clampZoom(
+    Math.min(
+      availableWidth / (grid.width * baseCellSize),
+      availableHeight / (grid.height * baseCellSize),
+    ),
+  );
+}
 
 type StudioCanvasStageProps = {
   activeScenario: ScenarioId;
   scenario: ScenarioDefinition;
   activeGrid: PixelGridModel | null;
+  activeLayer?: StudioLayer;
   isProcessingUpload: boolean;
   activeColor: string;
   activeTool: EditorTool;
@@ -32,15 +68,26 @@ type StudioCanvasStageProps = {
   activeFrameId: string;
   previewIsPlaying: boolean;
   previewFps: number;
+  canUndo: boolean;
+  canRedo: boolean;
   onActiveColorChange: (color: string) => void;
   onActiveToolChange: (tool: EditorTool) => void;
   onToolSettingsChange: (
     updater: (current: EditorToolSettings) => EditorToolSettings,
   ) => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onCrochetViewModeChange: (mode: 'color' | 'symbol') => void;
   onCanvasZoomChange: (updater: (current: number) => number) => void;
   onToggleGridLines: () => void;
-  onPaintCell: (x: number, y: number, color: string | null) => void;
+  onPreviewPaintStroke: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
+  onCommitPaintStroke: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
   onFillArea: (x: number, y: number, color: string | null) => void;
   onDrawLine: (
     startX: number,
@@ -56,6 +103,8 @@ type StudioCanvasStageProps = {
     endY: number,
     color: string | null,
   ) => void;
+  onPreviewScaleSelection: (targetWidth: number, targetHeight: number) => void;
+  onCommitScaleSelection: (targetWidth: number, targetHeight: number) => void;
   onSampleCell: (color: string | null) => void;
   onSelectFrame: (frameId: string) => void;
   onAddFrame: () => void;
@@ -69,6 +118,7 @@ export default function StudioCanvasStage({
   activeScenario,
   scenario,
   activeGrid,
+  activeLayer,
   isProcessingUpload,
   activeColor,
   activeTool,
@@ -82,16 +132,23 @@ export default function StudioCanvasStage({
   activeFrameId: _activeFrameId,
   previewIsPlaying: _previewIsPlaying,
   previewFps: _previewFps,
+  canUndo,
+  canRedo,
   onActiveColorChange,
   onActiveToolChange,
   onToolSettingsChange,
+  onUndo,
+  onRedo,
   onCrochetViewModeChange,
   onCanvasZoomChange,
   onToggleGridLines,
-  onPaintCell,
+  onPreviewPaintStroke,
+  onCommitPaintStroke,
   onFillArea,
   onDrawLine,
   onDrawRectangle,
+  onPreviewScaleSelection,
+  onCommitScaleSelection,
   onSampleCell,
   onSelectFrame: _onSelectFrame,
   onAddFrame: _onAddFrame,
@@ -100,16 +157,31 @@ export default function StudioCanvasStage({
   onTogglePlayback: _onTogglePlayback,
   onPreviewFpsChange: _onPreviewFpsChange,
 }: StudioCanvasStageProps) {
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 640 });
+  const handleViewportSizeChange = useMemo(
+    () => (size: { width: number; height: number }) => {
+      setViewportSize((current) =>
+        current.width === size.width && current.height === size.height
+          ? current
+          : size,
+      );
+    },
+    [],
+  );
+
+  const fitWindowZoom = useMemo(
+    () => computeFitWindowZoom(activeGrid, viewportSize.width, viewportSize.height),
+    [activeGrid, viewportSize.height, viewportSize.width],
+  );
   const actualSizeZoom = activeGrid ? 1 / getBaseCellSize(activeGrid.width) : 1;
-  const isFitWindowZoom = Math.abs(canvasZoom - FIT_WINDOW_ZOOM) < 0.001;
+  const actualZoomFactor = fitWindowZoom > 0 ? actualSizeZoom / fitWindowZoom : 1;
+  const isActualZoom = canvasZoom === ACTUAL_SIZE_ZOOM;
+  const appliedZoom = isActualZoom ? actualSizeZoom : fitWindowZoom * canvasZoom;
+  const zoomFactor = isActualZoom ? actualZoomFactor : canvasZoom;
+  const isFitWindowZoom = Math.abs(zoomFactor - FIT_WINDOW_ZOOM) < 0.001;
   const actualSizePercent = Math.round(actualSizeZoom * 100);
-  const currentZoomPercent = isFitWindowZoom ? 100 : Math.round(canvasZoom * 100);
-  const zoomDropdownValue =
-    Math.abs(canvasZoom - actualSizeZoom) < 0.001
-      ? 'actual'
-      : isFitWindowZoom
-        ? '100'
-        : String(currentZoomPercent);
+  const currentZoomPercent = isActualZoom ? actualSizePercent : Math.round(zoomFactor * 100);
+  const zoomDropdownValue = isActualZoom ? 'actual' : String(currentZoomPercent);
   const zoomOptions = [
     ...ZOOM_OPTIONS.map((value) => ({
       label: `${value}%`,
@@ -141,8 +213,15 @@ export default function StudioCanvasStage({
       ? { label: '100%（适配窗口）', value: option.value }
       : option,
   );
-  const stepDownZoom = isFitWindowZoom ? 0.75 : Math.max(0.5, canvasZoom - 0.25);
-  const stepUpZoom = isFitWindowZoom ? 1.25 : Math.min(4, canvasZoom + 0.25);
+  const stepDownZoom = isFitWindowZoom ? 0.75 : clampZoom(zoomFactor - 0.25);
+  const stepUpZoom = isFitWindowZoom ? 1.25 : clampZoom(zoomFactor + 0.25);
+  const selectionBounds = useMemo(
+    () =>
+      activeLayer
+        ? measureLayerContentBounds(activeLayer.cells, activeGrid?.width ?? 16, activeGrid?.height ?? 16)
+        : null,
+    [activeGrid?.height, activeGrid?.width, activeLayer],
+  );
 
   return (
     <section className="canvas-stage" aria-label="主画布工作区">
@@ -154,12 +233,12 @@ export default function StudioCanvasStage({
         toolSettings={toolSettings}
         onToolChange={onActiveToolChange}
         onToolSettingsChange={onToolSettingsChange}
-      />
-
-      <section className="panel stage-canvas-panel">
-        <div className="panel__header">
-          <div className="canvas-toolbar">
-            <span className="canvas-toolbar__context">{scenario.label}</span>
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        extraControls={
+          <>
             {activeScenario === 'crochet' ? (
               <>
                 <button
@@ -180,10 +259,33 @@ export default function StudioCanvasStage({
             ) : null}
             <button
               type="button"
-              className="chip-button"
+              className="chip-button tool-button"
               onClick={() => onCanvasZoomChange(() => stepDownZoom)}
+              aria-label="缩小"
             >
-              缩小
+              <span
+                className="tool-button__icon"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: ZOOM_OUT_SVG }}
+              />
+              <span className="tool-button__tooltip" aria-hidden="true">
+                缩小
+              </span>
+            </button>
+            <button
+              type="button"
+              className="chip-button tool-button"
+              onClick={() => onCanvasZoomChange(() => stepUpZoom)}
+              aria-label="放大"
+            >
+              <span
+                className="tool-button__icon"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: ZOOM_IN_SVG }}
+              />
+              <span className="tool-button__tooltip" aria-hidden="true">
+                放大
+              </span>
             </button>
             <DropdownField
               className="canvas-zoom-dropdown"
@@ -201,29 +303,24 @@ export default function StudioCanvasStage({
               onChange={(value) =>
                 onCanvasZoomChange(() =>
                   value === 'actual'
-                    ? actualSizeZoom
+                    ? ACTUAL_SIZE_ZOOM
                     : value === '100'
                       ? FIT_WINDOW_ZOOM
                       : Number(value) / 100,
                 )
               }
             />
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => onCanvasZoomChange(() => stepUpZoom)}
-            >
-              放大
-            </button>
-            <button
-              type="button"
-              className={`chip-button${showGridLines ? ' is-active' : ''}`}
-              onClick={onToggleGridLines}
-            >
-              {showGridLines ? '隐藏网格' : '显示网格'}
-            </button>
-          </div>
-        </div>
+            <CheckboxField
+              checked={showGridLines}
+              onCheckedChange={onToggleGridLines}
+              label="网格"
+              wrapperClassName="canvas-grid-toggle"
+            />
+          </>
+        }
+      />
+
+      <section className="panel stage-canvas-panel">
         <div className="panel__body stage-canvas-body">
           {isProcessingUpload ? (
             <div aria-busy="true" />
@@ -237,13 +334,18 @@ export default function StudioCanvasStage({
                 activeColor={activeColor}
                 tool={activeTool}
                 toolSettings={toolSettings}
-                onPaintCell={onPaintCell}
+                onPreviewPaintStroke={onPreviewPaintStroke}
+                onCommitPaintStroke={onCommitPaintStroke}
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}
                 onDrawRectangle={onDrawRectangle}
+                onPreviewScaleSelection={onPreviewScaleSelection}
+                onCommitScaleSelection={onCommitScaleSelection}
                 onSampleCell={onSampleCell}
-                zoom={canvasZoom}
+                zoom={appliedZoom}
                 showGrid={showGridLines}
+                onViewportSizeChange={handleViewportSizeChange}
+                selectionBounds={selectionBounds}
               />
             ) : (
               <PixelGrid
@@ -252,13 +354,18 @@ export default function StudioCanvasStage({
                 activeColor={activeColor}
                 tool={activeTool}
                 toolSettings={toolSettings}
-                onPaintCell={onPaintCell}
+                onPreviewPaintStroke={onPreviewPaintStroke}
+                onCommitPaintStroke={onCommitPaintStroke}
                 onFillArea={onFillArea}
                 onDrawLine={onDrawLine}
                 onDrawRectangle={onDrawRectangle}
+                onPreviewScaleSelection={onPreviewScaleSelection}
+                onCommitScaleSelection={onCommitScaleSelection}
                 onSampleCell={onSampleCell}
-                zoom={canvasZoom}
+                zoom={appliedZoom}
                 showGrid={showGridLines}
+                onViewportSizeChange={handleViewportSizeChange}
+                selectionBounds={selectionBounds}
               />
             )
           ) : (

@@ -72,7 +72,7 @@ describe('PixelGrid', () => {
 
   it('lets the user paint a cell when editable', async () => {
     const user = userEvent.setup();
-    const handlePaint = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -81,18 +81,18 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
     await user.click(screen.getByLabelText(/像素 0,0 透明/i));
 
-    expect(handlePaint).toHaveBeenCalledWith(0, 0, '#ff00aa');
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith([{ x: 0, y: 0 }], '#ff00aa');
   });
 
   it('does not paint when move tool is active', async () => {
     const user = userEvent.setup();
-    const handlePaint = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -101,13 +101,13 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="move"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
     await user.click(screen.getByLabelText(/像素 0,0 透明/i));
 
-    expect(handlePaint).not.toHaveBeenCalled();
+    expect(handleCommitPaintStroke).not.toHaveBeenCalled();
   });
 
   it('pans the canvas internally on wheel input instead of relying on scrollbars', () => {
@@ -125,6 +125,7 @@ describe('PixelGrid', () => {
       .getByRole('grid', { name: /像素输出网格/i })
       .closest('.pixel-grid-viewport') as HTMLElement;
     const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
 
     Object.defineProperty(viewport, 'clientWidth', {
       configurable: true,
@@ -135,10 +136,68 @@ describe('PixelGrid', () => {
       value: 400,
     });
 
+    fireEvent(window, new Event('resize'));
     fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
 
-    expect(grid.style.transform).toContain('-30px');
-    expect(grid.style.transform).toContain('-40px');
+    expect(frame.style.transform).toBe('translate(-510px, -520px)');
+  });
+
+  it('centers smaller grids inside the viewport before any pan offset is applied', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        zoom={0.5}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    expect(frame.style.transform).toBe('translate(24px, 24px)');
+  });
+
+  it('snaps centered offsets to whole pixels so grid lines stay crisp', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        zoom={0.5}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 401,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 401,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    expect(frame.style.transform).toBe('translate(24px, 24px)');
   });
 
   it('assigns explicit row and cell sizes when zoom changes', () => {
@@ -157,8 +216,8 @@ describe('PixelGrid', () => {
 
     expect(grid.style.gridTemplateColumns).toContain('84px');
     expect(grid.style.gridTemplateRows).toContain('84px');
-    expect(firstCell.style.width).toBe('84px');
-    expect(firstCell.style.height).toBe('84px');
+    expect(firstCell.style.width).toBe('100%');
+    expect(firstCell.style.height).toBe('100%');
   });
 
   it('hides transparency texture when cells become too small', () => {
@@ -171,13 +230,14 @@ describe('PixelGrid', () => {
       />,
     );
 
-    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toHaveClass(
+    expect(screen.getByRole('grid', { name: /像素输出网格/i }).parentElement).toHaveClass(
       'pixel-grid--hide-transparency-texture',
     );
   });
 
   it('paints continuously while dragging across cells', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -186,7 +246,8 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -199,12 +260,21 @@ describe('PixelGrid', () => {
       pointerId: 1,
     });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, '#ff00aa');
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
   });
 
   it('keeps painting after the pointer leaves and re-enters the stage mid-drag', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -213,7 +283,8 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -228,12 +299,21 @@ describe('PixelGrid', () => {
     fireEvent.pointerEnter(second, { pointerId: 12 });
     fireEvent.pointerUp(window, { pointerId: 12 });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, '#ff00aa');
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
   });
 
   it('erases continuously while dragging across cells', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -241,7 +321,8 @@ describe('PixelGrid', () => {
         editable
         tool="erase"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -254,8 +335,16 @@ describe('PixelGrid', () => {
       pointerId: 2,
     });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, null);
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, null);
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], null);
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      null,
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      null,
+    );
   });
 
   it('does not show the floating tooltip while hovering in paint mode', () => {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
 import type { EditorTool, EditorToolSettings } from '../types/studio';
 import {
@@ -6,6 +7,7 @@ import {
   buildLinePoints,
   buildRectanglePoints,
 } from '../utils/studio';
+import type { LayerContentBounds } from '../utils/studio';
 import { getCursorForTool } from '../utils/toolCursors';
 
 type PixelGridProps = {
@@ -14,7 +16,14 @@ type PixelGridProps = {
   activeColor?: string;
   tool?: EditorTool;
   toolSettings: EditorToolSettings;
-  onPaintCell?: (x: number, y: number, color: string | null) => void;
+  onPreviewPaintStroke?: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
+  onCommitPaintStroke?: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
   onFillArea?: (x: number, y: number, color: string | null) => void;
   onDrawLine?: (
     startX: number,
@@ -31,14 +40,55 @@ type PixelGridProps = {
     color: string | null,
   ) => void;
   onSampleCell?: (color: string | null) => void;
+  onPreviewScaleSelection?: (targetWidth: number, targetHeight: number) => void;
+  onCommitScaleSelection?: (targetWidth: number, targetHeight: number) => void;
   zoom?: number;
   showGrid?: boolean;
   presentation?: 'color' | 'symbol';
   getCellOverlay?: (cell: PixelGridModel['cells'][number]) => string | undefined;
+  onViewportSizeChange?: (size: { width: number; height: number }) => void;
+  selectionBounds?: LayerContentBounds | null;
 };
 
 export function getBaseCellSize(width: number) {
   return width === 16 ? 42 : width === 32 ? 24 : 12;
+}
+
+const GRID_LINE_WIDTH = 1;
+
+type ViewportMetrics = {
+  width: number;
+  height: number;
+};
+
+function readViewportMetrics(viewport: HTMLDivElement): ViewportMetrics {
+  const computedStyle = window.getComputedStyle(viewport);
+  const horizontalPadding =
+    (Number.parseFloat(computedStyle.paddingLeft) || 0) +
+    (Number.parseFloat(computedStyle.paddingRight) || 0);
+  const verticalPadding =
+    (Number.parseFloat(computedStyle.paddingTop) || 0) +
+    (Number.parseFloat(computedStyle.paddingBottom) || 0);
+
+  return {
+    width: Math.max(0, viewport.clientWidth - horizontalPadding),
+    height: Math.max(0, viewport.clientHeight - verticalPadding),
+  };
+}
+
+function buildCenteredOffset(
+  viewport: ViewportMetrics,
+  contentWidth: number,
+  contentHeight: number,
+) {
+  return {
+    x: (viewport.width - contentWidth) / 2,
+    y: (viewport.height - contentHeight) / 2,
+  };
+}
+
+function snapOffsetToDevicePixel(value: number, enabled: boolean) {
+  return enabled ? Math.round(value) : value;
 }
 
 export default function PixelGrid({
@@ -47,15 +97,20 @@ export default function PixelGrid({
   activeColor,
   tool = 'paint',
   toolSettings,
-  onPaintCell,
+  onPreviewPaintStroke,
+  onCommitPaintStroke,
   onFillArea,
   onDrawLine,
   onDrawRectangle,
   onSampleCell,
+  onPreviewScaleSelection,
+  onCommitScaleSelection,
   zoom = 1,
   showGrid = true,
   presentation = 'color',
   getCellOverlay,
+  onViewportSizeChange,
+  selectionBounds,
 }: PixelGridProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{
@@ -69,7 +124,10 @@ export default function PixelGrid({
     pointerId: number;
     color: string | null;
     mode: 'paint' | 'erase';
+    points: Array<{ x: number; y: number }>;
+    visited: Set<string>;
   } | null>(null);
+  const suppressClickPaintRef = useRef(false);
   const shapeStateRef = useRef<{
     pointerId: number;
     startX: number;
@@ -78,15 +136,35 @@ export default function PixelGrid({
     endY: number;
     tool: 'line' | 'rectangle';
   } | null>(null);
+  const selectionStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    bounds: LayerContentBounds;
+    width: number;
+    height: number;
+  } | null>(null);
   const [interactionPreview, setInteractionPreview] = useState<{
     cells: Array<{ x: number; y: number }>;
     label: string;
   } | null>(null);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [viewportMetrics, setViewportMetrics] = useState<ViewportMetrics>({
+    width: 0,
+    height: 0,
+  });
+  const [selectionPreviewSize, setSelectionPreviewSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
-  function paintCell(x: number, y: number, color: string | null) {
-    onPaintCell?.(x, y, color);
+  function previewStroke(points: Array<{ x: number; y: number }>, color: string | null) {
+    onPreviewPaintStroke?.(points, color);
+  }
+
+  function commitStroke(points: Array<{ x: number; y: number }>, color: string | null) {
+    onCommitPaintStroke?.(points, color);
   }
 
   const toolCursor = getCursorForTool(tool);
@@ -130,7 +208,9 @@ export default function PixelGrid({
         paintStateRef.current &&
         paintStateRef.current.pointerId === event.pointerId
       ) {
+        commitStroke(paintStateRef.current.points, paintStateRef.current.color);
         paintStateRef.current = null;
+        suppressClickPaintRef.current = true;
       }
 
       if (
@@ -139,6 +219,18 @@ export default function PixelGrid({
       ) {
         finalizeShape();
         shapeStateRef.current = null;
+      }
+
+      if (
+        selectionStateRef.current &&
+        selectionStateRef.current.pointerId === event.pointerId
+      ) {
+        onCommitScaleSelection?.(
+          selectionPreviewSize?.width ?? selectionStateRef.current.width,
+          selectionPreviewSize?.height ?? selectionStateRef.current.height,
+        );
+        selectionStateRef.current = null;
+        setSelectionPreviewSize(null);
       }
     }
 
@@ -149,49 +241,167 @@ export default function PixelGrid({
       window.removeEventListener('pointerup', handleGlobalPointerEnd);
       window.removeEventListener('pointercancel', handleGlobalPointerEnd);
     };
-  }, [finalizeShape]);
+  }, [finalizeShape, onCommitScaleSelection, selectionPreviewSize?.height, selectionPreviewSize?.width]);
 
   useEffect(() => {
     setPanOffset({ x: 0, y: 0 });
   }, [grid.width, grid.height, zoom]);
 
+  useEffect(() => {
+    setSelectionPreviewSize(null);
+    selectionStateRef.current = null;
+  }, [selectionBounds?.height, selectionBounds?.width, tool]);
+
   const baseCellSize = getBaseCellSize(grid.width);
-  const scaledCellSize = baseCellSize * zoom;
-  const scaledGridWidth = grid.width * scaledCellSize;
-  const scaledGridHeight = grid.height * scaledCellSize;
-  const hideTransparencyTexture = scaledCellSize < 6;
-  const clampPanOffset = useCallback(
+  const rawScaledCellSize = baseCellSize * zoom;
+  const displayCellSize = showGrid ? Math.max(1, Math.round(rawScaledCellSize)) : rawScaledCellSize;
+  const lineWidth = showGrid ? GRID_LINE_WIDTH : 0;
+  const frameInset = showGrid ? GRID_LINE_WIDTH : 0;
+  const cellStride = displayCellSize + lineWidth;
+  const innerGridWidth =
+    grid.width * displayCellSize + Math.max(0, grid.width - 1) * lineWidth;
+  const innerGridHeight =
+    grid.height * displayCellSize + Math.max(0, grid.height - 1) * lineWidth;
+  const scaledGridWidth = innerGridWidth + frameInset * 2;
+  const scaledGridHeight = innerGridHeight + frameInset * 2;
+  const hideTransparencyTexture = displayCellSize < 6;
+  const centeredOffset = useMemo(
+    () => buildCenteredOffset(viewportMetrics, scaledGridWidth, scaledGridHeight),
+    [scaledGridHeight, scaledGridWidth, viewportMetrics],
+  );
+  const getConstrainedPanOffset = useCallback(
     (nextOffset: { x: number; y: number }) => {
-      const viewport = viewportRef.current;
-
-      if (!viewport) {
-        return nextOffset;
-      }
-
-      const computedStyle = window.getComputedStyle(viewport);
-      const horizontalPadding =
-        (Number.parseFloat(computedStyle.paddingLeft) || 0) +
-        (Number.parseFloat(computedStyle.paddingRight) || 0);
-      const verticalPadding =
-        (Number.parseFloat(computedStyle.paddingTop) || 0) +
-        (Number.parseFloat(computedStyle.paddingBottom) || 0);
-      const availableWidth = Math.max(0, viewport.clientWidth - horizontalPadding);
-      const availableHeight = Math.max(0, viewport.clientHeight - verticalPadding);
-      const canPan =
-        scaledGridWidth > availableWidth || scaledGridHeight > availableHeight;
-
-      if (!canPan) {
+      if (viewportMetrics.width === 0 || viewportMetrics.height === 0) {
         return { x: 0, y: 0 };
       }
 
-      return nextOffset;
+      const minOffsetX =
+        scaledGridWidth > viewportMetrics.width
+          ? viewportMetrics.width - scaledGridWidth
+          : centeredOffset.x;
+      const maxOffsetX = scaledGridWidth > viewportMetrics.width ? 0 : centeredOffset.x;
+      const minOffsetY =
+        scaledGridHeight > viewportMetrics.height
+          ? viewportMetrics.height - scaledGridHeight
+          : centeredOffset.y;
+      const maxOffsetY = scaledGridHeight > viewportMetrics.height ? 0 : centeredOffset.y;
+
+      return {
+        x: Math.min(Math.max(nextOffset.x, minOffsetX - centeredOffset.x), maxOffsetX - centeredOffset.x),
+        y: Math.min(Math.max(nextOffset.y, minOffsetY - centeredOffset.y), maxOffsetY - centeredOffset.y),
+      };
     },
-    [scaledGridHeight, scaledGridWidth],
+    [centeredOffset.x, centeredOffset.y, scaledGridHeight, scaledGridWidth, viewportMetrics.height, viewportMetrics.width],
   );
+  const gridOffset = useMemo(() => {
+    return {
+      x: centeredOffset.x + panOffset.x,
+      y: centeredOffset.y + panOffset.y,
+    };
+  }, [centeredOffset.x, centeredOffset.y, panOffset.x, panOffset.y]);
+  const renderedGridOffset = useMemo(
+    () => ({
+      x: snapOffsetToDevicePixel(gridOffset.x, showGrid),
+      y: snapOffsetToDevicePixel(gridOffset.y, showGrid),
+    }),
+    [gridOffset.x, gridOffset.y, showGrid],
+  );
+  const displayedSelectionBounds = useMemo(() => {
+    if (!selectionBounds) {
+      return null;
+    }
+
+    return {
+      ...selectionBounds,
+      width: selectionPreviewSize?.width ?? selectionBounds.width,
+      height: selectionPreviewSize?.height ?? selectionBounds.height,
+    };
+  }, [selectionBounds, selectionPreviewSize]);
+  const selectionFrame = useMemo(() => {
+    if (!displayedSelectionBounds) {
+      return null;
+    }
+
+    return {
+      left: renderedGridOffset.x + frameInset + displayedSelectionBounds.minX * cellStride,
+      top: renderedGridOffset.y + frameInset + displayedSelectionBounds.minY * cellStride,
+      width:
+        displayedSelectionBounds.width * displayCellSize +
+        Math.max(0, displayedSelectionBounds.width - 1) * lineWidth,
+      height:
+        displayedSelectionBounds.height * displayCellSize +
+        Math.max(0, displayedSelectionBounds.height - 1) * lineWidth,
+    };
+  }, [
+    cellStride,
+    displayCellSize,
+    displayedSelectionBounds,
+    frameInset,
+    lineWidth,
+    renderedGridOffset.x,
+    renderedGridOffset.y,
+  ]);
+  const gridStyle: CSSProperties & {
+    '--pixel-cell-size': string;
+    '--pixel-grid-line-width': string;
+    '--pixel-grid-frame-inset': string;
+  } = {
+    '--pixel-cell-size': `${displayCellSize}px`,
+    '--pixel-grid-line-width': `${lineWidth}px`,
+    '--pixel-grid-frame-inset': `${frameInset}px`,
+    gridTemplateColumns: `repeat(${grid.width}, ${displayCellSize}px)`,
+    gridTemplateRows: `repeat(${grid.height}, ${displayCellSize}px)`,
+    width: `${innerGridWidth}px`,
+    minWidth: `${innerGridWidth}px`,
+    height: `${innerGridHeight}px`,
+  };
+  const frameStyle: CSSProperties = {
+    top: '0',
+    left: '0',
+    transform: `translate(${renderedGridOffset.x}px, ${renderedGridOffset.y}px)`,
+    width: `${scaledGridWidth}px`,
+    minWidth: `${scaledGridWidth}px`,
+    height: `${scaledGridHeight}px`,
+  };
 
   useEffect(() => {
-    setPanOffset((current) => clampPanOffset(current));
-  }, [clampPanOffset]);
+    setPanOffset((current) => getConstrainedPanOffset(current));
+  }, [getConstrainedPanOffset]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    const reportViewportSize = () => {
+      const nextMetrics = readViewportMetrics(viewport);
+      setViewportMetrics((current) =>
+        current.width === nextMetrics.width && current.height === nextMetrics.height
+          ? current
+          : nextMetrics,
+      );
+      onViewportSizeChange?.(nextMetrics);
+    };
+
+    reportViewportSize();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', reportViewportSize);
+
+      return () => {
+        window.removeEventListener('resize', reportViewportSize);
+      };
+    }
+
+    const observer = new ResizeObserver(reportViewportSize);
+    observer.observe(viewport);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [onViewportSizeChange]);
 
   return (
     <section
@@ -216,6 +426,26 @@ export default function PixelGrid({
       }}
       onPointerMove={(event) => {
         if (
+          tool === 'select' &&
+          selectionStateRef.current &&
+          selectionStateRef.current.pointerId === event.pointerId
+        ) {
+          const deltaX = event.clientX - selectionStateRef.current.startX;
+          const deltaY = event.clientY - selectionStateRef.current.startY;
+          const nextWidth = Math.max(
+            1,
+            Math.round(selectionStateRef.current.width + deltaX / displayCellSize),
+          );
+          const nextHeight = Math.max(
+            1,
+            Math.round(selectionStateRef.current.height + deltaY / displayCellSize),
+          );
+          setSelectionPreviewSize({ width: nextWidth, height: nextHeight });
+          onPreviewScaleSelection?.(nextWidth, nextHeight);
+          return;
+        }
+
+        if (
           tool !== 'move' ||
           !viewportRef.current ||
           !dragStateRef.current ||
@@ -227,13 +457,29 @@ export default function PixelGrid({
         const deltaX = event.clientX - dragStateRef.current.startX;
         const deltaY = event.clientY - dragStateRef.current.startY;
         setPanOffset(
-          clampPanOffset({
+          getConstrainedPanOffset({
             x: dragStateRef.current.offsetX + deltaX,
             y: dragStateRef.current.offsetY + deltaY,
           }),
         );
       }}
       onPointerUp={(event) => {
+        if (
+          tool === 'select' &&
+          viewportRef.current &&
+          selectionStateRef.current &&
+          selectionStateRef.current.pointerId === event.pointerId
+        ) {
+          viewportRef.current.releasePointerCapture?.(event.pointerId);
+          onCommitScaleSelection?.(
+            selectionPreviewSize?.width ?? selectionStateRef.current.width,
+            selectionPreviewSize?.height ?? selectionStateRef.current.height,
+          );
+          selectionStateRef.current = null;
+          setSelectionPreviewSize(null);
+          return;
+        }
+
         if (
           tool === 'move' &&
           viewportRef.current &&
@@ -248,7 +494,9 @@ export default function PixelGrid({
           paintStateRef.current &&
           paintStateRef.current.pointerId === event.pointerId
         ) {
+          commitStroke(paintStateRef.current.points, paintStateRef.current.color);
           paintStateRef.current = null;
+          suppressClickPaintRef.current = true;
         }
 
         if (
@@ -277,7 +525,7 @@ export default function PixelGrid({
 
         event.preventDefault();
         setPanOffset((current) =>
-          clampPanOffset({
+          getConstrainedPanOffset({
             x: current.x - event.deltaX,
             y: current.y - event.deltaY,
           }),
@@ -289,24 +537,52 @@ export default function PixelGrid({
           {interactionPreview.label}
         </div>
       ) : null}
+      {tool === 'select' && selectionFrame ? (
+        <div
+          className="pixel-grid-selection"
+          style={{
+            left: `${selectionFrame.left}px`,
+            top: `${selectionFrame.top}px`,
+            width: `${selectionFrame.width}px`,
+            height: `${selectionFrame.height}px`,
+          }}
+        >
+          <button
+            type="button"
+            className="pixel-grid-selection__handle"
+            aria-label="缩放选区"
+            onPointerDown={(event) => {
+              if (!selectionBounds) {
+                return;
+              }
+
+              event.stopPropagation();
+              selectionStateRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                bounds: selectionBounds,
+                width: displayedSelectionBounds?.width ?? selectionBounds.width,
+                height: displayedSelectionBounds?.height ?? selectionBounds.height,
+              };
+              viewportRef.current?.setPointerCapture?.(event.pointerId);
+            }}
+          />
+        </div>
+      ) : null}
       <div
-        role="grid"
-        aria-label="像素输出网格"
-        className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}${
+        className={`pixel-grid-frame${showGrid ? '' : ' pixel-grid-frame--flat'}${
           hideTransparencyTexture ? ' pixel-grid--hide-transparency-texture' : ''
         }`}
-        style={{
-          gridTemplateColumns: `repeat(${grid.width}, ${scaledCellSize}px)`,
-          gridTemplateRows: `repeat(${grid.height}, ${scaledCellSize}px)`,
-          top: '50%',
-          left: '50%',
-          transform: `translate(calc(-50% + ${panOffset.x}px), calc(-50% + ${panOffset.y}px))`,
-          width: `${scaledGridWidth}px`,
-          minWidth: `${scaledGridWidth}px`,
-          height: `${scaledGridHeight}px`,
-        }}
+        style={frameStyle}
       >
-        {grid.cells.map((cell) => (
+        <div
+          role="grid"
+          aria-label="像素输出网格"
+          className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}`}
+          style={gridStyle}
+        >
+          {grid.cells.map((cell) => (
             <button
               key={`${cell.x}-${cell.y}`}
               type="button"
@@ -322,12 +598,12 @@ export default function PixelGrid({
                 ...(presentation === 'color' && cell.color
                   ? { backgroundColor: cell.color }
                   : undefined),
-                width: `${scaledCellSize}px`,
-                height: `${scaledCellSize}px`,
+                width: '100%',
+                height: '100%',
                 cursor: toolCursor,
               }}
               onPointerDown={(event) => {
-                if (!editable || tool === 'move') {
+                if (!editable || tool === 'move' || tool === 'select') {
                   return;
                 }
 
@@ -363,13 +639,16 @@ export default function PixelGrid({
                 }
 
                 const nextColor = tool === 'erase' ? null : activeColor ?? null;
+                const pointKey = `${cell.x}-${cell.y}`;
 
                 paintStateRef.current = {
                   pointerId: event.pointerId,
                   color: nextColor,
                   mode: tool === 'erase' ? 'erase' : 'paint',
+                  points: [{ x: cell.x, y: cell.y }],
+                  visited: new Set([pointKey]),
                 };
-                paintCell(cell.x, cell.y, nextColor);
+                previewStroke([{ x: cell.x, y: cell.y }], nextColor);
               }}
               onPointerEnter={(event) => {
                 setHoverCell({ x: cell.x, y: cell.y });
@@ -377,6 +656,7 @@ export default function PixelGrid({
                 if (
                   !editable ||
                   tool === 'move' ||
+                  tool === 'select' ||
                   tool === 'sample' ||
                   tool === 'fill'
                 ) {
@@ -422,7 +702,21 @@ export default function PixelGrid({
                   return;
                 }
 
-                paintCell(cell.x, cell.y, paintStateRef.current.color);
+                const pointKey = `${cell.x}-${cell.y}`;
+
+                if (paintStateRef.current.visited.has(pointKey)) {
+                  return;
+                }
+
+                paintStateRef.current.visited.add(pointKey);
+                paintStateRef.current.points = [
+                  ...paintStateRef.current.points,
+                  { x: cell.x, y: cell.y },
+                ];
+                previewStroke(
+                  paintStateRef.current.points,
+                  paintStateRef.current.color,
+                );
               }}
               onPointerLeave={() => {
                 if (!shapeStateRef.current) {
@@ -433,6 +727,7 @@ export default function PixelGrid({
                 if (
                   !editable ||
                   tool === 'move' ||
+                  tool === 'select' ||
                   tool === 'sample' ||
                   tool === 'fill' ||
                   tool === 'line' ||
@@ -445,7 +740,15 @@ export default function PixelGrid({
                   return;
                 }
 
-                paintCell(cell.x, cell.y, tool === 'erase' ? null : activeColor ?? null);
+                if (suppressClickPaintRef.current) {
+                  suppressClickPaintRef.current = false;
+                  return;
+                }
+
+                commitStroke(
+                  [{ x: cell.x, y: cell.y }],
+                  tool === 'erase' ? null : activeColor ?? null,
+                );
               }}
             >
               {presentation === 'symbol' && cell.color ? (
@@ -455,7 +758,8 @@ export default function PixelGrid({
                 <span className="pixel-cell__preview" aria-hidden="true" />
               ) : null}
             </button>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );
