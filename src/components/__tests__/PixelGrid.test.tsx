@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { PixelGrid as PixelGridModel } from '../../types/pixel';
+import type { GridSize, PixelGrid as PixelGridModel } from '../../types/pixel';
 import PixelGrid from '../PixelGrid';
 
 const defaultToolSettings = {
@@ -19,6 +19,25 @@ function createGrid(color: string | null = null): PixelGridModel {
     cells: Array.from({ length: 256 }, (_, index) => ({
       x: index % 16,
       y: Math.floor(index / 16),
+      color,
+      source: { r: 0, g: 0, b: 0 },
+      alpha: color ? 255 : 0,
+    })),
+  };
+}
+
+function createSizedGrid(
+  width: GridSize,
+  height: GridSize,
+  color: string | null = null,
+): PixelGridModel {
+  return {
+    width,
+    height,
+    palette: color ? [color] : [],
+    cells: Array.from({ length: width * height }, (_, index) => ({
+      x: index % width,
+      y: Math.floor(index / width),
       color,
       source: { r: 0, g: 0, b: 0 },
       alpha: color ? 255 : 0,
@@ -80,6 +99,68 @@ describe('PixelGrid', () => {
     expect(document.querySelectorAll('.bead-axis-label--left')).toHaveLength(16);
     expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(0);
     expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(0);
+  });
+
+  it('uses one shared ruler interval based on the largest bead index width', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(100, 100, '#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top')).map((label) =>
+      Number(label.textContent),
+    );
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left')).map((label) =>
+      Number(label.textContent),
+    );
+
+    expect(topLabels).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]);
+    expect(leftLabels).toEqual(topLabels);
+  });
+
+  it('keeps ruler numbering rhythm consistent when labels are thinned out', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(64, 64, '#000000')}
+        scenario="beads"
+        zoom={1.25}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top'))
+      .slice(0, 6)
+      .map((label) => Number(label.textContent));
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left'))
+      .slice(0, 6)
+      .map((label) => Number(label.textContent));
+
+    expect(topLabels).toEqual([2, 4, 6, 8, 10, 12]);
+    expect(leftLabels).toEqual([2, 4, 6, 8, 10, 12]);
+  });
+
+  it('lets thinned ruler labels occupy their full interval span', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(64, 64, '#000000')}
+        scenario="beads"
+        zoom={0.08}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabel = Array.from(document.querySelectorAll('.bead-axis-label--top')).find(
+      (label) => label.textContent === '20',
+    ) as HTMLElement;
+    const leftLabel = Array.from(document.querySelectorAll('.bead-axis-label--left')).find(
+      (label) => label.textContent === '20',
+    ) as HTMLElement;
+
+    expect(topLabel.style.width).toBe('40px');
+    expect(leftLabel.style.height).toBe('40px');
   });
 
   it('keeps bead axis rulers pinned while their labels move with the canvas grid', () => {

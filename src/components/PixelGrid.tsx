@@ -63,6 +63,8 @@ const PAN_EDGE_GUTTER = 96;
 const DEFAULT_TOP_SAFE_MARGIN = 24;
 const BEAD_AXIS_LABEL_SIZE = 22;
 const BEAD_AXIS_LABEL_GAP = 0;
+const BEAD_AXIS_LABEL_HORIZONTAL_PADDING = 8;
+const BEAD_AXIS_LABEL_CHAR_WIDTH = 7;
 
 type ViewportMetrics = {
   width: number;
@@ -100,6 +102,40 @@ function buildCenteredOffset(
 
 function snapOffsetToDevicePixel(value: number, enabled: boolean) {
   return enabled ? Math.round(value) : value;
+}
+
+function buildAxisLabelSteps(maxValue: number) {
+  const steps: number[] = [];
+  let magnitude = 1;
+
+  while (magnitude <= Math.max(1, maxValue) * 10) {
+    steps.push(magnitude, magnitude * 2, magnitude * 5);
+    magnitude *= 10;
+  }
+
+  return Array.from(new Set(steps)).sort((left, right) => left - right);
+}
+
+function estimateAxisLabelWidth(maxValue: number) {
+  return String(Math.max(1, maxValue)).length * BEAD_AXIS_LABEL_CHAR_WIDTH;
+}
+
+function getAxisLabelStep(maxValue: number, cellStride: number) {
+  const requiredWidth =
+    estimateAxisLabelWidth(maxValue) + BEAD_AXIS_LABEL_HORIZONTAL_PADDING;
+
+  return (
+    buildAxisLabelSteps(maxValue).find((step) => step * cellStride >= requiredWidth) ??
+    Math.max(1, maxValue)
+  );
+}
+
+function shouldRenderAxisLabel(value: number, maxValue: number, step: number) {
+  return value % step === 0;
+}
+
+function getAxisLabelSpan(value: number, step: number) {
+  return Math.max(step, value > 0 ? Math.min(step, value) : step);
 }
 
 function readPointerCellTarget(target: EventTarget | null) {
@@ -483,6 +519,14 @@ export default function PixelGrid({
         ? Array.from({ length: grid.height }, (_, index) => index + 1)
         : [],
     [grid.height, scenario],
+  );
+  const beadColumnLabelStep = useMemo(
+    () => (scenario === 'beads' ? getAxisLabelStep(grid.width, cellStride) : 1),
+    [cellStride, grid.width, scenario],
+  );
+  const beadRowLabelStep = useMemo(
+    () => (scenario === 'beads' ? getAxisLabelStep(grid.height, cellStride) : 1),
+    [cellStride, grid.height, scenario],
   );
   const beadAxisOriginX = beadAxisInset + renderedGridOffset.x + frameInset;
   const beadAxisOriginY = beadAxisInset + renderedGridOffset.y + frameInset;
@@ -890,7 +934,12 @@ export default function PixelGrid({
             />
           ) : null}
           {beadColumnNumbers.map((value, index) => {
-            const axisX = beadAxisOriginX + index * cellStride;
+            if (!shouldRenderAxisLabel(value, grid.width, beadColumnLabelStep)) {
+              return null;
+            }
+
+            const span = getAxisLabelSpan(value, beadColumnLabelStep);
+            const axisX = beadAxisOriginX + (value - span) * cellStride;
 
             return (
               <span
@@ -899,7 +948,7 @@ export default function PixelGrid({
                 style={{
                   left: `${axisX}px`,
                   top: '0',
-                  width: `${cellStride}px`,
+                  width: `${span * cellStride}px`,
                   height: `${BEAD_AXIS_LABEL_SIZE}px`,
                 }}
               >
@@ -908,7 +957,12 @@ export default function PixelGrid({
             );
           })}
           {beadRowNumbers.map((value, index) => {
-            const axisY = beadAxisOriginY + index * cellStride;
+            if (!shouldRenderAxisLabel(value, grid.height, beadRowLabelStep)) {
+              return null;
+            }
+
+            const span = getAxisLabelSpan(value, beadRowLabelStep);
+            const axisY = beadAxisOriginY + (value - span) * cellStride;
 
             return (
               <span
@@ -918,7 +972,7 @@ export default function PixelGrid({
                   left: '0',
                   top: `${axisY}px`,
                   width: `${BEAD_AXIS_LABEL_SIZE}px`,
-                  height: `${cellStride}px`,
+                  height: `${span * cellStride}px`,
                 }}
               >
                 {value}
