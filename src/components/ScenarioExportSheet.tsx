@@ -13,7 +13,9 @@ type ScenarioExportSheetProps = {
   crochetAnalysis?: CrochetPatternAnalysis;
   exportMode: string;
   onExportModeChange: (mode: string) => void;
+  onCleanupBeadNoise: () => void;
   className?: string;
+  previewImageUrl?: string | null;
 };
 
 function renderPrintGrid(grid: PixelGrid, showSymbols = false, symbolByColor?: Map<string, string>) {
@@ -64,7 +66,9 @@ export default function ScenarioExportSheet({
   crochetAnalysis,
   exportMode,
   onExportModeChange,
+  onCleanupBeadNoise,
   className,
+  previewImageUrl,
 }: ScenarioExportSheetProps) {
   const isBeads = scenario === 'beads';
   const exportDocument = buildScenarioExportDocument({
@@ -79,6 +83,8 @@ export default function ScenarioExportSheet({
     { id: 'crochet-chart', label: 'PDF 图纸' },
     { id: 'crochet-rows', label: '行列说明' },
   ];
+  const hasBeadContent =
+    exportDocument.kind === 'beads' && exportDocument.beadSummary.totalCount > 0;
 
   return (
     <div className={className ? `export-sheet ${className}` : 'export-sheet'}>
@@ -97,28 +103,51 @@ export default function ScenarioExportSheet({
         </div>
       ) : null}
 
-      <div className="export-sheet__header">
-        <strong>{exportDocument.title}</strong>
-        {exportDocument.subtitle ? <span>{exportDocument.subtitle}</span> : null}
-      </div>
+      {!isBeads ? (
+        <div className="export-sheet__header">
+          <strong>{exportDocument.title}</strong>
+          {exportDocument.subtitle ? <span>{exportDocument.subtitle}</span> : null}
+        </div>
+      ) : null}
 
       {exportDocument.kind === 'beads' ? (
         <>
-          {renderPrintGrid(exportDocument.grid)}
-          <div className="export-sheet__section">
-            <div className="export-sheet__header export-sheet__header--section">
-              <strong>豆子清单</strong>
+          {previewImageUrl ? (
+            <div className="export-sheet__preview-stage">
+              <img
+                className="export-sheet__preview-image"
+                src={previewImageUrl}
+                alt="拼豆图纸第一页预览"
+              />
             </div>
-            <section className="export-sheet__summary" aria-label="豆子清单摘要">
-              <p className="export-sheet__summary-line">
-                所需豆子数量：{exportDocument.beadSummary.totalCount} 颗
-              </p>
-              <p className="export-sheet__summary-line">
-                所需最小的行和列：
-                {exportDocument.beadSummary.occupiedSize.rows} x{' '}
-                {exportDocument.beadSummary.occupiedSize.columns}
-              </p>
-            </section>
+          ) : (
+            renderPrintGrid(exportDocument.grid)
+          )}
+          <div className="export-sheet__section">
+            {hasBeadContent ? (
+              <>
+                <section className="export-sheet__summary" aria-label="豆子清单摘要">
+                  <p className="export-sheet__summary-line">
+                    所需豆子数量：{exportDocument.beadSummary.totalCount} 颗
+                  </p>
+                  <p className="export-sheet__summary-line">
+                    所需最小的行和列：
+                    {exportDocument.beadSummary.occupiedSize.rows} x{' '}
+                    {exportDocument.beadSummary.occupiedSize.columns}
+                  </p>
+                  <p className="export-sheet__summary-line">色板：{exportDocument.beadBrandLabel}</p>
+                </section>
+                <div className="export-sheet__summary-actions">
+                  <button
+                    type="button"
+                    className="chip-button"
+                    onClick={onCleanupBeadNoise}
+                  >
+                    去除杂色
+                  </button>
+                </div>
+              </>
+            ) : null}
             <div className="export-sheet__groups">
               {exportDocument.beadUsageGroups.map((group) => (
                 <section

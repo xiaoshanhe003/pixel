@@ -31,6 +31,16 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /抓手/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('hides palette size controls in bead mode', async () => {
+    renderApp();
+
+    expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+
+    expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
+  });
+
   it('shows the expanded grid size options in ascending order', async () => {
     renderApp();
 

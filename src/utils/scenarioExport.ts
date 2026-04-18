@@ -145,7 +145,7 @@ export function buildScenarioExportDocument({
     return {
       kind: 'beads',
       title: '拼豆打印图纸',
-      subtitle: `品牌映射：${BEAD_BRANDS[beadBrand].label}`,
+      subtitle: undefined,
       filename: 'pixel-forge-beads-pattern',
       grid,
       beadBrandLabel: BEAD_BRANDS[beadBrand].label,

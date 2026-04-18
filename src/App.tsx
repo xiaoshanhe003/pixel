@@ -76,6 +76,7 @@ export default function App() {
                   }
                   onBeadBrandChange={actions.setBeadBrand}
                   onExportModeChange={actions.setExportMode}
+                  onCleanupBeadNoise={actions.cleanupBeadNoise}
                   onPrint={actions.printExport}
                 />
               </div>
@@ -141,6 +142,7 @@ export default function App() {
               }
               onBeadBrandChange={actions.setBeadBrand}
               onExportModeChange={actions.setExportMode}
+              onCleanupBeadNoise={actions.cleanupBeadNoise}
               onPrint={actions.printExport}
             />
           </div>

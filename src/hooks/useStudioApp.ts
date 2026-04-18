@@ -12,7 +12,12 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
-import { countBeadUsage, mapColorToBeadPalette, mapGridToBeadPalette } from '../utils/beads';
+import {
+  buildBeadNoiseCleanupMap,
+  countBeadUsage,
+  mapColorToBeadPalette,
+  mapGridToBeadPalette,
+} from '../utils/beads';
 import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/crochet';
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
@@ -131,6 +136,7 @@ export type UseStudioAppResult = {
     setCrochetViewMode: (mode: 'color' | 'symbol') => void;
     setBeadBrand: (brand: BeadBrand) => void;
     setExportMode: (mode: ExportMode) => void;
+    cleanupBeadNoise: () => void;
     paintCell: (x: number, y: number, color: string | null) => void;
     previewPaintStroke: (
       points: BrushPoint[],
@@ -529,6 +535,23 @@ export function useStudioApp(): UseStudioAppResult {
         }
 
         setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
+      },
+      cleanupBeadNoise: () => {
+        if (activeScenario !== 'beads' || !derived.activeGrid) {
+          return;
+        }
+
+        const replacements = buildBeadNoiseCleanupMap(derived.activeGrid, 3);
+
+        if (replacements.size === 0) {
+          return;
+        }
+
+        dispatchCommand({
+          type: 'remapBeadColors',
+          brand: beadBrand,
+          replacements: [...replacements.entries()].map(([from, to]) => ({ from, to })),
+        });
       },
       paintCell: (x, y, color) =>
         dispatchCommand(

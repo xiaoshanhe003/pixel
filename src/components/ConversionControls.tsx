@@ -63,19 +63,21 @@ export default function ConversionControls({
           />
         </fieldset>
 
-        <fieldset className="size-control">
-          <legend>颜色数量</legend>
-          <DropdownField
-            label="颜色数量"
-            hideLabel
-            value={value.paletteSize}
-            options={paletteOptions.map((size) => ({
-              label: `${size} 色`,
-              value: size,
-            }))}
-            onChange={(size) => updateValue('paletteSize', size as PaletteSize)}
-          />
-        </fieldset>
+        {activeScenario !== 'beads' ? (
+          <fieldset className="size-control">
+            <legend>颜色数量</legend>
+            <DropdownField
+              label="颜色数量"
+              hideLabel
+              value={value.paletteSize}
+              options={paletteOptions.map((size) => ({
+                label: `${size} 色`,
+                value: size,
+              }))}
+              onChange={(size) => updateValue('paletteSize', size as PaletteSize)}
+            />
+          </fieldset>
+        ) : null}
 
         <fieldset className="toggle-grid">
           <legend>转绘偏好</legend>

@@ -81,7 +81,7 @@ function drawRulers(
   }
 
   context.fillStyle = '#43403a';
-  context.font = `${Math.max(12, chart.cellSize * 0.42)}px ${PRINT_FONT_FAMILY}`;
+  context.font = `${Math.max(10, chart.cellSize * 0.36)}px ${PRINT_FONT_FAMILY}`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
 

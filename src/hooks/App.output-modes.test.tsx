@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_16_COLOR_PALETTE } from '../data/defaultPalettes';
@@ -9,11 +9,6 @@ import {
   findBeadColorByHex,
   mapColorToBeadPalette,
 } from '../utils/beads';
-import { exportScenarioPdf } from '../utils/exportPdf';
-
-vi.mock('../utils/exportPdf', () => ({
-  exportScenarioPdf: vi.fn(),
-}));
 
 describe('App output modes', () => {
   it('maps the bead scenario to a brand palette and shows bead counts', async () => {
@@ -28,12 +23,11 @@ describe('App output modes', () => {
 
     expect(screen.getByText(/拼豆色板/i)).toBeInTheDocument();
     expect(screen.getAllByText(/255 颗/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: /打印导出/i })).toBeInTheDocument();
-    expect(screen.getByText(/拼豆打印图纸/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^拼豆图纸$/i })).toBeInTheDocument();
     expect(screen.queryByText(/Perler 映射/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Perler 色号映射/i)).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: /P 系列颜色/i })).toBeInTheDocument();
-    const exportPanel = screen.getByLabelText(/打印导出/i);
+    const exportPanel = screen.getByLabelText(/拼豆图纸/i);
 
     expect(within(exportPanel).queryByText(/^Print$/i)).not.toBeInTheDocument();
     expect(within(exportPanel).queryByText(/^16 x 16$/i)).not.toBeInTheDocument();
@@ -53,27 +47,61 @@ describe('App output modes', () => {
     expect(window.print).toHaveBeenCalledTimes(1);
   });
 
-  it('opens a dedicated export preview dialog from the export panel', async () => {
+  it('cleans up bead speckles on the canvas from the export panel action', async () => {
     renderApp();
-    await uploadMockImage('beads-preview.png');
+    await createBlankCanvas();
 
     await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
-    await userEvent.click(screen.getByRole('button', { name: /打开图纸预览/i }));
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 0,1 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,1 透明/i));
 
-    expect(screen.getByRole('dialog', { name: /打印预览/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/图纸成品预览/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /打开 Mard 品牌色板/i }));
+    await userEvent.click(screen.getByRole('button', { name: /选择品牌色 B12/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 2,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 3,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 2,1 透明/i));
+
+    expect(screen.getByLabelText(/像素 2,1 #166f41/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /去除杂色/i }));
+
+    expect(screen.getByLabelText(/像素 2,1 #000000/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/像素 2,1 #166f41/i)).not.toBeInTheDocument();
   });
 
-  it('exports the current chart as a pdf file', async () => {
+  it('cleans up bead speckles on a 50 x 50 canvas', async () => {
     renderApp();
-    await uploadMockImage('beads-export.png');
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /网格尺寸/i }), '50');
+    await createBlankCanvas();
 
     await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
-    await userEvent.click(screen.getByRole('button', { name: /导出 PDF/i }));
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
-    await waitFor(() => expect(exportScenarioPdf).toHaveBeenCalledTimes(1));
-  });
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 0,1 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,1 透明/i));
+
+    await userEvent.click(screen.getByRole('button', { name: /打开 Mard 品牌色板/i }));
+    await userEvent.click(screen.getByRole('button', { name: /选择品牌色 B12/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 2,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 3,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 2,1 透明/i));
+
+    expect(screen.getByLabelText(/像素 2,1 #166f41/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /去除杂色/i }));
+
+    expect(screen.getByLabelText(/像素 2,1 #000000/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/像素 2,1 #166f41/i)).not.toBeInTheDocument();
+  }, 15000);
 
   it('keeps the active paint color in sync with the bead brand mapping', async () => {
     renderApp();

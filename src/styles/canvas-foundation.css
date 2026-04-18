@@ -354,6 +354,34 @@
   box-shadow: none;
 }
 
+.export-sheet-print-stage {
+  display: none;
+}
+
+.export-sheet-print-stage__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.export-sheet__preview-stage {
+  display: grid;
+  justify-items: center;
+  padding: var(--space-5);
+  border-radius: 22px;
+  background: rgba(97, 83, 67, 0.08);
+}
+
+.export-sheet__preview-image {
+  display: block;
+  width: min(100%, 520px);
+  height: auto;
+  margin: 0 auto;
+  background: #fffdfa;
+  box-shadow:
+    0 12px 30px rgba(47, 34, 20, 0.14);
+}
+
 .scenario-export-panel .panel__header {
   padding-bottom: var(--space-4);
 }
@@ -491,6 +519,13 @@
 .export-sheet__summary {
   display: grid;
   gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.export-sheet__summary-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .export-sheet__summary-line {
@@ -533,16 +568,47 @@
 }
 
 @media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
   :root {
     color-scheme: light;
   }
 
+  html,
   body {
     background: #fff;
+    margin: 0;
+    padding: 0;
   }
 
   body * {
     visibility: hidden !important;
+  }
+
+  .app-shell,
+  .studio-app,
+  .studio-layout,
+  .desktop-right-dock,
+  .right-dock {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    position: static !important;
+    top: auto !important;
+  }
+
+  .app-topbar,
+  .left-dock,
+  .canvas-column,
+  .right-dock > :not(.scenario-export-panel) {
+    display: none !important;
   }
 
   .scenario-export-panel,
@@ -551,20 +617,47 @@
   }
 
   .scenario-export-panel {
-    position: absolute;
-    inset: 0;
+    position: static;
+    inset: auto;
     width: 100%;
     margin: 0;
+    padding: 0;
     border: 0;
     border-radius: 0;
-    background: #fff;
+    background: transparent;
     box-shadow: none;
     overflow: visible;
+    break-inside: avoid;
   }
 
   .scenario-export-panel .chip-button,
   .scenario-export-panel .panel__header span {
     display: none;
+  }
+
+  .scenario-export-panel--beads-print .panel__header,
+  .scenario-export-panel--beads-print .export-sheet {
+    display: none;
+  }
+
+  .scenario-export-panel--beads-print .export-sheet-print-stage {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .scenario-export-panel--beads-print .export-sheet-print-stage__image {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .scenario-export-panel .frame-strip__actions {

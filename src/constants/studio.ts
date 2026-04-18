@@ -24,7 +24,7 @@ export const SCENARIOS: ScenarioDefinition[] = [
   {
     id: 'beads',
     label: '拼豆图纸',
-    exports: ['打印图纸', '颜色清单', 'PNG'],
+    exports: ['打印图纸', '豆子清单', 'PNG'],
   },
   {
     id: 'crochet',

@@ -39,9 +39,6 @@ export default function StudioTopbar({
       </div>
 
       <div className="topbar-cluster topbar-status">
-        <span className="info-tag">
-          {document.width} x {document.height}
-        </span>
         {activeScenario === 'pixel' ? (
           <span className="info-tag">{document.frames.length} 帧</span>
         ) : null}

@@ -662,6 +662,7 @@ describe('PixelGrid', () => {
 
     expect(viewport).toHaveAttribute('data-active-tool', 'fill');
     expect((viewport as HTMLElement).style.cursor).toContain('data:image/svg+xml');
+    expect((viewport as HTMLElement).style.cursor).toContain('%23ffffff');
   });
 
   it('keeps the selected tool cursor while hovering editable cells', () => {

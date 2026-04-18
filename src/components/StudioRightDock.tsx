@@ -57,6 +57,7 @@ type StudioRightDockProps = {
   onExportModeChange: (
     mode: 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows',
   ) => void;
+  onCleanupBeadNoise: () => void;
   onPrint: () => void;
 };
 
@@ -75,6 +76,7 @@ export default function StudioRightDock({
   exportMode,
   onBeadBrandChange,
   onExportModeChange,
+  onCleanupBeadNoise,
   onPrint,
 }: StudioRightDockProps) {
   const selectedLayerPalette = buildSelectedLayerPalette(activeFrame);
@@ -94,6 +96,7 @@ export default function StudioRightDock({
               mode as 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows',
             )
           }
+          onCleanupBeadNoise={onCleanupBeadNoise}
           onPrint={onPrint}
         />
       ) : null}
