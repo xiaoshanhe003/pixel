@@ -533,9 +533,28 @@
 .pixel-cell__preview {
   position: absolute;
   inset: 0;
-  border: 1px dashed rgba(31, 28, 23, 0.9);
-  background: rgba(214, 90, 49, 0.18);
+  border: 0;
+  background: transparent;
   pointer-events: none;
+}
+
+.pixel-cell__preview--transparent {
+  background:
+    linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%),
+    linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%),
+    var(--surface-white-90);
+  background-position:
+    0 0,
+    var(--checker-offset-cell) var(--checker-offset-cell),
+    0 0;
+  background-size:
+    var(--checker-size-cell) var(--checker-size-cell),
+    var(--checker-size-cell) var(--checker-size-cell),
+    auto;
+}
+
+.pixel-grid--hide-transparency-texture .pixel-cell__preview--transparent {
+  background: transparent;
 }
 
 .color-picker input[type='color'],

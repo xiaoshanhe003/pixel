@@ -136,6 +136,27 @@
   line-height: 1;
 }
 
+.pixel-cell__preview {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.pixel-cell__preview--transparent {
+  background:
+    linear-gradient(45deg, rgba(223, 216, 203, 0.7) 25%, transparent 25%, transparent 75%, rgba(223, 216, 203, 0.7) 75%),
+    linear-gradient(45deg, rgba(223, 216, 203, 0.7) 25%, transparent 25%, transparent 75%, rgba(223, 216, 203, 0.7) 75%),
+    rgba(255, 255, 255, 0.26);
+  background-position: 0 0, 6px 6px, 0 0;
+  background-size: 12px 12px, 12px 12px, auto;
+}
+
+.pixel-grid--hide-transparency-texture .pixel-cell__preview--transparent {
+  background: transparent;
+}
+
 .pixel-cell--editable:hover {
   outline: 2px solid var(--pomegranate);
   z-index: 1;

@@ -251,6 +251,40 @@ describe('PixelGrid', () => {
     expect(handleCommitPaintStroke).toHaveBeenCalledWith([{ x: 0, y: 0 }], '#ff00aa');
   });
 
+  it('fills skipped cells while dragging the brush across non-adjacent cells', () => {
+    const handleCommitPaintStroke = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        activeColor="#ff00aa"
+        tool="paint"
+        toolSettings={defaultToolSettings}
+        onCommitPaintStroke={handleCommitPaintStroke}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i);
+    const fourthCell = screen.getByLabelText(/像素 3,0 透明/i);
+
+    fireEvent.pointerDown(firstCell, {
+      pointerId: 7,
+      clientX: 12,
+      clientY: 12,
+    });
+    fireEvent.pointerEnter(fourthCell, { pointerId: 7, clientX: 12, clientY: 12 });
+    fireEvent.pointerUp(viewport, { pointerId: 7 });
+
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }],
+      '#ff00aa',
+    );
+  });
+
   it('does not paint when move tool is active', async () => {
     const user = userEvent.setup();
     const handleCommitPaintStroke = vi.fn();
@@ -489,16 +523,15 @@ describe('PixelGrid', () => {
 
     fireEvent.pointerDown(first, { pointerId: 1 });
     fireEvent.pointerEnter(second, { pointerId: 1 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(screen.getByRole('grid', { name: /像素输出网格/i }), {
       pointerId: 1,
     });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      '#ff00aa',
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       '#ff00aa',
@@ -530,14 +563,13 @@ describe('PixelGrid', () => {
     fireEvent.pointerDown(first, { pointerId: 12 });
     fireEvent.pointerLeave(viewport as HTMLElement, { pointerId: 12 });
     fireEvent.pointerEnter(second, { pointerId: 12 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(window, { pointerId: 12 });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      '#ff00aa',
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       '#ff00aa',
@@ -564,16 +596,15 @@ describe('PixelGrid', () => {
 
     fireEvent.pointerDown(first, { pointerId: 2 });
     fireEvent.pointerEnter(second, { pointerId: 2 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(screen.getByRole('grid', { name: /像素输出网格/i }), {
       pointerId: 2,
     });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], null);
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      null,
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       null,

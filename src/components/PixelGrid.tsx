@@ -153,6 +153,10 @@ function readPointerCellTarget(target: EventTarget | null) {
   return { x, y };
 }
 
+function clampCellIndex(value: number, max: number) {
+  return Math.max(0, Math.min(max - 1, value));
+}
+
 export default function PixelGrid({
   grid,
   scenario = 'pixel',
@@ -192,6 +196,7 @@ export default function PixelGrid({
     mode: 'paint' | 'erase';
     points: BrushPoint[];
     visited: Set<string>;
+    lastPoint: BrushPoint;
   } | null>(null);
   const suppressClickPaintRef = useRef(false);
   const shapeStateRef = useRef<{
@@ -215,6 +220,11 @@ export default function PixelGrid({
     cells: Array<{ x: number; y: number }>;
     label: string;
   } | null>(null);
+  const [paintPreview, setPaintPreview] = useState<{
+    points: BrushPoint[];
+    size: 1 | 2 | 3 | 4;
+    color: string | null;
+  } | null>(null);
   const [hoverCell, setHoverCell] = useState<BrushPoint | null>(null);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [viewportMetrics, setViewportMetrics] = useState<ViewportMetrics>({
@@ -229,10 +239,6 @@ export default function PixelGrid({
     x: number;
     y: number;
   } | null>(null);
-
-  function previewStroke(points: BrushPoint[], color: string | null) {
-    onPreviewPaintStroke?.(points, color);
-  }
 
   function commitStroke(points: BrushPoint[], color: string | null) {
     onCommitPaintStroke?.(points, color);
@@ -259,8 +265,25 @@ export default function PixelGrid({
   }
 
   const toolCursor = getCursorForTool(tool);
+  const localPaintPreview = useMemo(
+    () =>
+      editable && paintPreview
+        ? {
+            cells: paintPreview.points.flatMap((point) =>
+              buildBrushFootprint(point.x, point.y, paintPreview.size, {
+                alignX: point.alignX,
+                alignY: point.alignY,
+              }),
+            ),
+          }
+        : null,
+    [editable, paintPreview],
+  );
   const hoverPreview =
-    editable && hoverCell && (tool === 'paint' || tool === 'erase')
+    editable &&
+    !paintPreview &&
+    hoverCell &&
+    (tool === 'paint' || tool === 'erase')
       ? {
           cells: buildBrushFootprint(
             hoverCell.x,
@@ -273,7 +296,8 @@ export default function PixelGrid({
           ),
         }
       : null;
-  const previewCells = interactionPreview?.cells ?? hoverPreview?.cells ?? [];
+  const previewCells =
+    localPaintPreview?.cells ?? interactionPreview?.cells ?? hoverPreview?.cells ?? [];
   const previewLookup = useMemo(
     () => new Set(previewCells.map((cell) => `${cell.x}-${cell.y}`)),
     [previewCells],
@@ -325,8 +349,10 @@ export default function PixelGrid({
         paintStateRef.current &&
         paintStateRef.current.pointerId === event.pointerId
       ) {
+        viewportRef.current?.releasePointerCapture?.(event.pointerId);
         commitStroke(paintStateRef.current.points, paintStateRef.current.color);
         paintStateRef.current = null;
+        setPaintPreview(null);
         suppressClickPaintRef.current = true;
       }
 
@@ -457,6 +483,104 @@ export default function PixelGrid({
       y: snapOffsetToDevicePixel(gridOffset.y, showGrid),
     }),
     [gridOffset.x, gridOffset.y, showGrid],
+  );
+  const readBrushPointFromViewportEvent = useCallback(
+    (event: { clientX: number; clientY: number }, size: 1 | 2 | 3 | 4): BrushPoint | null => {
+      const viewport = viewportRef.current;
+
+      if (!viewport) {
+        return null;
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      const relativeX =
+        (event.clientX ?? 0) - rect.left - beadAxisInset - renderedGridOffset.x - frameInset;
+      const relativeY =
+        (event.clientY ?? 0) - rect.top - beadAxisInset - renderedGridOffset.y - frameInset;
+
+      if (
+        relativeX < 0 ||
+        relativeY < 0 ||
+        relativeX > innerGridWidth ||
+        relativeY > innerGridHeight
+      ) {
+        return null;
+      }
+
+      const x = clampCellIndex(Math.floor(relativeX / cellStride), grid.width);
+      const y = clampCellIndex(Math.floor(relativeY / cellStride), grid.height);
+      const offsetX = relativeX - x * cellStride;
+      const offsetY = relativeY - y * cellStride;
+
+      return {
+        x,
+        y,
+        ...(size % 2 === 0
+          ? {
+              alignX: offsetX < displayCellSize / 2 ? 'before' : 'after',
+              alignY: offsetY < displayCellSize / 2 ? 'before' : 'after',
+            }
+          : {}),
+      };
+    },
+    [
+      beadAxisInset,
+      cellStride,
+      displayCellSize,
+      frameInset,
+      grid.height,
+      grid.width,
+      innerGridHeight,
+      innerGridWidth,
+      renderedGridOffset.x,
+      renderedGridOffset.y,
+    ],
+  );
+  const appendBrushPoint = useCallback(
+    (nextPoint: BrushPoint) => {
+      if (!paintStateRef.current) {
+        return;
+      }
+
+      const previousPoint = paintStateRef.current.lastPoint;
+      const interpolatedPoints = buildLinePoints(
+        previousPoint.x,
+        previousPoint.y,
+        nextPoint.x,
+        nextPoint.y,
+      );
+      const nextPoints: BrushPoint[] = [];
+
+      for (let index = 0; index < interpolatedPoints.length; index += 1) {
+        const point = interpolatedPoints[index];
+        const candidate =
+          index === interpolatedPoints.length - 1
+            ? nextPoint
+            : { x: point.x, y: point.y };
+        const pointKey = `${candidate.x}-${candidate.y}`;
+
+        if (paintStateRef.current.visited.has(pointKey)) {
+          continue;
+        }
+
+        paintStateRef.current.visited.add(pointKey);
+        nextPoints.push(candidate);
+      }
+
+      paintStateRef.current.lastPoint = nextPoint;
+
+      if (nextPoints.length === 0) {
+        return;
+      }
+
+      paintStateRef.current.points = [...paintStateRef.current.points, ...nextPoints];
+      setPaintPreview({
+        points: paintStateRef.current.points,
+        size: paintStateRef.current.mode === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+        color: paintStateRef.current.color,
+      });
+    },
+    [toolSettings.eraseSize, toolSettings.paintSize],
   );
   const displayedSelectionBounds = useMemo(() => {
     if (!selectionBounds) {
@@ -621,6 +745,23 @@ export default function PixelGrid({
       }}
       onPointerMove={(event) => {
         if (
+          (tool === 'paint' || tool === 'erase') &&
+          paintStateRef.current &&
+          paintStateRef.current.pointerId === event.pointerId
+        ) {
+          const brushSize =
+            tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+          const brushPoint = readBrushPointFromViewportEvent(event, brushSize);
+
+          if (brushPoint) {
+            appendBrushPoint(brushPoint);
+            setHoverCell(brushPoint);
+          }
+
+          return;
+        }
+
+        if (
           tool === 'select' &&
           selectionStateRef.current &&
           selectionStateRef.current.pointerId === event.pointerId
@@ -765,8 +906,10 @@ export default function PixelGrid({
           paintStateRef.current &&
           paintStateRef.current.pointerId === event.pointerId
         ) {
+          viewportRef.current?.releasePointerCapture?.(event.pointerId);
           commitStroke(paintStateRef.current.points, paintStateRef.current.color);
           paintStateRef.current = null;
+          setPaintPreview(null);
           suppressClickPaintRef.current = true;
         }
 
@@ -1102,8 +1245,14 @@ export default function PixelGrid({
                   mode: tool === 'erase' ? 'erase' : 'paint',
                   points: [brushPoint],
                   visited: new Set([pointKey]),
+                  lastPoint: brushPoint,
                 };
-                previewStroke([brushPoint], nextColor);
+                setPaintPreview({
+                  points: [brushPoint],
+                  size: tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                  color: nextColor,
+                });
+                viewportRef.current?.setPointerCapture?.(event.pointerId);
               }}
               onPointerEnter={(event) => {
                 const brushPoint = readBrushPointFromEvent(
@@ -1183,21 +1332,7 @@ export default function PixelGrid({
                   return;
                 }
 
-                const pointKey = `${cell.x}-${cell.y}`;
-
-                if (paintStateRef.current.visited.has(pointKey)) {
-                  return;
-                }
-
-                paintStateRef.current.visited.add(pointKey);
-                paintStateRef.current.points = [
-                  ...paintStateRef.current.points,
-                  brushPoint,
-                ];
-                previewStroke(
-                  paintStateRef.current.points,
-                  paintStateRef.current.color,
-                );
+                appendBrushPoint(brushPoint);
               }}
               onPointerLeave={() => {
                 if (!shapeStateRef.current) {
@@ -1242,7 +1377,13 @@ export default function PixelGrid({
                 <span className="pixel-cell__overlay">{getCellOverlay?.(cell) ?? '?'}</span>
               ) : null}
               {previewLookup.has(`${cell.x}-${cell.y}`) ? (
-                <span className="pixel-cell__preview" aria-hidden="true" />
+                <span
+                  className={`pixel-cell__preview${
+                    paintPreview?.color ? '' : ' pixel-cell__preview--transparent'
+                  }`}
+                  aria-hidden="true"
+                  style={paintPreview?.color ? { backgroundColor: paintPreview.color } : undefined}
+                />
               ) : null}
             </button>
           ))}
