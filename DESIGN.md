@@ -1,19 +1,30 @@
 # Design System Inspired by Figma
 
+## Product Scope
+
+The current product is intentionally a lightweight pixel conversion workspace rather than a full editor. The main workflow is:
+
+- upload or crop a source image
+- tune conversion settings
+- make focused canvas edits
+- review palette and export output
+
+Advanced editor modules such as timeline animation, multi-layer management, and inspector-heavy authoring are out of scope for the current release. If these capabilities return later, they should be reintroduced deliberately with matching product requirements, UI entry points, and tests rather than left as dormant surface area in the main workspace.
+
 ## 1. Visual Theme & Atmosphere
 
 Figma's interface is the design tool that designed itself — a masterclass in typographic sophistication where a custom variable font (figmaSans) modulates between razor-thin (weight 320) and bold (weight 700) with stops at unusual intermediates (330, 340, 450, 480, 540) that most type systems never explore. This granular weight control gives every text element a precisely calibrated visual weight, creating hierarchy through micro-differences rather than the blunt instrument of "regular vs bold."
 
 The page presents a fascinating duality: the interface chrome is strictly black-and-white (literally only `#000000` and `#ffffff` detected as colors), while the hero section and product showcases explode with vibrant multi-color gradients — electric greens, bright yellows, deep purples, hot pinks. This separation means the design system itself is colorless, treating the product's colorful output as the hero content. Figma's marketing page is essentially a white gallery wall displaying colorful art.
 
-What makes Figma distinctive beyond the variable font is its circle-and-pill geometry. Buttons use 50px radius (pill) or 50% (perfect circle for icon buttons), creating an organic, tool-palette-like feel. The dashed-outline focus indicator (`dashed 2px`) is a deliberate design choice that echoes selection handles in the Figma editor itself — the website's UI language references the product's UI language.
+What makes Figma distinctive beyond the variable font is its circle-and-pill geometry. Buttons use 50px radius (pill) or 50% (perfect circle for icon buttons), creating an organic, tool-palette-like feel. In this product, focus feedback should stay understated: prefer a light solid outline or subtle shadow ring instead of a high-contrast dashed treatment.
 
 **Key Characteristics:**
 - Custom variable font (figmaSans) with unusual weight stops: 320, 330, 340, 450, 480, 540, 700
 - Strictly black-and-white interface chrome — color exists only in product content
 - figmaMono for uppercase technical labels with wide letter-spacing
 - Pill (50px) and circular (50%) button geometry
-- Dashed focus outlines echoing Figma's editor selection handles
+- Subtle solid focus feedback using light outline or soft shadow
 - Vibrant multi-color hero gradients (green, yellow, purple, pink)
 - OpenType `"kern"` feature enabled globally
 - Negative letter-spacing throughout — even body text at -0.14px to -0.26px
@@ -71,7 +82,7 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 - Background: Pure Black (`#000000`)
 - Text: Pure White (`#ffffff`)
 - Radius: circle (50%) for icon buttons
-- Focus: dashed 2px outline
+- Focus: light solid outline or soft shadow ring
 - Maximum emphasis
 
 **White Pill**
@@ -79,21 +90,21 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 - Text: Pure Black (`#000000`)
 - Padding: 8px 18px 10px (asymmetric vertical)
 - Radius: pill (50px)
-- Focus: dashed 2px outline
+- Focus: light solid outline or soft shadow ring
 - Standard CTA on dark/colored surfaces
 
 **Glass Dark**
 - Background: `rgba(0, 0, 0, 0.08)` (subtle dark overlay)
 - Text: Pure Black
 - Radius: circle (50%)
-- Focus: dashed 2px outline
+- Focus: light solid outline or soft shadow ring
 - Secondary action on light surfaces
 
 **Glass Light**
 - Background: `rgba(255, 255, 255, 0.16)` (frosted glass)
 - Text: Pure White
 - Radius: circle (50%)
-- Focus: dashed 2px outline
+- Focus: light solid outline or soft shadow ring
 - Secondary action on dark/colored surfaces
 
 ### Cards & Containers
@@ -123,10 +134,10 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 - White text overlay with 86px display heading
 - Product screenshots floating within the gradient
 
-**Dashed Focus Indicators**
-- All interactive elements use `dashed 2px` outline on focus
-- References the selection handles in the Figma editor
-- A meta-design choice connecting website and product
+**Focus Indicators**
+- All interactive elements use a restrained focus treatment
+- Prefer a light solid outline or soft shadow ring
+- Avoid heavy or decorative focus chrome unless a component explicitly needs it
 
 ## 5. Layout Principles
 
@@ -168,7 +179,7 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 - Use figmaSans with precise variable weights (320–540) — the granular weight control IS the design
 - Keep the interface strictly black-and-white — color comes from product content only
 - Use pill (50px) and circular (50%) geometry for all interactive elements
-- Apply dashed 2px focus outlines — the signature accessibility pattern
+- Apply restrained focus states that stay visible without dominating the UI
 - Enable `"kern"` feature on all text
 - Use figmaMono in uppercase with positive letter-spacing for labels
 - Apply negative letter-spacing throughout (-0.1px to -1.72px)
@@ -177,7 +188,7 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 - Don't add interface colors — the monochrome palette is absolute
 - Don't use standard font weights (400, 500, 600, 700) — use the variable font's unique stops (320, 330, 340, 450, 480, 540)
 - Don't use sharp corners on buttons — pill and circular geometry only
-- Don't use solid focus outlines — dashed is the signature
+- Don't use heavy, high-contrast, or decorative focus rings by default
 - Don't increase body font weight above 450 — the light-weight aesthetic is core
 - Don't use positive letter-spacing on body text — it's always negative
 
@@ -215,6 +226,6 @@ What makes Figma distinctive beyond the variable font is its circle-and-pill geo
 ### Iteration Guide
 1. Use variable font weight stops precisely: 320, 330, 340, 450, 480, 540, 700
 2. Interface is always black + white — never add colors to chrome
-3. Dashed focus outlines, not solid
+3. Keep focus treatments subtle and clean
 4. Letter-spacing is always negative on body, always positive on mono labels
 5. Pill (50px) for buttons/tabs, circle (50%) for icon buttons

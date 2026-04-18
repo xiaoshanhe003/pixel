@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BeadBrand } from '../data/beadPalettes';
-import { DEFAULT_OPTIONS, SCENARIOS } from '../constants/studio';
+import { DEFAULT_OPTIONS, FIT_WINDOW_ZOOM, SCENARIOS } from '../constants/studio';
 import type { ConversionOptions, PixelGrid } from '../types/pixel';
 import type {
+  EditorSelection,
   EditorTool,
   EditorToolSettings,
   ScenarioDefinition,
@@ -11,49 +12,56 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
-import { countBeadUsage, mapGridToBeadPalette } from '../utils/beads';
+import { countBeadUsage, mapColorToBeadPalette, mapGridToBeadPalette } from '../utils/beads';
 import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/crochet';
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
 import {
-  addFrameToDocument,
-  addLayerToActiveFrame,
-  applyBrushStrokeOnActiveLayer,
+  type BrushPoint,
   composeFrame,
-  clearActiveLayer,
   countPaletteUsage,
   createDocumentFromGrid,
   createStudioDocument,
-  deleteActiveFrame,
-  deleteActiveLayer,
-  drawLineOnActiveLayer,
-  drawRectangleOnActiveLayer,
-  duplicateActiveFrame,
-  duplicateActiveLayer,
-  fillActiveLayerArea,
   getTransparentCount,
-  mergeActiveLayerDown,
-  moveLayer,
-  moveLayerToIndex,
-  renameLayer,
-  replaceActiveLayerCell,
-  setActiveFrame,
   setActiveLayer,
-  setLayerOpacity,
-  toggleLayerLock,
-  toggleLayerVisibility,
 } from '../utils/studio';
+import {
+  applyStudioCommandToHistory,
+  applyStudioCommandFromBaseToHistory,
+  executeStudioCommand,
+  applyStudioTransientUpdate,
+  createStudioHistoryState,
+  redoStudioHistory,
+  resetStudioHistory,
+  undoStudioHistory,
+  type StudioHistoryState,
+} from '../utils/studioCommands';
 
 type ExportMode = 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows';
 
-export type StudioFramePreview = {
-  frame: StudioFrame;
-  preview: PixelGrid;
-};
+function clampSelectionToDocument(
+  selection: EditorSelection,
+  document: StudioDocument,
+): EditorSelection {
+  const minX = Math.max(0, Math.min(document.width - selection.width, selection.minX));
+  const minY = Math.max(0, Math.min(document.height - selection.height, selection.minY));
+  const width = Math.max(1, Math.min(selection.width, document.width - minX));
+  const height = Math.max(1, Math.min(selection.height, document.height - minY));
+
+  return {
+    minX,
+    minY,
+    maxX: minX + width - 1,
+    maxY: minY + height - 1,
+    width,
+    height,
+  };
+}
 
 type StudioSourceState = {
   selectedFile: File | null;
   previewUrl?: string;
+  isProcessingUpload: boolean;
 };
 
 type StudioOutputState = {
@@ -75,7 +83,6 @@ type StudioDerivedState = {
   scenario: ScenarioDefinition;
   activeFrame?: StudioFrame;
   activeLayer?: StudioLayer;
-  framePreviews: StudioFramePreview[];
   activeGrid: PixelGrid | null;
   output: StudioOutputState;
   stats: StudioStats;
@@ -84,6 +91,8 @@ type StudioDerivedState = {
 export type UseStudioAppResult = {
   controls: {
     conversionOptions: ConversionOptions;
+    canUndo: boolean;
+    canRedo: boolean;
   };
   source: StudioSourceState;
   editor: {
@@ -92,6 +101,7 @@ export type UseStudioAppResult = {
     toolSettings: EditorToolSettings;
     canvasZoom: number;
     showGridLines: boolean;
+    selection: EditorSelection | null;
   };
   studio: {
     document: StudioDocument;
@@ -99,10 +109,7 @@ export type UseStudioAppResult = {
     scenario: ScenarioDefinition;
     activeFrame?: StudioFrame;
     activeLayer?: StudioLayer;
-    framePreviews: StudioFramePreview[];
     activeGrid: PixelGrid | null;
-    previewIsPlaying: boolean;
-    previewFps: number;
   };
   output: StudioOutputState;
   stats: StudioStats;
@@ -117,18 +124,22 @@ export type UseStudioAppResult = {
     ) => void;
     setCanvasZoom: (updater: (current: number) => number) => void;
     toggleGridLines: () => void;
-    setPreviewFps: (fps: number) => void;
-    selectFrame: (frameId: string) => void;
     createBlankCanvas: () => void;
-    addFrame: () => void;
-    duplicateFrame: () => void;
-    deleteFrame: () => void;
-    togglePlayback: () => void;
+    undo: () => void;
+    redo: () => void;
     printExport: () => void;
     setCrochetViewMode: (mode: 'color' | 'symbol') => void;
     setBeadBrand: (brand: BeadBrand) => void;
     setExportMode: (mode: ExportMode) => void;
     paintCell: (x: number, y: number, color: string | null) => void;
+    previewPaintStroke: (
+      points: BrushPoint[],
+      color: string | null,
+    ) => void;
+    commitPaintStroke: (
+      points: BrushPoint[],
+      color: string | null,
+    ) => void;
     sampleCell: (color: string | null) => void;
     fillArea: (x: number, y: number, color: string | null) => void;
     drawLine: (
@@ -145,6 +156,11 @@ export type UseStudioAppResult = {
       endY: number,
       color: string | null,
     ) => void;
+    setSelection: (selection: EditorSelection | null) => void;
+    previewMoveSelection: (offsetX: number, offsetY: number) => void;
+    commitMoveSelection: (offsetX: number, offsetY: number) => void;
+    previewScaleSelection: (targetWidth: number, targetHeight: number) => void;
+    commitScaleSelection: (targetWidth: number, targetHeight: number) => void;
     selectLayer: (layerId: string) => void;
     addLayer: () => void;
     duplicateLayer: (layerId?: string) => void;
@@ -161,16 +177,23 @@ export type UseStudioAppResult = {
 };
 
 function useStudioDocumentSync(params: {
+  document: StudioDocument;
   activeScenario: ScenarioId;
   conversionOptions: ConversionOptions;
   selectedFile: File | null;
-  setDocument: React.Dispatch<React.SetStateAction<StudioDocument>>;
+  resetDocument: (document: StudioDocument) => void;
+  setDocument: (
+    updater: (current: StudioDocument) => StudioDocument,
+  ) => void;
 }) {
-  const { activeScenario, conversionOptions, selectedFile, setDocument } = params;
+  const { document, activeScenario, conversionOptions, selectedFile, resetDocument, setDocument } =
+    params;
   const [previewUrl, setPreviewUrl] = useState<string>();
+  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
 
   useEffect(() => {
     if (!selectedFile) {
+      setIsProcessingUpload(false);
       setPreviewUrl(undefined);
       return;
     }
@@ -178,6 +201,7 @@ function useStudioDocumentSync(params: {
     const nextPreviewUrl = URL.createObjectURL(selectedFile);
     let cancelled = false;
 
+    setIsProcessingUpload(true);
     setPreviewUrl(nextPreviewUrl);
 
     void (async () => {
@@ -192,37 +216,45 @@ function useStudioDocumentSync(params: {
         const nextGrid = buildPixelGrid(imageData, conversionOptions);
 
         if (!cancelled) {
-          setDocument(createDocumentFromGrid(activeScenario, nextGrid));
+          resetDocument(createDocumentFromGrid(activeScenario, nextGrid));
+          setIsProcessingUpload(false);
         }
       } catch {
         if (!cancelled) {
-          setDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+          resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+          setIsProcessingUpload(false);
         }
       }
     })();
 
     return () => {
       cancelled = true;
+      setIsProcessingUpload(false);
       URL.revokeObjectURL(nextPreviewUrl);
     };
-  }, [activeScenario, conversionOptions, selectedFile, setDocument]);
+  }, [activeScenario, conversionOptions, resetDocument, selectedFile]);
 
   useEffect(() => {
     if (selectedFile) {
       return;
     }
 
-    setDocument((current) => {
-      if (
-        current.width === conversionOptions.gridSize &&
-        current.height === conversionOptions.gridSize
-      ) {
-        return current;
-      }
+    if (
+      document.width === conversionOptions.gridSize &&
+      document.height === conversionOptions.gridSize
+    ) {
+      return;
+    }
 
-      return createStudioDocument(activeScenario, conversionOptions.gridSize);
-    });
-  }, [activeScenario, conversionOptions.gridSize, selectedFile, setDocument]);
+    resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+  }, [
+    activeScenario,
+    conversionOptions.gridSize,
+    document.height,
+    document.width,
+    resetDocument,
+    selectedFile,
+  ]);
 
   useEffect(() => {
     setDocument((current) =>
@@ -232,46 +264,7 @@ function useStudioDocumentSync(params: {
     );
   }, [activeScenario, setDocument]);
 
-  return { previewUrl, setPreviewUrl };
-}
-
-function useStudioPlayback(params: {
-  activeScenario: ScenarioId;
-  frameCount: number;
-  previewFps: number;
-  previewIsPlaying: boolean;
-  setDocument: React.Dispatch<React.SetStateAction<StudioDocument>>;
-}) {
-  const { activeScenario, frameCount, previewFps, previewIsPlaying, setDocument } = params;
-
-  useEffect(() => {
-    if (activeScenario !== 'pixel' || !previewIsPlaying || frameCount <= 1) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setDocument((current) => {
-        if (current.frames.length <= 1) {
-          return current;
-        }
-
-        const activeIndex = current.frames.findIndex(
-          (frame) => frame.id === current.activeFrameId,
-        );
-        const nextFrame =
-          current.frames[(activeIndex + 1) % current.frames.length] ?? current.frames[0];
-
-        return {
-          ...current,
-          activeFrameId: nextFrame.id,
-        };
-      });
-    }, Math.round(1000 / previewFps));
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [activeScenario, frameCount, previewFps, previewIsPlaying, setDocument]);
+  return { previewUrl, setPreviewUrl, isProcessingUpload };
 }
 
 function useStudioDerivedState(params: {
@@ -287,18 +280,12 @@ function useStudioDerivedState(params: {
 
   return useMemo(() => {
     const activeFrame =
-      document.frames.find((frame) => frame.id === document.activeFrameId) ??
-      document.frames[0];
+      document.frames.find((frame) => frame.id === document.activeFrameId) ?? document.frames[0];
     const activeLayer =
-      activeFrame?.layers.find((layer) => layer.id === activeFrame.activeLayerId) ??
-      activeFrame?.layers[0];
-    const framePreviews = document.frames.map((frame) => ({
-      frame,
-      preview: composeFrame(frame, document.width, document.height),
-    }));
-    const baseActiveGrid =
-      framePreviews.find((item) => item.frame.id === document.activeFrameId)?.preview ??
-      null;
+      activeFrame?.layers.find((layer) => layer.id === activeFrame.activeLayerId) ?? activeFrame?.layers[0];
+    const baseActiveGrid = activeFrame
+      ? composeFrame(activeFrame, document.width, document.height)
+      : null;
     const activeGrid =
       activeScenario === 'beads' && baseActiveGrid
         ? mapGridToBeadPalette(baseActiveGrid, beadBrand)
@@ -324,7 +311,6 @@ function useStudioDerivedState(params: {
       scenario,
       activeFrame,
       activeLayer,
-      framePreviews,
       activeGrid,
       output: {
         beadBrand,
@@ -355,21 +341,20 @@ export function useStudioApp(): UseStudioAppResult {
     useState<ConversionOptions>(DEFAULT_OPTIONS);
   const [activeScenario, setActiveScenario] = useState<ScenarioId>('pixel');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [document, setDocument] = useState<StudioDocument>(
-    createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize),
+  const [history, setHistory] = useState<StudioHistoryState>(() =>
+    createStudioHistoryState(createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize)),
   );
-  const [activeColor, setActiveColor] = useState('#d65a31');
-  const [activeTool, setActiveTool] = useState<EditorTool>('paint');
+  const [activeColor, setActiveColor] = useState('#000000');
+  const [activeTool, setActiveTool] = useState<EditorTool>('move');
   const [toolSettings, setToolSettings] = useState<EditorToolSettings>({
     paintSize: 1,
     eraseSize: 1,
     shapePreviewMode: 'outline',
   });
-  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [canvasZoom, setCanvasZoom] = useState(FIT_WINDOW_ZOOM);
   const [showGridLines, setShowGridLines] = useState(true);
-  const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
-  const [previewFps, setPreviewFps] = useState(6);
-  const [beadBrand, setBeadBrand] = useState<BeadBrand>('perler');
+  const [selection, setSelection] = useState<EditorSelection | null>(null);
+  const [beadBrand, setBeadBrand] = useState<BeadBrand>('mard');
   const [crochetViewMode, setCrochetViewMode] = useState<'color' | 'symbol'>('color');
   const [beadExportMode, setBeadExportMode] = useState<'bead-chart' | 'bead-list'>(
     'bead-chart',
@@ -377,27 +362,30 @@ export function useStudioApp(): UseStudioAppResult {
   const [crochetExportMode, setCrochetExportMode] = useState<
     'crochet-chart' | 'crochet-rows'
   >('crochet-chart');
+  const strokeBaseDocumentRef = useRef<StudioDocument | null>(null);
+  const selectionBaseDocumentRef = useRef<StudioDocument | null>(null);
 
-  const { previewUrl, setPreviewUrl } = useStudioDocumentSync({
+  const document = history.present;
+
+  const setDocument = useCallback(
+    (updater: (current: StudioDocument) => StudioDocument) => {
+      setHistory((current) => applyStudioTransientUpdate(current, updater));
+    },
+    [],
+  );
+
+  const resetDocument = useCallback((nextDocument: StudioDocument) => {
+    setHistory(resetStudioHistory(nextDocument));
+  }, []);
+
+  const { previewUrl, setPreviewUrl, isProcessingUpload } = useStudioDocumentSync({
+    document,
     activeScenario,
     conversionOptions,
     selectedFile,
+    resetDocument,
     setDocument,
   });
-
-  useStudioPlayback({
-    activeScenario,
-    frameCount: document.frames.length,
-    previewFps,
-    previewIsPlaying,
-    setDocument,
-  });
-
-  useEffect(() => {
-    if (activeScenario !== 'pixel' || document.frames.length <= 1) {
-      setPreviewIsPlaying(false);
-    }
-  }, [activeScenario, document.frames.length]);
 
   const derived = useStudioDerivedState({
     document,
@@ -407,31 +395,81 @@ export function useStudioApp(): UseStudioAppResult {
     beadExportMode,
     crochetExportMode,
   });
+  const effectiveActiveColor =
+    activeScenario === 'beads'
+      ? mapColorToBeadPalette(activeColor, beadBrand)
+      : activeColor;
 
-  function updateActiveLayer(
-    updater: (current: StudioDocument) => StudioDocument,
-  ) {
-    if (!derived.activeFrame || !derived.activeLayer) {
+  useEffect(() => {
+    if (activeScenario !== 'beads') {
       return;
     }
 
-    setDocument(updater);
+    setActiveColor((current) => {
+      const mapped = mapColorToBeadPalette(current, beadBrand);
+      return mapped === current ? current : mapped;
+    });
+  }, [activeScenario, beadBrand]);
+
+  useEffect(() => {
+    setSelection(null);
+    selectionBaseDocumentRef.current = null;
+  }, [document.activeFrameId, document.width, document.height, derived.activeLayer?.id]);
+
+  function dispatchCommand(command: Parameters<typeof applyStudioCommandToHistory>[1]) {
+    if (!derived.activeLayer) {
+      return;
+    }
+
+    strokeBaseDocumentRef.current = null;
+    selectionBaseDocumentRef.current = null;
+    setHistory((current) => applyStudioCommandToHistory(current, command));
   }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isModifierPressed = event.metaKey || event.ctrlKey;
+
+      if (!isModifierPressed || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        setHistory((current) => undoStudioHistory(current));
+      } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
+        event.preventDefault();
+        setHistory((current) => redoStudioHistory(current));
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return {
     controls: {
       conversionOptions,
+      canUndo: history.past.length > 0,
+      canRedo: history.future.length > 0,
     },
     source: {
       selectedFile,
       previewUrl,
+      isProcessingUpload,
     },
     editor: {
-      activeColor,
+      activeColor: effectiveActiveColor,
       activeTool,
       toolSettings,
       canvasZoom,
       showGridLines,
+      selection,
     },
     studio: {
       document,
@@ -439,10 +477,7 @@ export function useStudioApp(): UseStudioAppResult {
       scenario: derived.scenario,
       activeFrame: derived.activeFrame,
       activeLayer: derived.activeLayer,
-      framePreviews: derived.framePreviews,
       activeGrid: derived.activeGrid,
-      previewIsPlaying,
-      previewFps,
     },
     output: derived.output,
     stats: derived.stats,
@@ -450,30 +485,39 @@ export function useStudioApp(): UseStudioAppResult {
       setSelectedFile,
       setConversionOptions,
       setActiveScenario,
-      setActiveColor,
+      setActiveColor: (color) =>
+        setActiveColor(
+          activeScenario === 'beads' ? mapColorToBeadPalette(color, beadBrand) : color,
+        ),
       setActiveTool,
+      setSelection: (nextSelection) => {
+        selectionBaseDocumentRef.current = null;
+        setSelection(nextSelection);
+      },
       setToolSettings: (updater) =>
         setToolSettings((current) => updater(current)),
       setCanvasZoom,
       toggleGridLines: () => setShowGridLines((current) => !current),
-      setPreviewFps,
-      selectFrame: (frameId) =>
-        setDocument((current) => setActiveFrame(current, frameId)),
       createBlankCanvas: () => {
         setSelectedFile(null);
         setPreviewUrl(undefined);
-        setDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
-        setCanvasZoom(1);
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+        setCanvasZoom(FIT_WINDOW_ZOOM);
       },
-      addFrame: () => setDocument((current) => addFrameToDocument(current)),
-      duplicateFrame: () => setDocument((current) => duplicateActiveFrame(current)),
-      deleteFrame: () => setDocument((current) => deleteActiveFrame(current)),
-      togglePlayback: () => {
-        if (document.frames.length <= 1) {
-          return;
-        }
-
-        setPreviewIsPlaying((current) => !current);
+      undo: () => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setHistory((current) => undoStudioHistory(current));
+      },
+      redo: () => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setHistory((current) => redoStudioHistory(current));
       },
       printExport: () => window.print(),
       setCrochetViewMode,
@@ -487,58 +531,194 @@ export function useStudioApp(): UseStudioAppResult {
         setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
       },
       paintCell: (x, y, color) =>
-        updateActiveLayer((current) =>
+        dispatchCommand(
           activeTool === 'paint' || activeTool === 'erase'
-            ? applyBrushStrokeOnActiveLayer(
-                current,
+            ? {
+                type: 'paintCell',
                 x,
                 y,
-                activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                size: activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
                 color,
-              )
-            : replaceActiveLayerCell(current, x, y, color),
+              }
+            : { type: 'replaceCell', x, y, color },
         ),
+      previewPaintStroke: (points, color) => {
+        if (
+          !derived.activeFrame ||
+          !derived.activeLayer ||
+          (activeTool !== 'paint' && activeTool !== 'erase') ||
+          points.length === 0
+        ) {
+          return;
+        }
+
+        const size = activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+
+        setHistory((current) => {
+          const baseDocument =
+            strokeBaseDocumentRef.current ?? structuredClone(current.present);
+          strokeBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'paintStroke',
+              points,
+              size,
+              color,
+            }),
+          );
+        });
+      },
+      commitPaintStroke: (points, color) => {
+        if (
+          !derived.activeFrame ||
+          !derived.activeLayer ||
+          (activeTool !== 'paint' && activeTool !== 'erase') ||
+          points.length === 0
+        ) {
+          return;
+        }
+
+        const size = activeTool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize;
+
+        setHistory((current) => {
+          const baseDocument = strokeBaseDocumentRef.current ?? current.present;
+          strokeBaseDocumentRef.current = null;
+
+          return applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'paintStroke',
+            points,
+            size,
+            color,
+          });
+        });
+      },
       sampleCell: (color) => {
         if (!color) {
           return;
         }
 
-        setActiveColor(color);
+        setActiveColor(
+          activeScenario === 'beads' ? mapColorToBeadPalette(color, beadBrand) : color,
+        );
         setActiveTool('paint');
       },
-      fillArea: (x, y, color) =>
-        updateActiveLayer((current) => fillActiveLayerArea(current, x, y, color)),
+      fillArea: (x, y, color) => dispatchCommand({ type: 'fillArea', x, y, color }),
       drawLine: (startX, startY, endX, endY, color) =>
-        updateActiveLayer((current) =>
-          drawLineOnActiveLayer(current, startX, startY, endX, endY, color),
-        ),
+        dispatchCommand({ type: 'drawLine', startX, startY, endX, endY, color }),
       drawRectangle: (startX, startY, endX, endY, color) =>
-        updateActiveLayer((current) =>
-          drawRectangleOnActiveLayer(current, startX, startY, endX, endY, color),
-        ),
+        dispatchCommand({ type: 'drawRectangle', startX, startY, endX, endY, color }),
+      previewMoveSelection: (offsetX, offsetY) => {
+        if (!derived.activeLayer || !selection) {
+          return;
+        }
+
+        setHistory((current) => {
+          const baseDocument =
+            selectionBaseDocumentRef.current ?? structuredClone(current.present);
+          selectionBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'moveSelection',
+              bounds: selection,
+              offsetX,
+              offsetY,
+            }),
+          );
+        });
+      },
+      commitMoveSelection: (offsetX, offsetY) => {
+        const baseDocument = selectionBaseDocumentRef.current ?? history.present;
+        selectionBaseDocumentRef.current = null;
+
+        if (!selection) {
+          return;
+        }
+
+        setHistory((current) =>
+          applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'moveSelection',
+            bounds: selection,
+            offsetX,
+            offsetY,
+          }),
+        );
+        setSelection(
+          clampSelectionToDocument(
+            {
+              ...selection,
+              minX: selection.minX + offsetX,
+              minY: selection.minY + offsetY,
+            },
+            document,
+          ),
+        );
+      },
+      previewScaleSelection: (targetWidth, targetHeight) => {
+        if (!derived.activeLayer || !selection) {
+          return;
+        }
+
+        setHistory((current) => {
+          const baseDocument =
+            selectionBaseDocumentRef.current ?? structuredClone(current.present);
+          selectionBaseDocumentRef.current = baseDocument;
+
+          return applyStudioTransientUpdate(current, () =>
+            executeStudioCommand(baseDocument, {
+              type: 'scaleSelection',
+              bounds: selection,
+              targetWidth,
+              targetHeight,
+            }),
+          );
+        });
+      },
+      commitScaleSelection: (targetWidth, targetHeight) => {
+        const baseDocument = selectionBaseDocumentRef.current ?? history.present;
+        selectionBaseDocumentRef.current = null;
+
+        if (!selection) {
+          return;
+        }
+
+        setHistory((current) =>
+          applyStudioCommandFromBaseToHistory(current, baseDocument, {
+            type: 'scaleSelection',
+            bounds: selection,
+            targetWidth,
+            targetHeight,
+          }),
+        );
+        setSelection(
+          clampSelectionToDocument(
+            {
+              ...selection,
+              width: targetWidth,
+              height: targetHeight,
+            },
+            document,
+          ),
+        );
+      },
       selectLayer: (layerId) =>
         setDocument((current) => setActiveLayer(current, layerId)),
-      addLayer: () => setDocument((current) => addLayerToActiveFrame(current)),
-      duplicateLayer: (layerId) =>
-        setDocument((current) => duplicateActiveLayer(current, layerId)),
-      deleteLayer: (layerId) =>
-        setDocument((current) => deleteActiveLayer(current, layerId)),
-      mergeLayerDown: (layerId) =>
-        setDocument((current) => mergeActiveLayerDown(current, layerId)),
-      renameLayer: (layerId, name) =>
-        setDocument((current) => renameLayer(current, layerId, name)),
+      addLayer: () => dispatchCommand({ type: 'addLayer' }),
+      duplicateLayer: (layerId) => dispatchCommand({ type: 'duplicateLayer', layerId }),
+      deleteLayer: (layerId) => dispatchCommand({ type: 'deleteLayer', layerId }),
+      mergeLayerDown: (layerId) => dispatchCommand({ type: 'mergeLayerDown', layerId }),
+      renameLayer: (layerId, name) => dispatchCommand({ type: 'renameLayer', layerId, name }),
       toggleLayerVisibility: (layerId) =>
-        setDocument((current) => toggleLayerVisibility(current, layerId)),
-      toggleLayerLock: (layerId) =>
-        setDocument((current) => toggleLayerLock(current, layerId)),
-      clearLayer: (layerId) =>
-        setDocument((current) => clearActiveLayer(current, layerId)),
+        dispatchCommand({ type: 'toggleLayerVisibility', layerId }),
+      toggleLayerLock: (layerId) => dispatchCommand({ type: 'toggleLayerLock', layerId }),
+      clearLayer: (layerId) => dispatchCommand({ type: 'clearLayer', layerId }),
       moveLayer: (layerId, direction) =>
-        setDocument((current) => moveLayer(current, layerId, direction)),
+        dispatchCommand({ type: 'moveLayer', layerId, direction }),
       reorderLayer: (layerId, targetIndex) =>
-        setDocument((current) => moveLayerToIndex(current, layerId, targetIndex)),
+        dispatchCommand({ type: 'reorderLayer', layerId, targetIndex }),
       setLayerOpacity: (layerId, opacity) =>
-        setDocument((current) => setLayerOpacity(current, layerId, opacity)),
+        dispatchCommand({ type: 'setLayerOpacity', layerId, opacity }),
     },
   };
 }

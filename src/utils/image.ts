@@ -10,6 +10,12 @@ type Bounds = {
   height: number;
 };
 
+export type SquareCrop = {
+  x: number;
+  y: number;
+  size: number;
+};
+
 function createImageData(width: number, height: number, data?: Uint8ClampedArray): ImageData {
   const pixels = data ?? new Uint8ClampedArray(width * height * 4);
 
@@ -245,6 +251,44 @@ export async function fileToImageElement(file: File): Promise<HTMLImageElement> 
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export async function cropImageFile(
+  file: File,
+  crop: SquareCrop,
+): Promise<File> {
+  const image = await fileToImageElement(file);
+  const naturalWidth = image.naturalWidth || image.width;
+  const naturalHeight = image.naturalHeight || image.height;
+  const maxSize = Math.min(naturalWidth, naturalHeight);
+  const size = Math.max(1, Math.min(Math.round(crop.size), maxSize));
+  const x = Math.max(0, Math.min(Math.round(crop.x), naturalWidth - size));
+  const y = Math.max(0, Math.min(Math.round(crop.y), naturalHeight - size));
+  const canvas = createCanvas(size, size);
+  const context = getCanvas2DContext(canvas);
+
+  context.imageSmoothingEnabled = true;
+  context.clearRect(0, 0, size, size);
+  context.drawImage(image, x, y, size, size, 0, 0, size, size);
+
+  const type = file.type || 'image/png';
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((nextBlob) => {
+      if (nextBlob) {
+        resolve(nextBlob);
+        return;
+      }
+
+      reject(new Error('Failed to export cropped image.'));
+    }, type);
+  });
+  const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
+  const nameWithoutExtension = file.name.replace(/\.[^.]+$/, '');
+
+  return new File([blob], `${nameWithoutExtension}-crop.${extension}`, {
+    type,
+    lastModified: Date.now(),
+  });
 }
 
 export function resizeImageDataNearest(imageData: ImageData, width: number, height: number): ImageData {

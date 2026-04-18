@@ -1,6 +1,7 @@
 import PixelGrid from './PixelGrid';
 import type { PixelGrid as PixelGridModel } from '../types/pixel';
-import type { EditorTool, EditorToolSettings } from '../types/studio';
+import type { EditorSelection, EditorTool, EditorToolSettings } from '../types/studio';
+import type { LayerContentBounds } from '../utils/studio';
 
 type CrochetChartProps = {
   grid: PixelGridModel;
@@ -10,7 +11,14 @@ type CrochetChartProps = {
   activeColor?: string;
   tool?: EditorTool;
   toolSettings: EditorToolSettings;
-  onPaintCell?: (x: number, y: number, color: string | null) => void;
+  onPreviewPaintStroke?: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
+  onCommitPaintStroke?: (
+    points: Array<{ x: number; y: number }>,
+    color: string | null,
+  ) => void;
   onFillArea?: (x: number, y: number, color: string | null) => void;
   onDrawLine?: (
     startX: number,
@@ -26,9 +34,16 @@ type CrochetChartProps = {
     endY: number,
     color: string | null,
   ) => void;
+  onSelectionChange?: (selection: EditorSelection | null) => void;
+  onPreviewMoveSelection?: (offsetX: number, offsetY: number) => void;
+  onCommitMoveSelection?: (offsetX: number, offsetY: number) => void;
+  onPreviewScaleSelection?: (targetWidth: number, targetHeight: number) => void;
+  onCommitScaleSelection?: (targetWidth: number, targetHeight: number) => void;
   onSampleCell?: (color: string | null) => void;
   zoom?: number;
   showGrid?: boolean;
+  onViewportSizeChange?: (size: { width: number; height: number }) => void;
+  selectionBounds?: LayerContentBounds | null;
 };
 
 export default function CrochetChart({
@@ -39,13 +54,21 @@ export default function CrochetChart({
   activeColor,
   tool,
   toolSettings,
-  onPaintCell,
+  onPreviewPaintStroke,
+  onCommitPaintStroke,
   onFillArea,
   onDrawLine,
   onDrawRectangle,
+  onSelectionChange,
+  onPreviewMoveSelection,
+  onCommitMoveSelection,
+  onPreviewScaleSelection,
+  onCommitScaleSelection,
   onSampleCell,
   zoom,
   showGrid,
+  onViewportSizeChange,
+  selectionBounds,
 }: CrochetChartProps) {
   const columnNumbers = Array.from({ length: grid.width }, (_, index) => index + 1);
   const rowNumbers = Array.from({ length: grid.height }, (_, index) => grid.height - index);
@@ -76,13 +99,21 @@ export default function CrochetChart({
         activeColor={activeColor}
         tool={tool}
         toolSettings={toolSettings}
-        onPaintCell={onPaintCell}
+        onPreviewPaintStroke={onPreviewPaintStroke}
+        onCommitPaintStroke={onCommitPaintStroke}
         onFillArea={onFillArea}
         onDrawLine={onDrawLine}
         onDrawRectangle={onDrawRectangle}
+        onSelectionChange={onSelectionChange}
+        onPreviewMoveSelection={onPreviewMoveSelection}
+        onCommitMoveSelection={onCommitMoveSelection}
+        onPreviewScaleSelection={onPreviewScaleSelection}
+        onCommitScaleSelection={onCommitScaleSelection}
         onSampleCell={onSampleCell}
         zoom={zoom}
         showGrid={showGrid}
+        onViewportSizeChange={onViewportSizeChange}
+        selectionBounds={selectionBounds}
         presentation={viewMode === 'symbol' ? 'symbol' : 'color'}
         getCellOverlay={(cell) =>
           cell.color ? symbolByColor.get(cell.color) ?? '?' : undefined

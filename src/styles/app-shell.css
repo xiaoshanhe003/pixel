@@ -88,6 +88,7 @@
 }
 
 .topbar-status,
+.topbar-history,
 .canvas-toolbar,
 .frame-strip__actions {
   display: flex;
@@ -102,6 +103,21 @@
 
 .topbar-actions {
   justify-items: end;
+}
+
+.chip-button:disabled,
+.scenario-tab:disabled,
+.size-control__option:disabled,
+.layer-card__select:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.chip-button:disabled:hover,
+.scenario-tab:disabled:hover,
+.size-control__option:disabled:hover,
+.layer-card__select:disabled:hover {
+  background: transparent;
 }
 
 .canvas-toolbar__value,

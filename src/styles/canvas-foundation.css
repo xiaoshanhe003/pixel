@@ -1,15 +1,26 @@
 .stage-canvas-panel {
+  position: relative;
+  display: grid;
   min-height: 720px;
   background:
     linear-gradient(180deg, rgba(2, 73, 42, 0.04), rgba(255, 255, 255, 0.96)),
     var(--panel);
+  padding: 0;
 }
 
-.stage-canvas-body {
-  display: grid;
-  place-items: center;
+.stage-canvas-panel > .pixel-grid-viewport,
+.stage-canvas-panel > .crochet-chart,
+.stage-canvas-panel > .empty-state {
   min-height: 640px;
-  padding: var(--space-8);
+}
+
+.stage-canvas-panel > .pixel-grid-viewport,
+.stage-canvas-panel > .crochet-chart {
+  width: 100%;
+  height: 100%;
+}
+
+.stage-canvas-panel > .pixel-grid-viewport {
   background:
     radial-gradient(circle at top, rgba(59, 211, 253, 0.08), transparent 34%),
     linear-gradient(180deg, #f8f4ed 0%, #efe8dd 100%);
@@ -28,16 +39,22 @@
   background: rgba(248, 204, 101, 0.16);
 }
 
+.uploader-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
 .pixel-grid-viewport {
+  position: relative;
+  display: block;
   width: 100%;
   max-width: 100%;
   max-height: 640px;
-  overflow: auto;
-  display: grid;
-  place-items: center;
-  padding: var(--space-11);
-  border-radius: 24px;
+  overflow: hidden;
   cursor: default;
+  touch-action: none;
 }
 
 .pixel-grid-viewport.is-move-mode {
@@ -56,31 +73,34 @@
   cursor: grabbing;
 }
 
-.pixel-grid {
-  display: grid;
-  gap: 1px;
-  aspect-ratio: 1;
-  padding: var(--space-6);
-  border-radius: 20px;
-  border: 1px solid var(--line-soft);
+.pixel-grid-frame {
+  position: absolute;
   background:
     linear-gradient(45deg, #ebe5da 25%, transparent 25%, transparent 75%, #ebe5da 75%),
     linear-gradient(45deg, #ebe5da 25%, transparent 25%, transparent 75%, #ebe5da 75%);
   background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
+  overflow: hidden;
+}
+
+.pixel-grid {
+  position: absolute;
+  inset: var(--pixel-grid-frame-inset, 0px);
+  display: grid;
+  gap: var(--pixel-grid-line-width, 0px);
+  background: var(--pixel-grid-outline);
   transform-origin: center center;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 
 .pixel-cell {
   position: relative;
   display: grid;
   place-items: center;
-  width: 100%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(31, 28, 23, 0.08);
+  border: 0;
   padding: 0;
   background: rgba(255, 255, 255, 0.84);
+  min-width: 0;
+  min-height: 0;
 }
 
 .pixel-cell--transparent {
@@ -93,11 +113,11 @@
 }
 
 .pixel-grid--flat {
-  gap: 0;
-  padding: 0;
   background: transparent;
-  border-color: transparent;
-  box-shadow: none;
+}
+
+.pixel-grid-frame--flat {
+  background: transparent;
 }
 
 .pixel-cell--flat {
@@ -119,6 +139,52 @@
 .pixel-cell--editable:hover {
   outline: 2px solid var(--pomegranate);
   z-index: 1;
+}
+
+.bead-axis-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.bead-axis-label {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  color: rgba(36, 42, 51, 0.54);
+  font-family: var(--font-mono-ui);
+  font-size: 0.68rem;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.bead-axis-label--column {
+  border-right: 1px solid rgba(57, 64, 75, 0.16);
+}
+
+.bead-axis-label--column.bead-axis-label--top {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-label--column.bead-axis-label--bottom {
+  border-top: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-label--row {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.16);
+}
+
+.bead-axis-label--row.bead-axis-label--left {
+  border-right: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-label--row.bead-axis-label--right {
+  border-left: 1px solid rgba(57, 64, 75, 0.12);
 }
 
 .crochet-chart {
@@ -191,6 +257,19 @@
   gap: var(--space-5);
 }
 
+.export-sheet__header--section {
+  margin-bottom: var(--space-2);
+}
+
+.export-sheet__section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.export-sheet__actions {
+  padding: 0;
+}
+
 .export-sheet__legend,
 .export-sheet__list {
   display: grid;
@@ -223,7 +302,6 @@
   place-items: center;
   aspect-ratio: 1;
   min-width: 0;
-  min-height: 20px;
   background: #fff;
   font-size: 0.72rem;
   font-weight: 700;

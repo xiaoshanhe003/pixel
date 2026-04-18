@@ -7,6 +7,7 @@ function createCursor(svg: string, hotspotX: number, hotspotY: number): string {
 }
 
 const TOOL_CURSOR_MAP: Record<EditorTool, string> = {
+  select: createCursor(TOOL_ICON_SVGS.select, 7, 4),
   paint: createCursor(TOOL_ICON_SVGS.paint, 3, 20),
   erase: createCursor(TOOL_ICON_SVGS.erase, 4, 20),
   fill: createCursor(TOOL_ICON_SVGS.fill, 8, 20),

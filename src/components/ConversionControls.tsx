@@ -1,4 +1,16 @@
 import type { ConversionOptions, GridSize, PaletteSize } from '../types/pixel';
+import { DropdownField } from './ui/dropdown';
+import {
+  applyDetailPreset,
+  applyFramingPreset,
+  applyImageKindPreset,
+  inferDetailPreset,
+  inferFramingPreset,
+  inferImageKindPreset,
+  type DetailPreset,
+  type FramingPreset,
+  type ImageKindPreset,
+} from '../utils/conversionPresets';
 
 type ConversionControlsProps = {
   value: ConversionOptions;
@@ -18,110 +30,88 @@ export default function ConversionControls({
 
   const sizeOptions: GridSize[] = [16, 32, 64];
   const paletteOptions: PaletteSize[] = [16, 32];
+  const detailPreset = inferDetailPreset(value);
+  const imageKindPreset = inferImageKindPreset(value);
+  const framingPreset = inferFramingPreset(value);
 
   return (
-    <section className="controls-card" aria-label="转换控制">
+    <section className="controls-card" aria-label="项目设置">
       <div className="controls-card__header">
-        <p className="eyebrow">转换控制</p>
+        <p className="eyebrow">项目设置</p>
       </div>
 
       <div className="controls-card__groups">
         <fieldset className="size-control">
           <legend>网格尺寸</legend>
-          <div className="choice-row">
-            {sizeOptions.map((size) => (
-              <label key={size} className="size-control__option">
-                <input
-                  type="radio"
-                  name="grid-size"
-                  value={size}
-                  checked={value.gridSize === size}
-                  onChange={() => updateValue('gridSize', size)}
-                />
-                {size} x {size}
-              </label>
-            ))}
-          </div>
+          <DropdownField
+            label="网格尺寸"
+            hideLabel
+            value={value.gridSize}
+            options={sizeOptions.map((size) => ({
+              label: `${size} x ${size}`,
+              value: size,
+            }))}
+            onChange={(size) => updateValue('gridSize', size as GridSize)}
+          />
         </fieldset>
 
         <fieldset className="size-control">
-          <legend>调色板数量</legend>
-          <div className="choice-row">
-            {paletteOptions.map((size) => (
-              <label key={size} className="size-control__option">
-                <input
-                  type="radio"
-                  name="palette-size"
-                  value={size}
-                  checked={value.paletteSize === size}
-                  onChange={() => updateValue('paletteSize', size)}
-                />
-                {size} 色
-              </label>
-            ))}
-          </div>
+          <legend>颜色数量</legend>
+          <DropdownField
+            label="颜色数量"
+            hideLabel
+            value={value.paletteSize}
+            options={paletteOptions.map((size) => ({
+              label: `${size} 色`,
+              value: size,
+            }))}
+            onChange={(size) => updateValue('paletteSize', size as PaletteSize)}
+          />
         </fieldset>
 
         <fieldset className="toggle-grid">
-          <legend>处理选项</legend>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.dithering}
-              onChange={(event) => updateValue('dithering', event.target.checked)}
-            />
-            启用抖动
-          </label>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.cleanupNoise}
-              onChange={(event) =>
-                updateValue('cleanupNoise', event.target.checked)
-              }
-            />
-            清理杂点
-          </label>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.preserveSilhouette}
-              onChange={(event) =>
-                updateValue('preserveSilhouette', event.target.checked)
-              }
-            />
-            保留轮廓
-          </label>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.simplifyShapes}
-              onChange={(event) =>
-                updateValue('simplifyShapes', event.target.checked)
-              }
-            />
-            简化形状
-          </label>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.animeMode}
-              onChange={(event) =>
-                updateValue('animeMode', event.target.checked)
-              }
-            />
-            线稿角色模式
-          </label>
-          <label className="toggle-option">
-            <input
-              type="checkbox"
-              checked={value.fillFrame}
-              onChange={(event) =>
-                updateValue('fillFrame', event.target.checked)
-              }
-            />
-            主体铺满画幅
-          </label>
+          <legend>转绘偏好</legend>
+          <DropdownField
+            label="细节等级"
+            value={detailPreset}
+            options={[
+              { label: '简洁', value: 'clean' satisfies DetailPreset },
+              { label: '平衡', value: 'balanced' satisfies DetailPreset },
+              { label: '细节', value: 'detailed' satisfies DetailPreset },
+            ]}
+            onChange={(preset) => onChange(applyDetailPreset(value, preset as DetailPreset))}
+          />
+          <DropdownField
+            label="图像类型"
+            value={imageKindPreset}
+            options={[
+              { label: '通用图像', value: 'general' satisfies ImageKindPreset },
+              {
+                label: '角色线稿',
+                value: 'line-art-character' satisfies ImageKindPreset,
+              },
+            ]}
+            onChange={(preset) =>
+              onChange(applyImageKindPreset(value, preset as ImageKindPreset))
+            }
+          />
+          <DropdownField
+            label="画面构图"
+            value={framingPreset}
+            options={[
+              {
+                label: '完整构图',
+                value: 'full-composition' satisfies FramingPreset,
+              },
+              {
+                label: '主体突出',
+                value: 'subject-focus' satisfies FramingPreset,
+              },
+            ]}
+            onChange={(preset) =>
+              onChange(applyFramingPreset(value, preset as FramingPreset))
+            }
+          />
         </fieldset>
       </div>
     </section>

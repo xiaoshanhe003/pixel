@@ -3,6 +3,7 @@ import type { GridSize, PixelCell } from './pixel';
 export type ScenarioId = 'pixel' | 'beads' | 'crochet';
 
 export type EditorTool =
+  | 'select'
   | 'paint'
   | 'erase'
   | 'fill'
@@ -17,6 +18,15 @@ export type EditorToolSettings = {
   paintSize: 1 | 2 | 3 | 4;
   eraseSize: 1 | 2 | 3 | 4;
   shapePreviewMode: ShapePreviewMode;
+};
+
+export type EditorSelection = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
 };
 
 export type StudioLayer = {

@@ -49,6 +49,35 @@ describe('PixelGrid', () => {
     expect(screen.getByLabelText(/像素 0,0 透明/i)).toBeInTheDocument();
   });
 
+  it('adds bead grid markers in bead scenario', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toHaveClass('pixel-grid--beads');
+    expect(screen.getByLabelText(/像素 4,0 #000000/i)).toHaveAttribute('data-bead-col', '4');
+    expect(screen.getByLabelText(/像素 0,9 #000000/i)).toHaveAttribute('data-bead-row', '9');
+  });
+
+  it('renders bead axis labels around the canvas in bead scenario', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(document.querySelectorAll('.bead-axis-label--top')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--left')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(16);
+  });
+
   it('applies flat styling when grid lines are hidden', () => {
     const grid = createGrid('#000000');
     grid.cells[0] = {
@@ -72,7 +101,7 @@ describe('PixelGrid', () => {
 
   it('lets the user paint a cell when editable', async () => {
     const user = userEvent.setup();
-    const handlePaint = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -81,18 +110,18 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
     await user.click(screen.getByLabelText(/像素 0,0 透明/i));
 
-    expect(handlePaint).toHaveBeenCalledWith(0, 0, '#ff00aa');
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith([{ x: 0, y: 0 }], '#ff00aa');
   });
 
   it('does not paint when move tool is active', async () => {
     const user = userEvent.setup();
-    const handlePaint = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -101,17 +130,210 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="move"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
     await user.click(screen.getByLabelText(/像素 0,0 透明/i));
 
-    expect(handlePaint).not.toHaveBeenCalled();
+    expect(handleCommitPaintStroke).not.toHaveBeenCalled();
+  });
+
+  it('pans the canvas internally on wheel input instead of relying on scrollbars', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+    fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
+
+    expect(frame.style.transform).toBe('translate(-510px, -520px)');
+  });
+
+  it('starts panning from a grid cell when the move tool is active', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i);
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+    fireEvent.pointerDown(firstCell, { pointerId: 7, clientX: 120, clientY: 120 });
+    fireEvent.pointerMove(viewport, { pointerId: 7, clientX: 170, clientY: 150 });
+    fireEvent.pointerUp(viewport, { pointerId: 7 });
+
+    expect(frame.style.transform).toBe('translate(-480px, -480px)');
+  });
+
+  it('keeps a small gutter visible when panning an oversized canvas to the edge', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+    fireEvent.wheel(viewport, { deltaX: -5000, deltaY: -5000 });
+
+    expect(frame.style.transform).toBe('translate(96px, 96px)');
+  });
+
+  it('centers smaller grids horizontally and keeps a fixed top safe margin', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        zoom={0.5}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    expect(frame.style.transform).toBe('translate(24px, 24px)');
+  });
+
+  it('snaps the default offsets to whole pixels so grid lines stay crisp', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        zoom={0.5}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 401,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 401,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    expect(frame.style.transform).toBe('translate(24px, 24px)');
+  });
+
+  it('assigns explicit row and cell sizes when zoom changes', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i) as HTMLElement;
+
+    expect(grid.style.gridTemplateColumns).toContain('84px');
+    expect(grid.style.gridTemplateRows).toContain('84px');
+    expect(firstCell.style.width).toBe('100%');
+    expect(firstCell.style.height).toBe('100%');
+  });
+
+  it('hides transparency texture when cells become too small', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        zoom={0.02}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(screen.getByRole('grid', { name: /像素输出网格/i }).parentElement).toHaveClass(
+      'pixel-grid--hide-transparency-texture',
+    );
   });
 
   it('paints continuously while dragging across cells', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -120,7 +342,8 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -133,12 +356,21 @@ describe('PixelGrid', () => {
       pointerId: 1,
     });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, '#ff00aa');
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
   });
 
   it('keeps painting after the pointer leaves and re-enters the stage mid-drag', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -147,7 +379,8 @@ describe('PixelGrid', () => {
         activeColor="#ff00aa"
         tool="paint"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -162,12 +395,21 @@ describe('PixelGrid', () => {
     fireEvent.pointerEnter(second, { pointerId: 12 });
     fireEvent.pointerUp(window, { pointerId: 12 });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, '#ff00aa');
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      '#ff00aa',
+    );
   });
 
   it('erases continuously while dragging across cells', () => {
-    const handlePaint = vi.fn();
+    const handlePreviewPaintStroke = vi.fn();
+    const handleCommitPaintStroke = vi.fn();
 
     render(
       <PixelGrid
@@ -175,7 +417,8 @@ describe('PixelGrid', () => {
         editable
         tool="erase"
         toolSettings={defaultToolSettings}
-        onPaintCell={handlePaint}
+        onPreviewPaintStroke={handlePreviewPaintStroke}
+        onCommitPaintStroke={handleCommitPaintStroke}
       />,
     );
 
@@ -188,8 +431,16 @@ describe('PixelGrid', () => {
       pointerId: 2,
     });
 
-    expect(handlePaint).toHaveBeenNthCalledWith(1, 0, 0, null);
-    expect(handlePaint).toHaveBeenNthCalledWith(2, 1, 0, null);
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], null);
+    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
+      2,
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      null,
+    );
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
+      null,
+    );
   });
 
   it('does not show the floating tooltip while hovering in paint mode', () => {
@@ -323,5 +574,60 @@ describe('PixelGrid', () => {
     fireEvent.pointerEnter(screen.getByLabelText(/像素 3,3 透明/i), { pointerId: 6 });
 
     expect(screen.getByLabelText(/预览矩形 1,1 到 3,3/i)).toBeInTheDocument();
+  });
+
+  it('creates a marquee selection while dragging in select mode', () => {
+    const handleSelectionChange = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="select"
+        toolSettings={defaultToolSettings}
+        onSelectionChange={handleSelectionChange}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByLabelText(/像素 1,1 透明/i), { pointerId: 8 });
+    fireEvent.pointerEnter(screen.getByLabelText(/像素 3,2 透明/i), { pointerId: 8 });
+    fireEvent.pointerUp(screen.getByLabelText(/像素 3,2 透明/i), { pointerId: 8 });
+
+    expect(handleSelectionChange).toHaveBeenLastCalledWith({
+      minX: 1,
+      minY: 1,
+      maxX: 3,
+      maxY: 2,
+      width: 3,
+      height: 2,
+    });
+  });
+
+  it('delegates moving the current selection', () => {
+    const handlePreviewMoveSelection = vi.fn();
+    const handleCommitMoveSelection = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        editable
+        tool="select"
+        toolSettings={defaultToolSettings}
+        selectionBounds={{ minX: 1, minY: 1, maxX: 2, maxY: 2, width: 2, height: 2 }}
+        onPreviewMoveSelection={handlePreviewMoveSelection}
+        onCommitMoveSelection={handleCommitMoveSelection}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /移动选区/i }), {
+      pointerId: 10,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.pointerMove(screen.getByLabelText(/像素 3,2 #000000/i), { pointerId: 10 });
+    fireEvent.pointerUp(screen.getByLabelText(/像素 3,2 #000000/i), { pointerId: 10 });
+
+    expect(handlePreviewMoveSelection).toHaveBeenCalledWith(2, 1);
+    expect(handleCommitMoveSelection).toHaveBeenCalledWith(2, 1);
   });
 });

@@ -4,13 +4,17 @@ import StudioLeftDock from './components/StudioLeftDock';
 import StudioRightDock from './components/StudioRightDock';
 import StudioTopbar from './components/StudioTopbar';
 import { SCENARIOS } from './constants/studio';
-import { DEFAULT_PALETTES } from './data/defaultPalettes';
+import { DEFAULT_16_COLOR_PALETTE, DEFAULT_PALETTES } from './data/defaultPalettes';
 import { useStudioApp } from './hooks/useStudioApp';
+import { buildBeadEditorPalette } from './utils/beads';
 
 export default function App() {
   const [isTabletInspectorOpen, setIsTabletInspectorOpen] = useState(false);
   const { controls, source, editor, studio, output, stats, actions } = useStudioApp();
-  const activePalette = DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
+  const activePalette =
+    studio.activeScenario === 'beads'
+      ? buildBeadEditorPalette(output.beadBrand, DEFAULT_16_COLOR_PALETTE, 16)
+      : DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
 
   return (
     <main className="app-shell">
@@ -25,15 +29,9 @@ export default function App() {
 
         <section className="studio-layout">
           <StudioLeftDock
-            activeColor={editor.activeColor}
-            activeTool={editor.activeTool}
-            toolSettings={editor.toolSettings}
-            activePalette={activePalette}
             conversionOptions={controls.conversionOptions}
+            selectedFile={source.selectedFile}
             previewUrl={source.previewUrl}
-            onActiveColorChange={actions.setActiveColor}
-            onActiveToolChange={actions.setActiveTool}
-            onToolSettingsChange={actions.setToolSettings}
             onConversionOptionsChange={actions.setConversionOptions}
             onFileSelected={actions.setSelectedFile}
           />
@@ -61,7 +59,6 @@ export default function App() {
                   scenario={studio.scenario}
                   documentWidth={studio.document.width}
                   documentHeight={studio.document.height}
-                  frameCount={studio.document.frames.length}
                   activeFrame={studio.activeFrame}
                   activeGrid={studio.activeGrid}
                   paletteCounts={stats.paletteCounts}
@@ -74,21 +71,6 @@ export default function App() {
                       ? output.beadExportMode
                       : output.crochetExportMode
                   }
-                  materialCountLabel={stats.materialCountLabel}
-                  conversionOptions={controls.conversionOptions}
-                  onFileSelected={actions.setSelectedFile}
-                  onLayerSelect={actions.selectLayer}
-                  onLayerAdd={actions.addLayer}
-                  onLayerDuplicate={actions.duplicateLayer}
-                  onLayerDelete={actions.deleteLayer}
-                  onLayerMergeDown={actions.mergeLayerDown}
-                  onLayerRename={actions.renameLayer}
-                  onLayerToggleVisibility={actions.toggleLayerVisibility}
-                  onLayerToggleLock={actions.toggleLayerLock}
-                  onLayerClear={actions.clearLayer}
-                  onLayerMove={actions.moveLayer}
-                  onLayerReorder={actions.reorderLayer}
-                  onLayerOpacityChange={actions.setLayerOpacity}
                   onBeadBrandChange={actions.setBeadBrand}
                   onExportModeChange={actions.setExportMode}
                   onPrint={actions.printExport}
@@ -100,31 +82,39 @@ export default function App() {
               activeScenario={studio.activeScenario}
               scenario={studio.scenario}
               activeGrid={studio.activeGrid}
+              activeLayer={studio.activeLayer}
+              isProcessingUpload={source.isProcessingUpload}
               activeColor={editor.activeColor}
+              beadBrand={output.beadBrand}
               activeTool={editor.activeTool}
               toolSettings={editor.toolSettings}
+              activePalette={activePalette}
               canvasZoom={editor.canvasZoom}
               showGridLines={editor.showGridLines}
+              selection={editor.selection}
               crochetViewMode={output.crochetViewMode}
               crochetAnalysis={output.crochetAnalysis}
-              framePreviews={studio.framePreviews}
-              activeFrameId={studio.document.activeFrameId}
-              previewIsPlaying={studio.previewIsPlaying}
-              previewFps={studio.previewFps}
+              canUndo={controls.canUndo}
+              canRedo={controls.canRedo}
+              onActiveColorChange={actions.setActiveColor}
+              onActiveToolChange={actions.setActiveTool}
+              onToolSettingsChange={actions.setToolSettings}
+              onUndo={actions.undo}
+              onRedo={actions.redo}
               onCrochetViewModeChange={actions.setCrochetViewMode}
               onCanvasZoomChange={actions.setCanvasZoom}
               onToggleGridLines={actions.toggleGridLines}
-              onPaintCell={actions.paintCell}
+              onPreviewPaintStroke={actions.previewPaintStroke}
+              onCommitPaintStroke={actions.commitPaintStroke}
               onFillArea={actions.fillArea}
               onDrawLine={actions.drawLine}
               onDrawRectangle={actions.drawRectangle}
+              onSelectionChange={actions.setSelection}
+              onPreviewMoveSelection={actions.previewMoveSelection}
+              onCommitMoveSelection={actions.commitMoveSelection}
+              onPreviewScaleSelection={actions.previewScaleSelection}
+              onCommitScaleSelection={actions.commitScaleSelection}
               onSampleCell={actions.sampleCell}
-              onSelectFrame={actions.selectFrame}
-              onAddFrame={actions.addFrame}
-              onDuplicateFrame={actions.duplicateFrame}
-              onDeleteFrame={actions.deleteFrame}
-              onTogglePlayback={actions.togglePlayback}
-              onPreviewFpsChange={actions.setPreviewFps}
             />
           </section>
 
@@ -134,7 +124,6 @@ export default function App() {
               scenario={studio.scenario}
               documentWidth={studio.document.width}
               documentHeight={studio.document.height}
-              frameCount={studio.document.frames.length}
               activeFrame={studio.activeFrame}
               activeGrid={studio.activeGrid}
               paletteCounts={stats.paletteCounts}
@@ -147,21 +136,6 @@ export default function App() {
                   ? output.beadExportMode
                   : output.crochetExportMode
               }
-              materialCountLabel={stats.materialCountLabel}
-              conversionOptions={controls.conversionOptions}
-              onFileSelected={actions.setSelectedFile}
-              onLayerSelect={actions.selectLayer}
-              onLayerAdd={actions.addLayer}
-              onLayerDuplicate={actions.duplicateLayer}
-              onLayerDelete={actions.deleteLayer}
-              onLayerMergeDown={actions.mergeLayerDown}
-              onLayerRename={actions.renameLayer}
-              onLayerToggleVisibility={actions.toggleLayerVisibility}
-              onLayerToggleLock={actions.toggleLayerLock}
-              onLayerClear={actions.clearLayer}
-              onLayerMove={actions.moveLayer}
-              onLayerReorder={actions.reorderLayer}
-              onLayerOpacityChange={actions.setLayerOpacity}
               onBeadBrandChange={actions.setBeadBrand}
               onExportModeChange={actions.setExportMode}
               onPrint={actions.printExport}

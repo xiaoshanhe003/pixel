@@ -7,6 +7,9 @@ import type { PixelGrid } from '../types/pixel';
 
 vi.mock('../utils/image', () => ({
   fileToImageElement: vi.fn(async () => ({ width: 16, height: 16 })),
+  cropImageFile: vi.fn(
+    async (file: File) => new File(['cropped'], `cropped-${file.name}`, { type: file.type }),
+  ),
   imageSourceToImageData: vi.fn(
     () =>
       ({
@@ -57,7 +60,8 @@ export async function uploadMockImage(name = 'sprite.png') {
   const file = new File(['fake'], name, { type: 'image/png' });
 
   await userEvent.upload(input, file);
+  await userEvent.click(screen.getByRole('button', { name: /^确认$/i }));
   await waitFor(() =>
-    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toBeInTheDocument(),
+    expect(screen.getByLabelText(/像素 1,0 #ffffff/i)).toBeInTheDocument(),
   );
 }

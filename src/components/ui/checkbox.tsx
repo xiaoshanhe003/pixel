@@ -5,6 +5,12 @@ const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 
 type CheckboxProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>;
 
+type CheckboxFieldProps = CheckboxProps & {
+  label: string;
+  description?: string;
+  wrapperClassName?: string;
+};
+
 export function Checkbox({ className = '', ...props }: CheckboxProps) {
   return (
     <CheckboxPrimitive.Root
@@ -20,5 +26,25 @@ export function Checkbox({ className = '', ...props }: CheckboxProps) {
         />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
+  );
+}
+
+export function CheckboxField({
+  className = '',
+  wrapperClassName = '',
+  label,
+  description,
+  ...props
+}: CheckboxFieldProps) {
+  return (
+    <label className={`ui-checkbox-field${wrapperClassName ? ` ${wrapperClassName}` : ''}`}>
+      <Checkbox className={className} {...props} />
+      <span className="ui-checkbox-field__copy">
+        <span className="ui-checkbox-field__label">{label}</span>
+        {description ? (
+          <span className="ui-checkbox-field__description">{description}</span>
+        ) : null}
+      </span>
+    </label>
   );
 }
