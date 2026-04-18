@@ -19,10 +19,9 @@ describe('App canvas editing', () => {
     await createBlankCanvas();
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
-    await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: /画笔尺寸/i }),
-      '2',
-    );
+    fireEvent.change(screen.getByRole('slider', { name: /画笔尺寸/i }), {
+      target: { value: '2' },
+    });
     await userEvent.click(screen.getByLabelText(/像素 5,5 透明/i));
 
     expect(screen.getByLabelText(/像素 5,5 #000000/i)).toBeInTheDocument();

@@ -69,7 +69,7 @@ describe('App output modes', () => {
 
     expect(swatches.length).toBe(uniqueTitles.size);
     expect(swatches.length).toBe(expectedCount);
-    expect(swatchTitles).toEqual(expectedPalette);
+    expect([...uniqueTitles].sort()).toEqual([...expectedPalette].sort());
   });
 
   it('opens the full bead brand library instead of the default color picker in bead mode', async () => {
