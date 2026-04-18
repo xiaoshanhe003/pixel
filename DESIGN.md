@@ -1,5 +1,16 @@
 # Design System Inspired by Figma
 
+## Product Scope
+
+The current product is intentionally a lightweight pixel conversion workspace rather than a full editor. The main workflow is:
+
+- upload or crop a source image
+- tune conversion settings
+- make focused canvas edits
+- review palette and export output
+
+Advanced editor modules such as timeline animation, multi-layer management, and inspector-heavy authoring are out of scope for the current release. If these capabilities return later, they should be reintroduced deliberately with matching product requirements, UI entry points, and tests rather than left as dormant surface area in the main workspace.
+
 ## 1. Visual Theme & Atmosphere
 
 Figma's interface is the design tool that designed itself — a masterclass in typographic sophistication where a custom variable font (figmaSans) modulates between razor-thin (weight 320) and bold (weight 700) with stops at unusual intermediates (330, 340, 450, 480, 540) that most type systems never explore. This granular weight control gives every text element a precisely calibrated visual weight, creating hierarchy through micro-differences rather than the blunt instrument of "regular vs bold."

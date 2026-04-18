@@ -23,7 +23,6 @@ import {
   createDocumentFromGrid,
   createStudioDocument,
   getTransparentCount,
-  setActiveFrame,
   setActiveLayer,
 } from '../utils/studio';
 import {
@@ -59,11 +58,6 @@ function clampSelectionToDocument(
   };
 }
 
-export type StudioFramePreview = {
-  frame: StudioFrame;
-  preview: PixelGrid;
-};
-
 type StudioSourceState = {
   selectedFile: File | null;
   previewUrl?: string;
@@ -89,7 +83,6 @@ type StudioDerivedState = {
   scenario: ScenarioDefinition;
   activeFrame?: StudioFrame;
   activeLayer?: StudioLayer;
-  framePreviews: StudioFramePreview[];
   activeGrid: PixelGrid | null;
   output: StudioOutputState;
   stats: StudioStats;
@@ -116,10 +109,7 @@ export type UseStudioAppResult = {
     scenario: ScenarioDefinition;
     activeFrame?: StudioFrame;
     activeLayer?: StudioLayer;
-    framePreviews: StudioFramePreview[];
     activeGrid: PixelGrid | null;
-    previewIsPlaying: boolean;
-    previewFps: number;
   };
   output: StudioOutputState;
   stats: StudioStats;
@@ -134,15 +124,9 @@ export type UseStudioAppResult = {
     ) => void;
     setCanvasZoom: (updater: (current: number) => number) => void;
     toggleGridLines: () => void;
-    setPreviewFps: (fps: number) => void;
-    selectFrame: (frameId: string) => void;
     createBlankCanvas: () => void;
     undo: () => void;
     redo: () => void;
-    addFrame: () => void;
-    duplicateFrame: () => void;
-    deleteFrame: () => void;
-    togglePlayback: () => void;
     printExport: () => void;
     setCrochetViewMode: (mode: 'color' | 'symbol') => void;
     setBeadBrand: (brand: BeadBrand) => void;
@@ -283,47 +267,6 @@ function useStudioDocumentSync(params: {
   return { previewUrl, setPreviewUrl, isProcessingUpload };
 }
 
-function useStudioPlayback(params: {
-  activeScenario: ScenarioId;
-  frameCount: number;
-  previewFps: number;
-  previewIsPlaying: boolean;
-  setDocument: (
-    updater: (current: StudioDocument) => StudioDocument,
-  ) => void;
-}) {
-  const { activeScenario, frameCount, previewFps, previewIsPlaying, setDocument } = params;
-
-  useEffect(() => {
-    if (activeScenario !== 'pixel' || !previewIsPlaying || frameCount <= 1) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setDocument((current) => {
-        if (current.frames.length <= 1) {
-          return current;
-        }
-
-        const activeIndex = current.frames.findIndex(
-          (frame) => frame.id === current.activeFrameId,
-        );
-        const nextFrame =
-          current.frames[(activeIndex + 1) % current.frames.length] ?? current.frames[0];
-
-        return {
-          ...current,
-          activeFrameId: nextFrame.id,
-        };
-      });
-    }, Math.round(1000 / previewFps));
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [activeScenario, frameCount, previewFps, previewIsPlaying, setDocument]);
-}
-
 function useStudioDerivedState(params: {
   document: StudioDocument;
   activeScenario: ScenarioId;
@@ -337,18 +280,12 @@ function useStudioDerivedState(params: {
 
   return useMemo(() => {
     const activeFrame =
-      document.frames.find((frame) => frame.id === document.activeFrameId) ??
-      document.frames[0];
+      document.frames.find((frame) => frame.id === document.activeFrameId) ?? document.frames[0];
     const activeLayer =
-      activeFrame?.layers.find((layer) => layer.id === activeFrame.activeLayerId) ??
-      activeFrame?.layers[0];
-    const framePreviews = document.frames.map((frame) => ({
-      frame,
-      preview: composeFrame(frame, document.width, document.height),
-    }));
-    const baseActiveGrid =
-      framePreviews.find((item) => item.frame.id === document.activeFrameId)?.preview ??
-      null;
+      activeFrame?.layers.find((layer) => layer.id === activeFrame.activeLayerId) ?? activeFrame?.layers[0];
+    const baseActiveGrid = activeFrame
+      ? composeFrame(activeFrame, document.width, document.height)
+      : null;
     const activeGrid =
       activeScenario === 'beads' && baseActiveGrid
         ? mapGridToBeadPalette(baseActiveGrid, beadBrand)
@@ -374,7 +311,6 @@ function useStudioDerivedState(params: {
       scenario,
       activeFrame,
       activeLayer,
-      framePreviews,
       activeGrid,
       output: {
         beadBrand,
@@ -418,8 +354,6 @@ export function useStudioApp(): UseStudioAppResult {
   const [canvasZoom, setCanvasZoom] = useState(FIT_WINDOW_ZOOM);
   const [showGridLines, setShowGridLines] = useState(true);
   const [selection, setSelection] = useState<EditorSelection | null>(null);
-  const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
-  const [previewFps, setPreviewFps] = useState(6);
   const [beadBrand, setBeadBrand] = useState<BeadBrand>('mard');
   const [crochetViewMode, setCrochetViewMode] = useState<'color' | 'symbol'>('color');
   const [beadExportMode, setBeadExportMode] = useState<'bead-chart' | 'bead-list'>(
@@ -453,20 +387,6 @@ export function useStudioApp(): UseStudioAppResult {
     setDocument,
   });
 
-  useStudioPlayback({
-    activeScenario,
-    frameCount: document.frames.length,
-    previewFps,
-    previewIsPlaying,
-    setDocument,
-  });
-
-  useEffect(() => {
-    if (activeScenario !== 'pixel' || document.frames.length <= 1) {
-      setPreviewIsPlaying(false);
-    }
-  }, [activeScenario, document.frames.length]);
-
   const derived = useStudioDerivedState({
     document,
     activeScenario,
@@ -497,7 +417,7 @@ export function useStudioApp(): UseStudioAppResult {
   }, [document.activeFrameId, document.width, document.height, derived.activeLayer?.id]);
 
   function dispatchCommand(command: Parameters<typeof applyStudioCommandToHistory>[1]) {
-    if (!derived.activeFrame || !derived.activeLayer) {
+    if (!derived.activeLayer) {
       return;
     }
 
@@ -557,10 +477,7 @@ export function useStudioApp(): UseStudioAppResult {
       scenario: derived.scenario,
       activeFrame: derived.activeFrame,
       activeLayer: derived.activeLayer,
-      framePreviews: derived.framePreviews,
       activeGrid: derived.activeGrid,
-      previewIsPlaying,
-      previewFps,
     },
     output: derived.output,
     stats: derived.stats,
@@ -581,9 +498,6 @@ export function useStudioApp(): UseStudioAppResult {
         setToolSettings((current) => updater(current)),
       setCanvasZoom,
       toggleGridLines: () => setShowGridLines((current) => !current),
-      setPreviewFps,
-      selectFrame: (frameId) =>
-        setDocument((current) => setActiveFrame(current, frameId)),
       createBlankCanvas: () => {
         setSelectedFile(null);
         setPreviewUrl(undefined);
@@ -604,16 +518,6 @@ export function useStudioApp(): UseStudioAppResult {
         selectionBaseDocumentRef.current = null;
         setSelection(null);
         setHistory((current) => redoStudioHistory(current));
-      },
-      addFrame: () => dispatchCommand({ type: 'addFrame' }),
-      duplicateFrame: () => dispatchCommand({ type: 'duplicateFrame' }),
-      deleteFrame: () => dispatchCommand({ type: 'deleteFrame' }),
-      togglePlayback: () => {
-        if (document.frames.length <= 1) {
-          return;
-        }
-
-        setPreviewIsPlaying((current) => !current);
       },
       printExport: () => window.print(),
       setCrochetViewMode,

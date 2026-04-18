@@ -1,9 +1,5 @@
 import type { BeadBrand } from '../data/beadPalettes';
-import type {
-  ConversionOptions,
-  GridSize,
-  PixelGrid as PixelGridModel,
-} from '../types/pixel';
+import type { GridSize, PixelGrid as PixelGridModel } from '../types/pixel';
 import type { ScenarioDefinition, ScenarioId, StudioFrame } from '../types/studio';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import type { countBeadUsage } from '../utils/beads';
@@ -49,7 +45,6 @@ type StudioRightDockProps = {
   scenario: ScenarioDefinition;
   documentWidth: GridSize;
   documentHeight: GridSize;
-  frameCount: number;
   activeFrame?: StudioFrame;
   activeGrid: PixelGridModel | null;
   paletteCounts: ReturnType<typeof countPaletteUsage>;
@@ -58,21 +53,6 @@ type StudioRightDockProps = {
   beadUsage: ReturnType<typeof countBeadUsage>;
   crochetAnalysis: CrochetPatternAnalysis | null;
   exportMode: 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows';
-  materialCountLabel?: string;
-  conversionOptions: ConversionOptions;
-  onFileSelected: (file: File | null) => void;
-  onLayerSelect: (layerId: string) => void;
-  onLayerAdd: () => void;
-  onLayerDuplicate: (layerId?: string) => void;
-  onLayerDelete: (layerId?: string) => void;
-  onLayerMergeDown: (layerId?: string) => void;
-  onLayerRename: (layerId: string, name: string) => void;
-  onLayerToggleVisibility: (layerId: string) => void;
-  onLayerToggleLock: (layerId: string) => void;
-  onLayerClear: (layerId: string) => void;
-  onLayerMove: (layerId: string, direction: 'up' | 'down') => void;
-  onLayerReorder: (layerId: string, targetIndex: number) => void;
-  onLayerOpacityChange: (layerId: string, opacity: number) => void;
   onBeadBrandChange: (brand: BeadBrand) => void;
   onExportModeChange: (
     mode: 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows',
@@ -82,10 +62,9 @@ type StudioRightDockProps = {
 
 export default function StudioRightDock({
   activeScenario,
-  scenario,
-  documentWidth,
-  documentHeight,
-  frameCount,
+  scenario: _scenario,
+  documentWidth: _documentWidth,
+  documentHeight: _documentHeight,
   activeFrame,
   activeGrid,
   paletteCounts,
@@ -94,21 +73,6 @@ export default function StudioRightDock({
   beadUsage,
   crochetAnalysis,
   exportMode,
-  materialCountLabel,
-  conversionOptions,
-  onFileSelected,
-  onLayerSelect,
-  onLayerAdd,
-  onLayerDuplicate,
-  onLayerDelete,
-  onLayerMergeDown,
-  onLayerRename,
-  onLayerToggleVisibility,
-  onLayerToggleLock,
-  onLayerClear,
-  onLayerMove,
-  onLayerReorder,
-  onLayerOpacityChange,
   onBeadBrandChange,
   onExportModeChange,
   onPrint,

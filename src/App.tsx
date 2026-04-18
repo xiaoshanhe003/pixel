@@ -59,7 +59,6 @@ export default function App() {
                   scenario={studio.scenario}
                   documentWidth={studio.document.width}
                   documentHeight={studio.document.height}
-                  frameCount={studio.document.frames.length}
                   activeFrame={studio.activeFrame}
                   activeGrid={studio.activeGrid}
                   paletteCounts={stats.paletteCounts}
@@ -72,21 +71,6 @@ export default function App() {
                       ? output.beadExportMode
                       : output.crochetExportMode
                   }
-                  materialCountLabel={stats.materialCountLabel}
-                  conversionOptions={controls.conversionOptions}
-                  onFileSelected={actions.setSelectedFile}
-                  onLayerSelect={actions.selectLayer}
-                  onLayerAdd={actions.addLayer}
-                  onLayerDuplicate={actions.duplicateLayer}
-                  onLayerDelete={actions.deleteLayer}
-                  onLayerMergeDown={actions.mergeLayerDown}
-                  onLayerRename={actions.renameLayer}
-                  onLayerToggleVisibility={actions.toggleLayerVisibility}
-                  onLayerToggleLock={actions.toggleLayerLock}
-                  onLayerClear={actions.clearLayer}
-                  onLayerMove={actions.moveLayer}
-                  onLayerReorder={actions.reorderLayer}
-                  onLayerOpacityChange={actions.setLayerOpacity}
                   onBeadBrandChange={actions.setBeadBrand}
                   onExportModeChange={actions.setExportMode}
                   onPrint={actions.printExport}
@@ -110,10 +94,6 @@ export default function App() {
               selection={editor.selection}
               crochetViewMode={output.crochetViewMode}
               crochetAnalysis={output.crochetAnalysis}
-              framePreviews={studio.framePreviews}
-              activeFrameId={studio.document.activeFrameId}
-              previewIsPlaying={studio.previewIsPlaying}
-              previewFps={studio.previewFps}
               canUndo={controls.canUndo}
               canRedo={controls.canRedo}
               onActiveColorChange={actions.setActiveColor}
@@ -135,12 +115,6 @@ export default function App() {
               onPreviewScaleSelection={actions.previewScaleSelection}
               onCommitScaleSelection={actions.commitScaleSelection}
               onSampleCell={actions.sampleCell}
-              onSelectFrame={actions.selectFrame}
-              onAddFrame={actions.addFrame}
-              onDuplicateFrame={actions.duplicateFrame}
-              onDeleteFrame={actions.deleteFrame}
-              onTogglePlayback={actions.togglePlayback}
-              onPreviewFpsChange={actions.setPreviewFps}
             />
           </section>
 
@@ -150,7 +124,6 @@ export default function App() {
               scenario={studio.scenario}
               documentWidth={studio.document.width}
               documentHeight={studio.document.height}
-              frameCount={studio.document.frames.length}
               activeFrame={studio.activeFrame}
               activeGrid={studio.activeGrid}
               paletteCounts={stats.paletteCounts}
@@ -163,21 +136,6 @@ export default function App() {
                   ? output.beadExportMode
                   : output.crochetExportMode
               }
-              materialCountLabel={stats.materialCountLabel}
-              conversionOptions={controls.conversionOptions}
-              onFileSelected={actions.setSelectedFile}
-              onLayerSelect={actions.selectLayer}
-              onLayerAdd={actions.addLayer}
-              onLayerDuplicate={actions.duplicateLayer}
-              onLayerDelete={actions.deleteLayer}
-              onLayerMergeDown={actions.mergeLayerDown}
-              onLayerRename={actions.renameLayer}
-              onLayerToggleVisibility={actions.toggleLayerVisibility}
-              onLayerToggleLock={actions.toggleLayerLock}
-              onLayerClear={actions.clearLayer}
-              onLayerMove={actions.moveLayer}
-              onLayerReorder={actions.reorderLayer}
-              onLayerOpacityChange={actions.setLayerOpacity}
               onBeadBrandChange={actions.setBeadBrand}
               onExportModeChange={actions.setExportMode}
               onPrint={actions.printExport}

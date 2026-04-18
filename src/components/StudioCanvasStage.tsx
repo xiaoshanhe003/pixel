@@ -19,7 +19,6 @@ import FloatingToolControls from './FloatingToolControls';
 import PixelGrid, { getBaseCellSize } from './PixelGrid';
 import { CheckboxField } from './ui/checkbox';
 import { DropdownField } from './ui/dropdown';
-import type { StudioFramePreview } from '../hooks/useStudioApp';
 
 const ZOOM_OPTIONS = [25, 50, 75, 100, 200] as const;
 const FIT_WINDOW_SAFE_MARGIN = 24;
@@ -69,10 +68,6 @@ type StudioCanvasStageProps = {
   selection: EditorSelection | null;
   crochetViewMode: 'color' | 'symbol';
   crochetAnalysis: CrochetPatternAnalysis | null;
-  framePreviews: StudioFramePreview[];
-  activeFrameId: string;
-  previewIsPlaying: boolean;
-  previewFps: number;
   canUndo: boolean;
   canRedo: boolean;
   onActiveColorChange: (color: string) => void;
@@ -114,12 +109,6 @@ type StudioCanvasStageProps = {
   onPreviewScaleSelection: (targetWidth: number, targetHeight: number) => void;
   onCommitScaleSelection: (targetWidth: number, targetHeight: number) => void;
   onSampleCell: (color: string | null) => void;
-  onSelectFrame: (frameId: string) => void;
-  onAddFrame: () => void;
-  onDuplicateFrame: () => void;
-  onDeleteFrame: () => void;
-  onTogglePlayback: () => void;
-  onPreviewFpsChange: (fps: number) => void;
 };
 
 export default function StudioCanvasStage({
@@ -138,10 +127,6 @@ export default function StudioCanvasStage({
   selection,
   crochetViewMode,
   crochetAnalysis,
-  framePreviews: _framePreviews,
-  activeFrameId: _activeFrameId,
-  previewIsPlaying: _previewIsPlaying,
-  previewFps: _previewFps,
   canUndo,
   canRedo,
   onActiveColorChange,
@@ -163,12 +148,6 @@ export default function StudioCanvasStage({
   onPreviewScaleSelection,
   onCommitScaleSelection,
   onSampleCell,
-  onSelectFrame: _onSelectFrame,
-  onAddFrame: _onAddFrame,
-  onDuplicateFrame: _onDuplicateFrame,
-  onDeleteFrame: _onDeleteFrame,
-  onTogglePlayback: _onTogglePlayback,
-  onPreviewFpsChange: _onPreviewFpsChange,
 }: StudioCanvasStageProps) {
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 640 });
   const handleViewportSizeChange = useMemo(
