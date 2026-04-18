@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mapGridToBeadPalette, countBeadUsage } from '../beads';
+import { buildBeadEditorPalette, mapGridToBeadPalette, countBeadUsage } from '../beads';
+import { DEFAULT_16_COLOR_PALETTE } from '../../data/defaultPalettes';
 import { createBlankGrid, replaceCellColor } from '../studio';
 
 describe('bead helpers', () => {
@@ -36,5 +37,19 @@ describe('bead helpers', () => {
       name: 'Red',
       count: 2,
     });
+  });
+
+  it('keeps the editor palette order stable when the active bead color changes', () => {
+    const palette = buildBeadEditorPalette('mard', DEFAULT_16_COLOR_PALETTE, 16, '#166F41');
+
+    expect(palette[0]).not.toBe('#166f41');
+    expect(palette).toContain('#166f41');
+  });
+
+  it('avoids near-duplicate black swatches in the default mard editor palette', () => {
+    const palette = buildBeadEditorPalette('mard', DEFAULT_16_COLOR_PALETTE, 16, '#000000');
+
+    expect(palette).toContain('#000000');
+    expect(palette).not.toContain('#1d1414');
   });
 });

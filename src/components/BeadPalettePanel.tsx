@@ -1,4 +1,4 @@
-import { BEAD_BRANDS, type BeadBrand } from '../data/beadPalettes';
+import { BEAD_BRANDS, BEAD_BRAND_ORDER, type BeadBrand } from '../data/beadPalettes';
 import type { BeadMappedColor } from '../utils/beads';
 
 type BeadPalettePanelProps = {
@@ -22,7 +22,10 @@ export default function BeadPalettePanel({
       </div>
 
       <div className="frame-strip__actions">
-        {Object.values(BEAD_BRANDS).map((item) => (
+        {BEAD_BRAND_ORDER.map((brandId) => {
+          const item = BEAD_BRANDS[brandId];
+
+          return (
           <button
             key={item.id}
             type="button"
@@ -31,7 +34,8 @@ export default function BeadPalettePanel({
           >
             {item.label}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       <div className="swatches">

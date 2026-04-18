@@ -9,6 +9,12 @@ import type {
 import { clampByte, hexToRgb, rgbToHex } from './color';
 
 export type LayerContentBounds = EditorSelection;
+export type BrushPoint = {
+  x: number;
+  y: number;
+  alignX?: 'before' | 'after';
+  alignY?: 'before' | 'after';
+};
 
 let nextStudioId = 0;
 
@@ -19,6 +25,19 @@ function createStudioId(prefix: string): string {
 
 function buildPalette(cells: PixelCell[]): string[] {
   return [...new Set(cells.map((cell) => cell.color).filter(Boolean))] as string[];
+}
+
+function buildCellColorPatch(color: string | null) {
+  return color
+    ? {
+        color,
+        source: hexToRgb(color),
+        alpha: 255,
+      }
+    : {
+        color: null,
+        alpha: 0,
+      };
 }
 
 export function createBlankGrid(size: GridSize): PixelGrid {
@@ -231,8 +250,7 @@ export function replaceCellColor(
     cell.x === x && cell.y === y
       ? {
           ...cell,
-          color,
-          alpha: color ? 255 : 0,
+          ...buildCellColorPatch(color),
         }
       : cell,
   );
@@ -515,8 +533,7 @@ export function fillCellArea(
 
     nextCells[currentIndex] = {
       ...currentCell,
-      color,
-      alpha: color ? 255 : 0,
+      ...buildCellColorPatch(color),
     };
 
     if (current.x > 0) {
@@ -551,11 +568,24 @@ export function buildBrushFootprint(
   x: number,
   y: number,
   size: 1 | 2 | 3 | 4,
+  anchor: Pick<BrushPoint, 'alignX' | 'alignY'> = {},
 ): Array<{ x: number; y: number }> {
   const points: Array<{ x: number; y: number }> = [];
+  const startOffsetX =
+    size % 2 === 0
+      ? anchor.alignX === 'before'
+        ? -(size / 2)
+        : -(size / 2) + 1
+      : -Math.floor(size / 2);
+  const startOffsetY =
+    size % 2 === 0
+      ? anchor.alignY === 'before'
+        ? -(size / 2)
+        : -(size / 2) + 1
+      : -Math.floor(size / 2);
 
-  for (let offsetY = 0; offsetY < size; offsetY += 1) {
-    for (let offsetX = 0; offsetX < size; offsetX += 1) {
+  for (let offsetY = startOffsetY; offsetY < startOffsetY + size; offsetY += 1) {
+    for (let offsetX = startOffsetX; offsetX < startOffsetX + size; offsetX += 1) {
       points.push({ x: x + offsetX, y: y + offsetY });
     }
   }
@@ -565,7 +595,7 @@ export function buildBrushFootprint(
 
 function applyColorAtPoints(
   grid: PixelGrid,
-  points: Array<{ x: number; y: number }>,
+  points: BrushPoint[],
   color: string | null,
 ): PixelGrid {
   if (points.length === 0) {
@@ -604,8 +634,7 @@ function applyColorAtPoints(
 
     nextCells[index] = {
       ...currentCell,
-      color,
-      alpha: color ? 255 : 0,
+      ...buildCellColorPatch(color),
     };
   }
 
@@ -622,19 +651,25 @@ export function applyBrushStroke(
   y: number,
   size: 1 | 2 | 3 | 4,
   color: string | null,
+  anchor?: Pick<BrushPoint, 'alignX' | 'alignY'>,
 ): PixelGrid {
-  return applyColorAtPoints(grid, buildBrushFootprint(x, y, size), color);
+  return applyColorAtPoints(grid, buildBrushFootprint(x, y, size, anchor), color);
 }
 
 export function applyBrushStrokePath(
   grid: PixelGrid,
-  points: Array<{ x: number; y: number }>,
+  points: BrushPoint[],
   size: 1 | 2 | 3 | 4,
   color: string | null,
 ): PixelGrid {
   return applyColorAtPoints(
     grid,
-    points.flatMap((point) => buildBrushFootprint(point.x, point.y, size)),
+    points.flatMap((point) =>
+      buildBrushFootprint(point.x, point.y, size, {
+        alignX: point.alignX,
+        alignY: point.alignY,
+      }),
+    ),
     color,
   );
 }

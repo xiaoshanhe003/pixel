@@ -49,6 +49,35 @@ describe('PixelGrid', () => {
     expect(screen.getByLabelText(/像素 0,0 透明/i)).toBeInTheDocument();
   });
 
+  it('adds bead grid markers in bead scenario', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(screen.getByRole('grid', { name: /像素输出网格/i })).toHaveClass('pixel-grid--beads');
+    expect(screen.getByLabelText(/像素 4,0 #000000/i)).toHaveAttribute('data-bead-col', '4');
+    expect(screen.getByLabelText(/像素 0,9 #000000/i)).toHaveAttribute('data-bead-row', '9');
+  });
+
+  it('renders bead axis labels around the canvas in bead scenario', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    expect(document.querySelectorAll('.bead-axis-label--top')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--left')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(16);
+  });
+
   it('applies flat styling when grid lines are hidden', () => {
     const grid = createGrid('#000000');
     grid.cells[0] = {
@@ -142,7 +171,74 @@ describe('PixelGrid', () => {
     expect(frame.style.transform).toBe('translate(-510px, -520px)');
   });
 
-  it('centers smaller grids inside the viewport before any pan offset is applied', () => {
+  it('starts panning from a grid cell when the move tool is active', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i);
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+    fireEvent.pointerDown(firstCell, { pointerId: 7, clientX: 120, clientY: 120 });
+    fireEvent.pointerMove(viewport, { pointerId: 7, clientX: 170, clientY: 150 });
+    fireEvent.pointerUp(viewport, { pointerId: 7 });
+
+    expect(frame.style.transform).toBe('translate(-480px, -480px)');
+  });
+
+  it('keeps a small gutter visible when panning an oversized canvas to the edge', () => {
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const grid = screen.getByRole('grid', { name: /像素输出网格/i }) as HTMLElement;
+    const frame = grid.parentElement as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+    fireEvent.wheel(viewport, { deltaX: -5000, deltaY: -5000 });
+
+    expect(frame.style.transform).toBe('translate(96px, 96px)');
+  });
+
+  it('centers smaller grids horizontally and keeps a fixed top safe margin', () => {
     render(
       <PixelGrid
         grid={createGrid()}
@@ -171,7 +267,7 @@ describe('PixelGrid', () => {
     expect(frame.style.transform).toBe('translate(24px, 24px)');
   });
 
-  it('snaps centered offsets to whole pixels so grid lines stay crisp', () => {
+  it('snaps the default offsets to whole pixels so grid lines stay crisp', () => {
     render(
       <PixelGrid
         grid={createGrid()}

@@ -4,13 +4,17 @@ import StudioLeftDock from './components/StudioLeftDock';
 import StudioRightDock from './components/StudioRightDock';
 import StudioTopbar from './components/StudioTopbar';
 import { SCENARIOS } from './constants/studio';
-import { DEFAULT_PALETTES } from './data/defaultPalettes';
+import { DEFAULT_16_COLOR_PALETTE, DEFAULT_PALETTES } from './data/defaultPalettes';
 import { useStudioApp } from './hooks/useStudioApp';
+import { buildBeadEditorPalette } from './utils/beads';
 
 export default function App() {
   const [isTabletInspectorOpen, setIsTabletInspectorOpen] = useState(false);
   const { controls, source, editor, studio, output, stats, actions } = useStudioApp();
-  const activePalette = DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
+  const activePalette =
+    studio.activeScenario === 'beads'
+      ? buildBeadEditorPalette(output.beadBrand, DEFAULT_16_COLOR_PALETTE, 16)
+      : DEFAULT_PALETTES[controls.conversionOptions.paletteSize];
 
   return (
     <main className="app-shell">
@@ -97,6 +101,7 @@ export default function App() {
               activeLayer={studio.activeLayer}
               isProcessingUpload={source.isProcessingUpload}
               activeColor={editor.activeColor}
+              beadBrand={output.beadBrand}
               activeTool={editor.activeTool}
               toolSettings={editor.toolSettings}
               activePalette={activePalette}

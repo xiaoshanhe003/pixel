@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addLayerToActiveFrame,
+  applyBrushStroke,
   composeFrame,
   createBlankGrid,
   createStudioDocument,
@@ -36,6 +37,7 @@ describe('studio grid helpers', () => {
     const next = replaceCellColor(grid, 0, 0, '#112233');
 
     expect(next.cells[0].color).toBe('#112233');
+    expect(next.cells[0].source).toEqual({ r: 17, g: 34, b: 51 });
     expect(next.palette).toContain('#112233');
   });
 
@@ -49,6 +51,7 @@ describe('studio grid helpers', () => {
 
     expect(next.cells[0].color).toBe('#ff00aa');
     expect(next.cells[1].color).toBe('#ff00aa');
+    expect(next.cells[0].source).toEqual({ r: 255, g: 0, b: 170 });
     expect(next.cells[3].color).toBe('#111111');
   });
 
@@ -59,6 +62,16 @@ describe('studio grid helpers', () => {
     expect(grid.cells[17].color).toBe('#ff00aa');
     expect(grid.cells[34].color).toBe('#ff00aa');
     expect(grid.cells[51].color).toBe('#ff00aa');
+  });
+
+  it('centers even-sized brush strokes around the target cell', () => {
+    const grid = applyBrushStroke(createBlankGrid(16), 8, 8, 4, '#ff00aa');
+
+    expect(grid.cells[16 * 7 + 7].color).toBe('#ff00aa');
+    expect(grid.cells[16 * 7 + 8].color).toBe('#ff00aa');
+    expect(grid.cells[16 * 8 + 8].color).toBe('#ff00aa');
+    expect(grid.cells[16 * 10 + 10].color).toBe('#ff00aa');
+    expect(grid.cells[16 * 11 + 11].color).toBeNull();
   });
 
   it('draws a rectangle outline across the selected bounds', () => {

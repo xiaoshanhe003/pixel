@@ -7,21 +7,22 @@ import {
   buildLinePoints,
   buildRectanglePoints,
 } from '../utils/studio';
-import type { LayerContentBounds } from '../utils/studio';
+import type { BrushPoint, LayerContentBounds } from '../utils/studio';
 import { getCursorForTool } from '../utils/toolCursors';
 
 type PixelGridProps = {
   grid: PixelGridModel;
+  scenario?: 'pixel' | 'beads' | 'crochet';
   editable?: boolean;
   activeColor?: string;
   tool?: EditorTool;
   toolSettings: EditorToolSettings;
   onPreviewPaintStroke?: (
-    points: Array<{ x: number; y: number }>,
+    points: BrushPoint[],
     color: string | null,
   ) => void;
   onCommitPaintStroke?: (
-    points: Array<{ x: number; y: number }>,
+    points: BrushPoint[],
     color: string | null,
   ) => void;
   onFillArea?: (x: number, y: number, color: string | null) => void;
@@ -58,6 +59,10 @@ export function getBaseCellSize(width: number) {
 }
 
 const GRID_LINE_WIDTH = 1;
+const PAN_EDGE_GUTTER = 96;
+const DEFAULT_TOP_SAFE_MARGIN = 24;
+const BEAD_AXIS_LABEL_SIZE = 22;
+const BEAD_AXIS_LABEL_GAP = 8;
 
 type ViewportMetrics = {
   width: number;
@@ -86,7 +91,10 @@ function buildCenteredOffset(
 ) {
   return {
     x: (viewport.width - contentWidth) / 2,
-    y: (viewport.height - contentHeight) / 2,
+    y:
+      contentHeight <= viewport.height
+        ? Math.min(DEFAULT_TOP_SAFE_MARGIN, Math.max(0, viewport.height - contentHeight))
+        : (viewport.height - contentHeight) / 2,
   };
 }
 
@@ -111,6 +119,7 @@ function readPointerCellTarget(target: EventTarget | null) {
 
 export default function PixelGrid({
   grid,
+  scenario = 'pixel',
   editable = false,
   activeColor,
   tool = 'paint',
@@ -145,7 +154,7 @@ export default function PixelGrid({
     pointerId: number;
     color: string | null;
     mode: 'paint' | 'erase';
-    points: Array<{ x: number; y: number }>;
+    points: BrushPoint[];
     visited: Set<string>;
   } | null>(null);
   const suppressClickPaintRef = useRef(false);
@@ -170,7 +179,7 @@ export default function PixelGrid({
     cells: Array<{ x: number; y: number }>;
     label: string;
   } | null>(null);
-  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const [hoverCell, setHoverCell] = useState<BrushPoint | null>(null);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [viewportMetrics, setViewportMetrics] = useState<ViewportMetrics>({
     width: 0,
@@ -185,12 +194,32 @@ export default function PixelGrid({
     y: number;
   } | null>(null);
 
-  function previewStroke(points: Array<{ x: number; y: number }>, color: string | null) {
+  function previewStroke(points: BrushPoint[], color: string | null) {
     onPreviewPaintStroke?.(points, color);
   }
 
-  function commitStroke(points: Array<{ x: number; y: number }>, color: string | null) {
+  function commitStroke(points: BrushPoint[], color: string | null) {
     onCommitPaintStroke?.(points, color);
+  }
+
+  function readBrushPointFromEvent(
+    event: { clientX: number; clientY: number; currentTarget: EventTarget | null },
+    cell: { x: number; y: number },
+    size: 1 | 2 | 3 | 4,
+  ): BrushPoint {
+    if (!(event.currentTarget instanceof HTMLElement) || size % 2 !== 0) {
+      return cell;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const relativeX = event.clientX - rect.left;
+    const relativeY = event.clientY - rect.top;
+
+    return {
+      ...cell,
+      alignX: relativeX < rect.width / 2 ? 'before' : 'after',
+      alignY: relativeY < rect.height / 2 ? 'before' : 'after',
+    };
   }
 
   const toolCursor = getCursorForTool(tool);
@@ -201,6 +230,10 @@ export default function PixelGrid({
             hoverCell.x,
             hoverCell.y,
             tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+            {
+              alignX: hoverCell.alignX,
+              alignY: hoverCell.alignY,
+            },
           ),
         }
       : null;
@@ -332,16 +365,26 @@ export default function PixelGrid({
         return { x: 0, y: 0 };
       }
 
+      const horizontalGutter = Math.min(
+        PAN_EDGE_GUTTER,
+        Math.max(0, Math.floor(viewportMetrics.width * 0.24)),
+      );
+      const verticalGutter = Math.min(
+        PAN_EDGE_GUTTER,
+        Math.max(0, Math.floor(viewportMetrics.height * 0.24)),
+      );
       const minOffsetX =
         scaledGridWidth > viewportMetrics.width
-          ? viewportMetrics.width - scaledGridWidth
+          ? viewportMetrics.width - scaledGridWidth - horizontalGutter
           : centeredOffset.x;
-      const maxOffsetX = scaledGridWidth > viewportMetrics.width ? 0 : centeredOffset.x;
+      const maxOffsetX =
+        scaledGridWidth > viewportMetrics.width ? horizontalGutter : centeredOffset.x;
       const minOffsetY =
         scaledGridHeight > viewportMetrics.height
-          ? viewportMetrics.height - scaledGridHeight
+          ? viewportMetrics.height - scaledGridHeight - verticalGutter
           : centeredOffset.y;
-      const maxOffsetY = scaledGridHeight > viewportMetrics.height ? 0 : centeredOffset.y;
+      const maxOffsetY =
+        scaledGridHeight > viewportMetrics.height ? verticalGutter : centeredOffset.y;
 
       return {
         x: Math.min(Math.max(nextOffset.x, minOffsetX - centeredOffset.x), maxOffsetX - centeredOffset.x),
@@ -402,6 +445,20 @@ export default function PixelGrid({
     renderedGridOffset.x,
     renderedGridOffset.y,
   ]);
+  const beadColumnNumbers = useMemo(
+    () =>
+      scenario === 'beads'
+        ? Array.from({ length: grid.width }, (_, index) => index + 1)
+        : [],
+    [grid.width, scenario],
+  );
+  const beadRowNumbers = useMemo(
+    () =>
+      scenario === 'beads'
+        ? Array.from({ length: grid.height }, (_, index) => index + 1)
+        : [],
+    [grid.height, scenario],
+  );
   const gridStyle: CSSProperties & {
     '--pixel-cell-size': string;
     '--pixel-grid-line-width': string;
@@ -471,15 +528,16 @@ export default function PixelGrid({
       aria-label="像素输出面板"
       data-active-tool={tool}
       style={{ cursor: toolCursor }}
-      onPointerDown={(event) => {
+      onPointerDownCapture={(event) => {
         if (tool !== 'move' || !viewportRef.current) {
           return;
         }
 
+        event.preventDefault();
         dragStateRef.current = {
           pointerId: event.pointerId,
-          startX: event.clientX,
-          startY: event.clientY,
+          startX: event.clientX ?? 0,
+          startY: event.clientY ?? 0,
           offsetX: panOffset.x,
           offsetY: panOffset.y,
         };
@@ -554,8 +612,10 @@ export default function PixelGrid({
           return;
         }
 
-        const deltaX = event.clientX - dragStateRef.current.startX;
-        const deltaY = event.clientY - dragStateRef.current.startY;
+        const deltaX =
+          (event.clientX ?? dragStateRef.current.startX) - dragStateRef.current.startX;
+        const deltaY =
+          (event.clientY ?? dragStateRef.current.startY) - dragStateRef.current.startY;
         setPanOffset(
           getConstrainedPanOffset({
             x: dragStateRef.current.offsetX + deltaX,
@@ -728,6 +788,86 @@ export default function PixelGrid({
           />
         </div>
       ) : null}
+      {scenario === 'beads' ? (
+        <div className="bead-axis-layer" aria-hidden="true">
+          {beadColumnNumbers.map((value, index) => {
+            const axisX = renderedGridOffset.x + frameInset + index * cellStride;
+
+            return (
+              <span
+                key={`top-${value}`}
+                className="bead-axis-label bead-axis-label--column bead-axis-label--top"
+                style={{
+                  left: `${axisX}px`,
+                  top: `${renderedGridOffset.y - BEAD_AXIS_LABEL_GAP}px`,
+                  transform: 'translate(0, -100%)',
+                  width: `${cellStride}px`,
+                  height: `${BEAD_AXIS_LABEL_SIZE}px`,
+                }}
+              >
+                {value}
+              </span>
+            );
+          })}
+          {beadColumnNumbers.map((value, index) => {
+            const axisX = renderedGridOffset.x + frameInset + index * cellStride;
+
+            return (
+              <span
+                key={`bottom-${value}`}
+                className="bead-axis-label bead-axis-label--column bead-axis-label--bottom"
+                style={{
+                  left: `${axisX}px`,
+                  top: `${renderedGridOffset.y + scaledGridHeight + BEAD_AXIS_LABEL_GAP}px`,
+                  transform: 'translate(0, 0)',
+                  width: `${cellStride}px`,
+                  height: `${BEAD_AXIS_LABEL_SIZE}px`,
+                }}
+              >
+                {value}
+              </span>
+            );
+          })}
+          {beadRowNumbers.map((value, index) => {
+            const axisY = renderedGridOffset.y + frameInset + index * cellStride;
+
+            return (
+              <span
+                key={`left-${value}`}
+                className="bead-axis-label bead-axis-label--row bead-axis-label--left"
+                style={{
+                  left: `${renderedGridOffset.x - BEAD_AXIS_LABEL_GAP}px`,
+                  top: `${axisY}px`,
+                  transform: 'translate(-100%, 0)',
+                  width: `${BEAD_AXIS_LABEL_SIZE}px`,
+                  height: `${cellStride}px`,
+                }}
+              >
+                {value}
+              </span>
+            );
+          })}
+          {beadRowNumbers.map((value, index) => {
+            const axisY = renderedGridOffset.y + frameInset + index * cellStride;
+
+            return (
+              <span
+                key={`right-${value}`}
+                className="bead-axis-label bead-axis-label--row bead-axis-label--right"
+                style={{
+                  left: `${renderedGridOffset.x + scaledGridWidth + BEAD_AXIS_LABEL_GAP}px`,
+                  top: `${axisY}px`,
+                  transform: 'translate(0, 0)',
+                  width: `${BEAD_AXIS_LABEL_SIZE}px`,
+                  height: `${cellStride}px`,
+                }}
+              >
+                {value}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
       <div
         className={`pixel-grid-frame${showGrid ? '' : ' pixel-grid-frame--flat'}${
           hideTransparencyTexture ? ' pixel-grid--hide-transparency-texture' : ''
@@ -737,7 +877,9 @@ export default function PixelGrid({
         <div
           role="grid"
           aria-label="像素输出网格"
-          className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}`}
+          className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}${
+            scenario === 'beads' ? ' pixel-grid--beads' : ''
+          }`}
           style={gridStyle}
         >
           {grid.cells.map((cell) => (
@@ -745,7 +887,9 @@ export default function PixelGrid({
               key={`${cell.x}-${cell.y}`}
               type="button"
               role="gridcell"
-              className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}${editable ? ' pixel-cell--editable' : ''}${showGrid ? '' : ' pixel-cell--flat'}${presentation === 'symbol' ? ' pixel-cell--symbol' : ''}`}
+              className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}${editable ? ' pixel-cell--editable' : ''}${showGrid ? '' : ' pixel-cell--flat'}${presentation === 'symbol' ? ' pixel-cell--symbol' : ''}${
+                scenario === 'beads' ? ' pixel-cell--beads' : ''
+              }`}
               aria-label={`像素 ${cell.x},${cell.y} ${cell.color ?? '透明'}${
                 presentation === 'symbol' && cell.color
                   ? ` 符号 ${getCellOverlay?.(cell) ?? '?'}`
@@ -754,6 +898,8 @@ export default function PixelGrid({
               data-active-tool={tool}
               data-cell-x={cell.x}
               data-cell-y={cell.y}
+              data-bead-col={cell.x}
+              data-bead-row={cell.y}
               style={{
                 ...(presentation === 'color' && cell.color
                   ? { backgroundColor: cell.color }
@@ -767,7 +913,12 @@ export default function PixelGrid({
                   return;
                 }
 
-                setHoverCell({ x: cell.x, y: cell.y });
+                const brushPoint = readBrushPointFromEvent(
+                  event,
+                  { x: cell.x, y: cell.y },
+                  tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                );
+                setHoverCell(brushPoint);
 
                 if (tool === 'sample') {
                   onSampleCell?.(cell.color);
@@ -833,13 +984,18 @@ export default function PixelGrid({
                   pointerId: event.pointerId,
                   color: nextColor,
                   mode: tool === 'erase' ? 'erase' : 'paint',
-                  points: [{ x: cell.x, y: cell.y }],
+                  points: [brushPoint],
                   visited: new Set([pointKey]),
                 };
-                previewStroke([{ x: cell.x, y: cell.y }], nextColor);
+                previewStroke([brushPoint], nextColor);
               }}
               onPointerEnter={(event) => {
-                setHoverCell({ x: cell.x, y: cell.y });
+                const brushPoint = readBrushPointFromEvent(
+                  event,
+                  { x: cell.x, y: cell.y },
+                  tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                );
+                setHoverCell(brushPoint);
 
                 if (
                   !editable ||
@@ -920,7 +1076,7 @@ export default function PixelGrid({
                 paintStateRef.current.visited.add(pointKey);
                 paintStateRef.current.points = [
                   ...paintStateRef.current.points,
-                  { x: cell.x, y: cell.y },
+                  brushPoint,
                 ];
                 previewStroke(
                   paintStateRef.current.points,
@@ -932,7 +1088,7 @@ export default function PixelGrid({
                   setInteractionPreview(null);
                 }
               }}
-              onClick={() => {
+              onClick={(event) => {
                 if (
                   !editable ||
                   tool === 'move' ||
@@ -955,7 +1111,13 @@ export default function PixelGrid({
                 }
 
                 commitStroke(
-                  [{ x: cell.x, y: cell.y }],
+                  [
+                    readBrushPointFromEvent(
+                      event,
+                      { x: cell.x, y: cell.y },
+                      tool === 'erase' ? toolSettings.eraseSize : toolSettings.paintSize,
+                    ),
+                  ],
                   tool === 'erase' ? null : activeColor ?? null,
                 );
               }}

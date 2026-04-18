@@ -1,5 +1,5 @@
 import type { PixelGrid } from '../types/pixel';
-import type { BeadBrand } from '../data/beadPalettes';
+import { BEAD_BRANDS, BEAD_BRAND_ORDER, type BeadBrand } from '../data/beadPalettes';
 import type { BeadMappedColor } from '../utils/beads';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 
@@ -10,6 +10,7 @@ type ScenarioExportPanelProps = {
   beadUsage?: BeadMappedColor[];
   crochetAnalysis?: CrochetPatternAnalysis;
   exportMode: string;
+  onBeadBrandChange?: (brand: BeadBrand) => void;
   onExportModeChange: (mode: string) => void;
   onPrint: () => void;
 };
@@ -40,6 +41,7 @@ export default function ScenarioExportPanel({
   beadUsage = [],
   crochetAnalysis,
   exportMode,
+  onBeadBrandChange,
   onExportModeChange,
   onPrint,
 }: ScenarioExportPanelProps) {
@@ -82,6 +84,31 @@ export default function ScenarioExportPanel({
         </button>
       </div>
       <div className="export-sheet">
+        {isBeads ? (
+          <div className="export-sheet__section">
+            <div className="export-sheet__header export-sheet__header--section">
+              <strong>拼豆色板</strong>
+              <span>{beadBrand?.toUpperCase()} 映射</span>
+            </div>
+            <div className="frame-strip__actions export-sheet__actions">
+              {BEAD_BRAND_ORDER.map((brandId) => {
+                const brand = BEAD_BRANDS[brandId];
+
+                return (
+                <button
+                  key={brand.id}
+                  type="button"
+                  className={`chip-button${beadBrand === brand.id ? ' is-active' : ''}`}
+                  onClick={() => onBeadBrandChange?.(brand.id)}
+                >
+                  {brand.label}
+                </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {isBeads && exportMode === 'bead-chart' ? (
           <>
             <div className="export-sheet__header">
@@ -89,19 +116,25 @@ export default function ScenarioExportPanel({
               <span>{beadBrand?.toUpperCase()} 色号映射</span>
             </div>
             {renderPrintGrid(grid)}
-            <div className="export-sheet__legend">
-              {beadUsage.map((item) => (
-                <div key={item.id} className="export-sheet__legend-item">
-                  <span
-                    className="swatch-chip"
-                    aria-hidden="true"
-                    style={{ backgroundColor: item.hex }}
-                  />
-                  <span>{item.id}</span>
-                  <span>{item.name}</span>
-                  <strong>{item.count} 颗</strong>
-                </div>
-              ))}
+            <div className="export-sheet__section">
+              <div className="export-sheet__header export-sheet__header--section">
+                <strong>颜色清单</strong>
+                <span>{beadUsage.reduce((sum, item) => sum + item.count, 0)} 颗总计</span>
+              </div>
+              <div className="export-sheet__legend">
+                {beadUsage.map((item) => (
+                  <div key={item.id} className="export-sheet__legend-item">
+                    <span
+                      className="swatch-chip"
+                      aria-hidden="true"
+                      style={{ backgroundColor: item.hex }}
+                    />
+                    <span>{item.id}</span>
+                    <span>{item.name}</span>
+                    <strong>{item.count} 颗</strong>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         ) : null}

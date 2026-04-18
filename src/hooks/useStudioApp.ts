@@ -12,11 +12,12 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
-import { countBeadUsage, mapGridToBeadPalette } from '../utils/beads';
+import { countBeadUsage, mapColorToBeadPalette, mapGridToBeadPalette } from '../utils/beads';
 import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/crochet';
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
 import {
+  type BrushPoint,
   composeFrame,
   countPaletteUsage,
   createDocumentFromGrid,
@@ -148,11 +149,11 @@ export type UseStudioAppResult = {
     setExportMode: (mode: ExportMode) => void;
     paintCell: (x: number, y: number, color: string | null) => void;
     previewPaintStroke: (
-      points: Array<{ x: number; y: number }>,
+      points: BrushPoint[],
       color: string | null,
     ) => void;
     commitPaintStroke: (
-      points: Array<{ x: number; y: number }>,
+      points: BrushPoint[],
       color: string | null,
     ) => void;
     sampleCell: (color: string | null) => void;
@@ -407,8 +408,8 @@ export function useStudioApp(): UseStudioAppResult {
   const [history, setHistory] = useState<StudioHistoryState>(() =>
     createStudioHistoryState(createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize)),
   );
-  const [activeColor, setActiveColor] = useState('#d65a31');
-  const [activeTool, setActiveTool] = useState<EditorTool>('paint');
+  const [activeColor, setActiveColor] = useState('#000000');
+  const [activeTool, setActiveTool] = useState<EditorTool>('move');
   const [toolSettings, setToolSettings] = useState<EditorToolSettings>({
     paintSize: 1,
     eraseSize: 1,
@@ -419,7 +420,7 @@ export function useStudioApp(): UseStudioAppResult {
   const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
   const [previewFps, setPreviewFps] = useState(6);
-  const [beadBrand, setBeadBrand] = useState<BeadBrand>('perler');
+  const [beadBrand, setBeadBrand] = useState<BeadBrand>('mard');
   const [crochetViewMode, setCrochetViewMode] = useState<'color' | 'symbol'>('color');
   const [beadExportMode, setBeadExportMode] = useState<'bead-chart' | 'bead-list'>(
     'bead-chart',
@@ -474,6 +475,21 @@ export function useStudioApp(): UseStudioAppResult {
     beadExportMode,
     crochetExportMode,
   });
+  const effectiveActiveColor =
+    activeScenario === 'beads'
+      ? mapColorToBeadPalette(activeColor, beadBrand)
+      : activeColor;
+
+  useEffect(() => {
+    if (activeScenario !== 'beads') {
+      return;
+    }
+
+    setActiveColor((current) => {
+      const mapped = mapColorToBeadPalette(current, beadBrand);
+      return mapped === current ? current : mapped;
+    });
+  }, [activeScenario, beadBrand]);
 
   useEffect(() => {
     setSelection(null);
@@ -528,7 +544,7 @@ export function useStudioApp(): UseStudioAppResult {
       isProcessingUpload,
     },
     editor: {
-      activeColor,
+      activeColor: effectiveActiveColor,
       activeTool,
       toolSettings,
       canvasZoom,
@@ -552,7 +568,10 @@ export function useStudioApp(): UseStudioAppResult {
       setSelectedFile,
       setConversionOptions,
       setActiveScenario,
-      setActiveColor,
+      setActiveColor: (color) =>
+        setActiveColor(
+          activeScenario === 'beads' ? mapColorToBeadPalette(color, beadBrand) : color,
+        ),
       setActiveTool,
       setSelection: (nextSelection) => {
         selectionBaseDocumentRef.current = null;
@@ -675,7 +694,9 @@ export function useStudioApp(): UseStudioAppResult {
           return;
         }
 
-        setActiveColor(color);
+        setActiveColor(
+          activeScenario === 'beads' ? mapColorToBeadPalette(color, beadBrand) : color,
+        );
         setActiveTool('paint');
       },
       fillArea: (x, y, color) => dispatchCommand({ type: 'fillArea', x, y, color }),

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { SquareCrop } from '../utils/image';
 import { cropImageFile, fileToImageElement } from '../utils/image';
 
@@ -151,6 +152,28 @@ export default function ImageUploader({
     setPendingFile(null);
     setIsCropping(false);
   }, [selectedFile]);
+
+  useEffect(() => {
+    if (!isCropping) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      interactionRef.current = null;
+      setPendingFile(null);
+      setIsCropping(false);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCropping]);
 
   useEffect(() => {
     function handlePointerMove(event: PointerEvent) {
@@ -321,35 +344,6 @@ export default function ImageUploader({
           </button>
         ) : null}
 
-        {pendingFile && isCropping ? (
-          <>
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => {
-                setPendingFile(null);
-                setIsCropping(false);
-              }}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className="chip-button"
-              onClick={() => {
-                if (shouldApplyCrop) {
-                  void applyCrop();
-                  return;
-                }
-
-                void commitPendingFile();
-                setIsCropping(false);
-              }}
-            >
-              确认
-            </button>
-          </>
-        ) : null}
       </div>
 
       {previewSrc ? (
@@ -396,6 +390,108 @@ export default function ImageUploader({
       ) : (
         <div className="empty-state">无参考图</div>
       )}
+
+      {isCropping && pendingPreviewUrl
+        ? createPortal(
+            <div
+              className="crop-dialog-backdrop"
+              role="presentation"
+              onClick={() => {
+                setPendingFile(null);
+                setIsCropping(false);
+              }}
+            >
+              <div
+                className="crop-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-label="图片裁切"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="crop-dialog__header">
+                  <div>
+                    <p className="crop-dialog__eyebrow">上传前处理</p>
+                    <h3 className="crop-dialog__title">裁切图片</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="chip-button"
+                    onClick={() => {
+                      setPendingFile(null);
+                      setIsCropping(false);
+                    }}
+                  >
+                    关闭
+                  </button>
+                </div>
+
+                <p className="crop-dialog__hint">拖动选区调整构图，拖拽右下角圆点缩放裁切范围。</p>
+
+                <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
+                  <img
+                    ref={cropImageRef}
+                    className="source-preview__image"
+                    src={pendingPreviewUrl}
+                    alt="待裁切原图预览"
+                  />
+                  {cropFrame ? (
+                    <div
+                      className="crop-selection"
+                      style={{
+                        left: `${cropFrame.left}px`,
+                        top: `${cropFrame.top}px`,
+                        width: `${cropFrame.size}px`,
+                        height: `${cropFrame.size}px`,
+                      }}
+                      onPointerDown={(event) => startInteraction(event, 'move')}
+                    >
+                      <span className="crop-selection__rule crop-selection__rule--horizontal" />
+                      <span className="crop-selection__rule crop-selection__rule--vertical" />
+                      <button
+                        type="button"
+                        className="crop-selection__handle"
+                        aria-label="调整裁切范围"
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                          startInteraction(event, 'resize');
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="crop-dialog__footer">
+                  <button
+                    type="button"
+                    className="chip-button"
+                    onClick={() => {
+                      setPendingFile(null);
+                      setIsCropping(false);
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className="chip-button"
+                    onClick={() => {
+                      if (shouldApplyCrop) {
+                        void applyCrop();
+                        return;
+                      }
+
+                      void commitPendingFile();
+                      setIsCropping(false);
+                    }}
+                  >
+                    确认
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

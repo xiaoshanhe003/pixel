@@ -30,6 +30,7 @@
   --checker-size-cell: 12px;
   --checker-offset-stage: 12px;
   --checker-offset-cell: 6px;
+  --pixel-grid-outline: rgba(31, 28, 23, 0.08);
   --cell-border: rgba(0, 0, 0, 0.08);
   --border-default: 1px solid var(--line);
   --focus: 2px solid rgba(0, 0, 0, 0.24);

@@ -8,7 +8,6 @@ import type { ScenarioDefinition, ScenarioId, StudioFrame } from '../types/studi
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import type { countBeadUsage } from '../utils/beads';
 import type { countPaletteUsage } from '../utils/studio';
-import BeadPalettePanel from './BeadPalettePanel';
 import CrochetPatternPanel from './CrochetPatternPanel';
 import PalettePanel from './PalettePanel';
 import ScenarioExportPanel from './ScenarioExportPanel';
@@ -126,6 +125,7 @@ export default function StudioRightDock({
           beadUsage={activeScenario === 'beads' ? beadUsage : undefined}
           crochetAnalysis={activeScenario === 'crochet' ? crochetAnalysis ?? undefined : undefined}
           exportMode={exportMode}
+          onBeadBrandChange={activeScenario === 'beads' ? onBeadBrandChange : undefined}
           onExportModeChange={(mode) =>
             onExportModeChange(
               mode as 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows',
@@ -137,14 +137,7 @@ export default function StudioRightDock({
 
       {activeGrid ? (
         <>
-          {activeScenario === 'beads' ? (
-            <BeadPalettePanel
-              brand={beadBrand}
-              usage={beadUsage}
-              transparentCount={transparentCount}
-              onBrandChange={onBeadBrandChange}
-            />
-          ) : activeScenario === 'crochet' && crochetAnalysis ? (
+          {activeScenario === 'beads' ? null : activeScenario === 'crochet' && crochetAnalysis ? (
             <CrochetPatternPanel analysis={crochetAnalysis} />
           ) : (
             <PalettePanel

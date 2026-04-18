@@ -8,11 +8,14 @@ import type {
   ScenarioId,
   StudioLayer,
 } from '../types/studio';
+import type { BeadBrand } from '../data/beadPalettes';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { ACTUAL_SIZE_ZOOM, FIT_WINDOW_ZOOM } from '../constants/studio';
 import { ZOOM_IN_SVG, ZOOM_OUT_SVG } from '../utils/toolIcons';
+import { findBeadColorByHex } from '../utils/beads';
 import CrochetChart from './CrochetChart';
 import EditingToolbar from './EditingToolbar';
+import FloatingToolControls from './FloatingToolControls';
 import PixelGrid, { getBaseCellSize } from './PixelGrid';
 import { CheckboxField } from './ui/checkbox';
 import { DropdownField } from './ui/dropdown';
@@ -57,6 +60,7 @@ type StudioCanvasStageProps = {
   activeLayer?: StudioLayer;
   isProcessingUpload: boolean;
   activeColor: string;
+  beadBrand: BeadBrand;
   activeTool: EditorTool;
   toolSettings: EditorToolSettings;
   activePalette: readonly string[];
@@ -125,6 +129,7 @@ export default function StudioCanvasStage({
   activeLayer,
   isProcessingUpload,
   activeColor,
+  beadBrand,
   activeTool,
   toolSettings,
   activePalette,
@@ -190,6 +195,10 @@ export default function StudioCanvasStage({
   const actualSizePercent = Math.round(actualSizeZoom * 100);
   const currentZoomPercent = isActualZoom ? actualSizePercent : Math.round(zoomFactor * 100);
   const zoomDropdownValue = isActualZoom ? 'actual' : String(currentZoomPercent);
+  const activeColorLabel =
+    activeScenario === 'beads'
+      ? findBeadColorByHex(activeColor, beadBrand)?.id ?? activeColor
+      : activeColor;
   const zoomOptions = [
     ...ZOOM_OPTIONS.map((value) => ({
       label: `${value}%`,
@@ -226,13 +235,8 @@ export default function StudioCanvasStage({
   return (
     <section className="canvas-stage" aria-label="主画布工作区">
       <EditingToolbar
-        activeColor={activeColor}
-        palette={activePalette}
-        onColorChange={onActiveColorChange}
         tool={activeTool}
-        toolSettings={toolSettings}
         onToolChange={onActiveToolChange}
-        onToolSettingsChange={onToolSettingsChange}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={onUndo}
@@ -321,63 +325,75 @@ export default function StudioCanvasStage({
       />
 
       <section className="panel stage-canvas-panel">
-        <div className="panel__body stage-canvas-body">
-          {isProcessingUpload ? (
-            <div aria-busy="true" />
-          ) : activeGrid ? (
-            activeScenario === 'crochet' && crochetAnalysis ? (
-              <CrochetChart
-                grid={activeGrid}
-                viewMode={crochetViewMode}
-                symbolByColor={crochetAnalysis.symbolByColor}
-                editable
-                activeColor={activeColor}
-                tool={activeTool}
-                toolSettings={toolSettings}
-                onPreviewPaintStroke={onPreviewPaintStroke}
-                onCommitPaintStroke={onCommitPaintStroke}
-                onFillArea={onFillArea}
-                onDrawLine={onDrawLine}
-                onDrawRectangle={onDrawRectangle}
-                onSelectionChange={onSelectionChange}
-                onPreviewMoveSelection={onPreviewMoveSelection}
-                onCommitMoveSelection={onCommitMoveSelection}
-                onPreviewScaleSelection={onPreviewScaleSelection}
-                onCommitScaleSelection={onCommitScaleSelection}
-                onSampleCell={onSampleCell}
-                zoom={appliedZoom}
-                showGrid={showGridLines}
-                onViewportSizeChange={handleViewportSizeChange}
-                selectionBounds={selection}
-              />
-            ) : (
-              <PixelGrid
-                grid={activeGrid}
-                editable
-                activeColor={activeColor}
-                tool={activeTool}
-                toolSettings={toolSettings}
-                onPreviewPaintStroke={onPreviewPaintStroke}
-                onCommitPaintStroke={onCommitPaintStroke}
-                onFillArea={onFillArea}
-                onDrawLine={onDrawLine}
-                onDrawRectangle={onDrawRectangle}
-                onSelectionChange={onSelectionChange}
-                onPreviewMoveSelection={onPreviewMoveSelection}
-                onCommitMoveSelection={onCommitMoveSelection}
-                onPreviewScaleSelection={onPreviewScaleSelection}
-                onCommitScaleSelection={onCommitScaleSelection}
-                onSampleCell={onSampleCell}
-                zoom={appliedZoom}
-                showGrid={showGridLines}
-                onViewportSizeChange={handleViewportSizeChange}
-                selectionBounds={selection}
-              />
-            )
+        {activeTool === 'paint' || activeTool === 'fill' || activeTool === 'erase' ? (
+          <FloatingToolControls
+            activeColor={activeColor}
+            activeColorLabel={activeColorLabel}
+            beadBrand={activeScenario === 'beads' ? beadBrand : undefined}
+            palette={activePalette}
+            tool={activeTool}
+            toolSettings={toolSettings}
+            useBeadLibrary={activeScenario === 'beads'}
+            onColorChange={onActiveColorChange}
+            onToolSettingsChange={onToolSettingsChange}
+          />
+        ) : null}
+        {isProcessingUpload ? (
+          <div aria-busy="true" />
+        ) : activeGrid ? (
+          activeScenario === 'crochet' && crochetAnalysis ? (
+            <CrochetChart
+              grid={activeGrid}
+              viewMode={crochetViewMode}
+              symbolByColor={crochetAnalysis.symbolByColor}
+              editable
+              activeColor={activeColor}
+              tool={activeTool}
+              toolSettings={toolSettings}
+              onPreviewPaintStroke={onPreviewPaintStroke}
+              onCommitPaintStroke={onCommitPaintStroke}
+              onFillArea={onFillArea}
+              onDrawLine={onDrawLine}
+              onDrawRectangle={onDrawRectangle}
+              onSelectionChange={onSelectionChange}
+              onPreviewMoveSelection={onPreviewMoveSelection}
+              onCommitMoveSelection={onCommitMoveSelection}
+              onPreviewScaleSelection={onPreviewScaleSelection}
+              onCommitScaleSelection={onCommitScaleSelection}
+              onSampleCell={onSampleCell}
+              zoom={appliedZoom}
+              showGrid={showGridLines}
+              onViewportSizeChange={handleViewportSizeChange}
+              selectionBounds={selection}
+            />
           ) : (
-            <div className="empty-state">采样完成后，这里会显示像素网格。</div>
-          )}
-        </div>
+            <PixelGrid
+              grid={activeGrid}
+              scenario={activeScenario}
+              editable
+              activeColor={activeColor}
+              tool={activeTool}
+              toolSettings={toolSettings}
+              onPreviewPaintStroke={onPreviewPaintStroke}
+              onCommitPaintStroke={onCommitPaintStroke}
+              onFillArea={onFillArea}
+              onDrawLine={onDrawLine}
+              onDrawRectangle={onDrawRectangle}
+              onSelectionChange={onSelectionChange}
+              onPreviewMoveSelection={onPreviewMoveSelection}
+              onCommitMoveSelection={onCommitMoveSelection}
+              onPreviewScaleSelection={onPreviewScaleSelection}
+              onCommitScaleSelection={onCommitScaleSelection}
+              onSampleCell={onSampleCell}
+              zoom={appliedZoom}
+              showGrid={showGridLines}
+              onViewportSizeChange={handleViewportSizeChange}
+              selectionBounds={selection}
+            />
+          )
+        ) : (
+          <div className="empty-state">采样完成后，这里会显示像素网格。</div>
+        )}
       </section>
     </section>
   );

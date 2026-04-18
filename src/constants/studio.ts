@@ -12,7 +12,8 @@ export const DEFAULT_OPTIONS: ConversionOptions = {
   fillFrame: false,
 };
 
-export const FIT_WINDOW_ZOOM = 0.92;
+export const FIT_WINDOW_ZOOM = 1;
+export const ACTUAL_SIZE_ZOOM = -1;
 
 export const SCENARIOS: ScenarioDefinition[] = [
   {
