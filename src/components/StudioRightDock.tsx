@@ -89,7 +89,6 @@ export default function StudioRightDock({
           beadUsage={activeScenario === 'beads' ? beadUsage : undefined}
           crochetAnalysis={activeScenario === 'crochet' ? crochetAnalysis ?? undefined : undefined}
           exportMode={exportMode}
-          onBeadBrandChange={activeScenario === 'beads' ? onBeadBrandChange : undefined}
           onExportModeChange={(mode) =>
             onExportModeChange(
               mode as 'bead-chart' | 'bead-list' | 'crochet-chart' | 'crochet-rows',

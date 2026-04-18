@@ -1,4 +1,6 @@
+import { BEAD_BRANDS, BEAD_BRAND_ORDER, type BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions, GridSize, PaletteSize } from '../types/pixel';
+import type { ScenarioId } from '../types/studio';
 import { DropdownField } from './ui/dropdown';
 import {
   applyDetailPreset,
@@ -13,13 +15,19 @@ import {
 } from '../utils/conversionPresets';
 
 type ConversionControlsProps = {
+  activeScenario: ScenarioId;
   value: ConversionOptions;
+  beadBrand: BeadBrand;
   onChange: (nextValue: ConversionOptions) => void;
+  onBeadBrandChange: (brand: BeadBrand) => void;
 };
 
 export default function ConversionControls({
+  activeScenario,
   value,
+  beadBrand,
   onChange,
+  onBeadBrandChange,
 }: ConversionControlsProps) {
   const updateValue = <Key extends keyof ConversionOptions>(
     key: Key,
@@ -113,6 +121,21 @@ export default function ConversionControls({
             }
           />
         </fieldset>
+
+        {activeScenario === 'beads' ? (
+          <fieldset className="size-control">
+            <legend>拼豆色板</legend>
+            <DropdownField
+              label="选择拼豆品牌映射"
+              value={beadBrand}
+              options={BEAD_BRAND_ORDER.map((brandId) => ({
+                value: brandId,
+                label: BEAD_BRANDS[brandId].label,
+              }))}
+              onChange={(brand) => onBeadBrandChange(brand as BeadBrand)}
+            />
+          </fieldset>
+        ) : null}
       </div>
     </section>
   );
