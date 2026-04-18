@@ -286,11 +286,74 @@
   pointer-events: auto;
 }
 
+.pixel-grid-shell {
+  position: absolute;
+  inset: 0;
+}
+
+.pixel-grid-shell--beads {
+  overflow: clip;
+}
+
 .bead-axis-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 2;
+}
+
+.bead-axis-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  z-index: 3;
+  border-right: 1px solid rgba(57, 64, 75, 0.18);
+  border-bottom: 1px solid rgba(57, 64, 75, 0.14);
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-track {
+  position: absolute;
+  display: block;
+  z-index: 1;
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-track--top {
+  right: 0;
+  border-bottom: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-track--left {
+  bottom: 0;
+  border-right: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill {
+  position: absolute;
+  display: block;
+  z-index: 2;
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-fill--top {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill--top-lead {
+  border-right: 1px solid rgba(57, 64, 75, 0.16);
+}
+
+.bead-axis-fill--left {
+  border-right: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill--left-lead {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.16);
 }
 
 .bead-axis-label {
@@ -299,8 +362,9 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: transparent;
-  color: rgba(36, 42, 51, 0.54);
+  z-index: 2;
+  background: rgba(244, 240, 232, 0.94);
+  color: rgba(36, 42, 51, 0.72);
   font-family: var(--font-mono-ui);
   font-size: 0.68rem;
   line-height: 1;
@@ -310,26 +374,16 @@
 
 .bead-axis-label--column {
   border-right: 1px solid rgba(57, 64, 75, 0.16);
-}
-
-.bead-axis-label--column.bead-axis-label--top {
   border-bottom: 1px solid rgba(57, 64, 75, 0.12);
 }
 
-.bead-axis-label--column.bead-axis-label--bottom {
-  border-top: 1px solid rgba(57, 64, 75, 0.12);
+.bead-axis-label--column.bead-axis-label--top {
+  top: 0;
 }
 
 .bead-axis-label--row {
   border-bottom: 1px solid rgba(57, 64, 75, 0.16);
-}
-
-.bead-axis-label--row.bead-axis-label--left {
   border-right: 1px solid rgba(57, 64, 75, 0.12);
-}
-
-.bead-axis-label--row.bead-axis-label--right {
-  border-left: 1px solid rgba(57, 64, 75, 0.12);
 }
 
 .pixel-grid {

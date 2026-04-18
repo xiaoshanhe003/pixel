@@ -31,6 +31,17 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /抓手/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('shows the expanded grid size options in ascending order', async () => {
+    renderApp();
+
+    const gridSizeSelect = screen.getByRole('combobox', { name: /网格尺寸/i });
+    const optionLabels = Array.from(gridSizeSelect.querySelectorAll('option')).map(
+      (option) => option.textContent,
+    );
+
+    expect(optionLabels).toEqual(['16 x 16', '32 x 32', '50 x 50', '64 x 64', '100 x 100']);
+  });
+
   it('shows a generated grid after an image is uploaded', async () => {
     renderApp();
     await uploadMockImage();

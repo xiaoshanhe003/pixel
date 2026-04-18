@@ -63,7 +63,7 @@ describe('PixelGrid', () => {
     expect(screen.getByLabelText(/像素 0,9 #000000/i)).toHaveAttribute('data-bead-row', '9');
   });
 
-  it('renders bead axis labels around the canvas in bead scenario', () => {
+  it('renders bead axis labels pinned to the top and left canvas edges in bead scenario', () => {
     render(
       <PixelGrid
         grid={createGrid('#000000')}
@@ -72,10 +72,61 @@ describe('PixelGrid', () => {
       />,
     );
 
+    expect(document.querySelector('.pixel-grid-shell--beads')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-corner')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-track--top')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-track--left')).toBeInTheDocument();
     expect(document.querySelectorAll('.bead-axis-label--top')).toHaveLength(16);
-    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(16);
     expect(document.querySelectorAll('.bead-axis-label--left')).toHaveLength(16);
-    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(0);
+    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(0);
+  });
+
+  it('keeps bead axis rulers pinned while their labels move with the canvas grid', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const frame = screen.getByRole('grid', { name: /像素输出网格/i }).parentElement as HTMLElement;
+    const firstColumnLabel = document.querySelector('.bead-axis-label--top') as HTMLElement;
+    const firstRowLabel = document.querySelector('.bead-axis-label--left') as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    const initialLeft = firstColumnLabel.style.left;
+    const initialTop = firstColumnLabel.style.top;
+    const initialRowTop = firstRowLabel.style.top;
+    const initialFrameLeft = frame.style.left;
+    const initialFrameTop = frame.style.top;
+
+    fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
+
+    expect(firstColumnLabel.style.left).not.toBe(initialLeft);
+    expect(firstColumnLabel.style.top).toBe(initialTop);
+    expect(firstRowLabel.style.top).not.toBe(initialRowTop);
+    expect(Number.parseInt(frame.style.left, 10)).toBeLessThan(Number.parseInt(initialFrameLeft, 10));
+    expect(Number.parseInt(frame.style.top, 10)).toBeLessThan(Number.parseInt(initialFrameTop, 10));
+    expect(Number.parseInt(firstColumnLabel.style.left, 10)).toBeLessThan(Number.parseInt(initialLeft, 10));
+    expect(Number.parseInt(firstRowLabel.style.top, 10)).toBeLessThan(Number.parseInt(initialRowTop, 10));
   });
 
   it('applies flat styling when grid lines are hidden', () => {
@@ -168,7 +219,8 @@ describe('PixelGrid', () => {
     fireEvent(window, new Event('resize'));
     fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
 
-    expect(frame.style.transform).toBe('translate(-510px, -520px)');
+    expect(frame.style.left).toBe('-510px');
+    expect(frame.style.top).toBe('-520px');
   });
 
   it('starts panning from a grid cell when the move tool is active', () => {
@@ -203,7 +255,8 @@ describe('PixelGrid', () => {
     fireEvent.pointerMove(viewport, { pointerId: 7, clientX: 170, clientY: 150 });
     fireEvent.pointerUp(viewport, { pointerId: 7 });
 
-    expect(frame.style.transform).toBe('translate(-480px, -480px)');
+    expect(frame.style.left).toBe('-480px');
+    expect(frame.style.top).toBe('-480px');
   });
 
   it('keeps a small gutter visible when panning an oversized canvas to the edge', () => {
@@ -235,7 +288,8 @@ describe('PixelGrid', () => {
     fireEvent(window, new Event('resize'));
     fireEvent.wheel(viewport, { deltaX: -5000, deltaY: -5000 });
 
-    expect(frame.style.transform).toBe('translate(96px, 96px)');
+    expect(frame.style.left).toBe('96px');
+    expect(frame.style.top).toBe('96px');
   });
 
   it('centers smaller grids horizontally and keeps a fixed top safe margin', () => {
@@ -264,7 +318,8 @@ describe('PixelGrid', () => {
 
     fireEvent(window, new Event('resize'));
 
-    expect(frame.style.transform).toBe('translate(24px, 24px)');
+    expect(frame.style.left).toBe('24px');
+    expect(frame.style.top).toBe('24px');
   });
 
   it('snaps the default offsets to whole pixels so grid lines stay crisp', () => {
@@ -293,7 +348,8 @@ describe('PixelGrid', () => {
 
     fireEvent(window, new Event('resize'));
 
-    expect(frame.style.transform).toBe('translate(24px, 24px)');
+    expect(frame.style.left).toBe('24px');
+    expect(frame.style.top).toBe('24px');
   });
 
   it('assigns explicit row and cell sizes when zoom changes', () => {

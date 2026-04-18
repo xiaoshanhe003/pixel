@@ -28,7 +28,7 @@ export default function ConversionControls({
     onChange({ ...value, [key]: next } as ConversionOptions);
   };
 
-  const sizeOptions: GridSize[] = [16, 32, 64];
+  const sizeOptions: GridSize[] = [16, 32, 50, 64, 100];
   const paletteOptions: PaletteSize[] = [16, 32];
   const detailPreset = inferDetailPreset(value);
   const imageKindPreset = inferImageKindPreset(value);

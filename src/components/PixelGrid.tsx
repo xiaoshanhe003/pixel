@@ -62,7 +62,7 @@ const GRID_LINE_WIDTH = 1;
 const PAN_EDGE_GUTTER = 96;
 const DEFAULT_TOP_SAFE_MARGIN = 24;
 const BEAD_AXIS_LABEL_SIZE = 22;
-const BEAD_AXIS_LABEL_GAP = 8;
+const BEAD_AXIS_LABEL_GAP = 0;
 
 type ViewportMetrics = {
   width: number;
@@ -255,6 +255,15 @@ export default function PixelGrid({
   const scaledGridWidth = innerGridWidth + frameInset * 2;
   const scaledGridHeight = innerGridHeight + frameInset * 2;
   const hideTransparencyTexture = displayCellSize < 6;
+  const beadAxisInset =
+    scenario === 'beads' ? BEAD_AXIS_LABEL_SIZE + BEAD_AXIS_LABEL_GAP : 0;
+  const contentViewportMetrics = useMemo(
+    () => ({
+      width: Math.max(0, viewportMetrics.width - beadAxisInset),
+      height: Math.max(0, viewportMetrics.height - beadAxisInset),
+    }),
+    [beadAxisInset, viewportMetrics.height, viewportMetrics.width],
+  );
 
   const finalizeShape = useCallback(() => {
     if (!shapeStateRef.current) {
@@ -356,42 +365,49 @@ export default function PixelGrid({
   }, [selectionBounds?.height, selectionBounds?.width, tool]);
 
   const centeredOffset = useMemo(
-    () => buildCenteredOffset(viewportMetrics, scaledGridWidth, scaledGridHeight),
-    [scaledGridHeight, scaledGridWidth, viewportMetrics],
+    () => buildCenteredOffset(contentViewportMetrics, scaledGridWidth, scaledGridHeight),
+    [contentViewportMetrics, scaledGridHeight, scaledGridWidth],
   );
   const getConstrainedPanOffset = useCallback(
     (nextOffset: { x: number; y: number }) => {
-      if (viewportMetrics.width === 0 || viewportMetrics.height === 0) {
+      if (contentViewportMetrics.width === 0 || contentViewportMetrics.height === 0) {
         return { x: 0, y: 0 };
       }
 
       const horizontalGutter = Math.min(
         PAN_EDGE_GUTTER,
-        Math.max(0, Math.floor(viewportMetrics.width * 0.24)),
+        Math.max(0, Math.floor(contentViewportMetrics.width * 0.24)),
       );
       const verticalGutter = Math.min(
         PAN_EDGE_GUTTER,
-        Math.max(0, Math.floor(viewportMetrics.height * 0.24)),
+        Math.max(0, Math.floor(contentViewportMetrics.height * 0.24)),
       );
       const minOffsetX =
-        scaledGridWidth > viewportMetrics.width
-          ? viewportMetrics.width - scaledGridWidth - horizontalGutter
+        scaledGridWidth > contentViewportMetrics.width
+          ? contentViewportMetrics.width - scaledGridWidth - horizontalGutter
           : centeredOffset.x;
       const maxOffsetX =
-        scaledGridWidth > viewportMetrics.width ? horizontalGutter : centeredOffset.x;
+        scaledGridWidth > contentViewportMetrics.width ? horizontalGutter : centeredOffset.x;
       const minOffsetY =
-        scaledGridHeight > viewportMetrics.height
-          ? viewportMetrics.height - scaledGridHeight - verticalGutter
+        scaledGridHeight > contentViewportMetrics.height
+          ? contentViewportMetrics.height - scaledGridHeight - verticalGutter
           : centeredOffset.y;
       const maxOffsetY =
-        scaledGridHeight > viewportMetrics.height ? verticalGutter : centeredOffset.y;
+        scaledGridHeight > contentViewportMetrics.height ? verticalGutter : centeredOffset.y;
 
       return {
         x: Math.min(Math.max(nextOffset.x, minOffsetX - centeredOffset.x), maxOffsetX - centeredOffset.x),
         y: Math.min(Math.max(nextOffset.y, minOffsetY - centeredOffset.y), maxOffsetY - centeredOffset.y),
       };
     },
-    [centeredOffset.x, centeredOffset.y, scaledGridHeight, scaledGridWidth, viewportMetrics.height, viewportMetrics.width],
+    [
+      centeredOffset.x,
+      centeredOffset.y,
+      contentViewportMetrics.height,
+      contentViewportMetrics.width,
+      scaledGridHeight,
+      scaledGridWidth,
+    ],
   );
   const gridOffset = useMemo(() => {
     return {
@@ -427,8 +443,16 @@ export default function PixelGrid({
     }
 
     return {
-      left: renderedGridOffset.x + frameInset + displayedSelectionBounds.minX * cellStride,
-      top: renderedGridOffset.y + frameInset + displayedSelectionBounds.minY * cellStride,
+      left:
+        beadAxisInset +
+        renderedGridOffset.x +
+        frameInset +
+        displayedSelectionBounds.minX * cellStride,
+      top:
+        beadAxisInset +
+        renderedGridOffset.y +
+        frameInset +
+        displayedSelectionBounds.minY * cellStride,
       width:
         displayedSelectionBounds.width * displayCellSize +
         Math.max(0, displayedSelectionBounds.width - 1) * lineWidth,
@@ -442,6 +466,7 @@ export default function PixelGrid({
     displayedSelectionBounds,
     frameInset,
     lineWidth,
+    beadAxisInset,
     renderedGridOffset.x,
     renderedGridOffset.y,
   ]);
@@ -459,6 +484,14 @@ export default function PixelGrid({
         : [],
     [grid.height, scenario],
   );
+  const beadAxisOriginX = beadAxisInset + renderedGridOffset.x + frameInset;
+  const beadAxisOriginY = beadAxisInset + renderedGridOffset.y + frameInset;
+  const topAxisLeadSize = Math.max(0, beadAxisOriginX - beadAxisInset);
+  const leftAxisLeadSize = Math.max(0, beadAxisOriginY - beadAxisInset);
+  const topAxisTailStart = beadAxisOriginX + grid.width * cellStride;
+  const leftAxisTailStart = beadAxisOriginY + grid.height * cellStride;
+  const topAxisTailSize = Math.max(0, viewportMetrics.width - topAxisTailStart);
+  const leftAxisTailSize = Math.max(0, viewportMetrics.height - leftAxisTailStart);
   const gridStyle: CSSProperties & {
     '--pixel-cell-size': string;
     '--pixel-grid-line-width': string;
@@ -474,9 +507,8 @@ export default function PixelGrid({
     height: `${innerGridHeight}px`,
   };
   const frameStyle: CSSProperties = {
-    top: '0',
-    left: '0',
-    transform: `translate(${renderedGridOffset.x}px, ${renderedGridOffset.y}px)`,
+    top: `${beadAxisInset + renderedGridOffset.y}px`,
+    left: `${beadAxisInset + renderedGridOffset.x}px`,
     width: `${scaledGridWidth}px`,
     minWidth: `${scaledGridWidth}px`,
     height: `${scaledGridHeight}px`,
@@ -790,8 +822,75 @@ export default function PixelGrid({
       ) : null}
       {scenario === 'beads' ? (
         <div className="bead-axis-layer" aria-hidden="true">
+          <span
+            className="bead-axis-corner"
+            style={{
+              width: `${beadAxisInset}px`,
+              height: `${beadAxisInset}px`,
+            }}
+          />
+          <span
+            className="bead-axis-track bead-axis-track--top"
+            style={{
+              left: `${beadAxisInset}px`,
+              top: '0',
+              height: `${BEAD_AXIS_LABEL_SIZE}px`,
+            } as CSSProperties}
+          />
+          <span
+            className="bead-axis-track bead-axis-track--left"
+            style={{
+              left: '0',
+              top: `${beadAxisInset}px`,
+              width: `${BEAD_AXIS_LABEL_SIZE}px`,
+            } as CSSProperties}
+          />
+          {topAxisLeadSize > 0 ? (
+            <span
+              className="bead-axis-fill bead-axis-fill--top bead-axis-fill--top-lead"
+              style={{
+                left: `${beadAxisInset}px`,
+                top: '0',
+                width: `${topAxisLeadSize}px`,
+                height: `${BEAD_AXIS_LABEL_SIZE}px`,
+              }}
+            />
+          ) : null}
+          {leftAxisLeadSize > 0 ? (
+            <span
+              className="bead-axis-fill bead-axis-fill--left bead-axis-fill--left-lead"
+              style={{
+                left: '0',
+                top: `${beadAxisInset}px`,
+                width: `${BEAD_AXIS_LABEL_SIZE}px`,
+                height: `${leftAxisLeadSize}px`,
+              }}
+            />
+          ) : null}
+          {topAxisTailSize > 0 ? (
+            <span
+              className="bead-axis-fill bead-axis-fill--top bead-axis-fill--top-tail"
+              style={{
+                left: `${topAxisTailStart}px`,
+                top: '0',
+                width: `${topAxisTailSize}px`,
+                height: `${BEAD_AXIS_LABEL_SIZE}px`,
+              }}
+            />
+          ) : null}
+          {leftAxisTailSize > 0 ? (
+            <span
+              className="bead-axis-fill bead-axis-fill--left bead-axis-fill--left-tail"
+              style={{
+                left: '0',
+                top: `${leftAxisTailStart}px`,
+                width: `${BEAD_AXIS_LABEL_SIZE}px`,
+                height: `${leftAxisTailSize}px`,
+              }}
+            />
+          ) : null}
           {beadColumnNumbers.map((value, index) => {
-            const axisX = renderedGridOffset.x + frameInset + index * cellStride;
+            const axisX = beadAxisOriginX + index * cellStride;
 
             return (
               <span
@@ -799,27 +898,7 @@ export default function PixelGrid({
                 className="bead-axis-label bead-axis-label--column bead-axis-label--top"
                 style={{
                   left: `${axisX}px`,
-                  top: `${renderedGridOffset.y - BEAD_AXIS_LABEL_GAP}px`,
-                  transform: 'translate(0, -100%)',
-                  width: `${cellStride}px`,
-                  height: `${BEAD_AXIS_LABEL_SIZE}px`,
-                }}
-              >
-                {value}
-              </span>
-            );
-          })}
-          {beadColumnNumbers.map((value, index) => {
-            const axisX = renderedGridOffset.x + frameInset + index * cellStride;
-
-            return (
-              <span
-                key={`bottom-${value}`}
-                className="bead-axis-label bead-axis-label--column bead-axis-label--bottom"
-                style={{
-                  left: `${axisX}px`,
-                  top: `${renderedGridOffset.y + scaledGridHeight + BEAD_AXIS_LABEL_GAP}px`,
-                  transform: 'translate(0, 0)',
+                  top: '0',
                   width: `${cellStride}px`,
                   height: `${BEAD_AXIS_LABEL_SIZE}px`,
                 }}
@@ -829,35 +908,15 @@ export default function PixelGrid({
             );
           })}
           {beadRowNumbers.map((value, index) => {
-            const axisY = renderedGridOffset.y + frameInset + index * cellStride;
+            const axisY = beadAxisOriginY + index * cellStride;
 
             return (
               <span
                 key={`left-${value}`}
                 className="bead-axis-label bead-axis-label--row bead-axis-label--left"
                 style={{
-                  left: `${renderedGridOffset.x - BEAD_AXIS_LABEL_GAP}px`,
+                  left: '0',
                   top: `${axisY}px`,
-                  transform: 'translate(-100%, 0)',
-                  width: `${BEAD_AXIS_LABEL_SIZE}px`,
-                  height: `${cellStride}px`,
-                }}
-              >
-                {value}
-              </span>
-            );
-          })}
-          {beadRowNumbers.map((value, index) => {
-            const axisY = renderedGridOffset.y + frameInset + index * cellStride;
-
-            return (
-              <span
-                key={`right-${value}`}
-                className="bead-axis-label bead-axis-label--row bead-axis-label--right"
-                style={{
-                  left: `${renderedGridOffset.x + scaledGridWidth + BEAD_AXIS_LABEL_GAP}px`,
-                  top: `${axisY}px`,
-                  transform: 'translate(0, 0)',
                   width: `${BEAD_AXIS_LABEL_SIZE}px`,
                   height: `${cellStride}px`,
                 }}
@@ -869,7 +928,10 @@ export default function PixelGrid({
         </div>
       ) : null}
       <div
-        className={`pixel-grid-frame${showGrid ? '' : ' pixel-grid-frame--flat'}${
+        className={`pixel-grid-shell${scenario === 'beads' ? ' pixel-grid-shell--beads' : ''}`}
+      >
+        <div
+          className={`pixel-grid-frame${showGrid ? '' : ' pixel-grid-frame--flat'}${
           hideTransparencyTexture ? ' pixel-grid--hide-transparency-texture' : ''
         }`}
         style={frameStyle}
@@ -1131,6 +1193,7 @@ export default function PixelGrid({
             </button>
           ))}
         </div>
+      </div>
       </div>
     </section>
   );
