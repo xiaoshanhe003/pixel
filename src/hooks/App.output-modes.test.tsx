@@ -204,8 +204,8 @@ describe('App output modes', () => {
     expect(screen.getByText(/R1（2针）/i)).toBeInTheDocument();
     expect(screen.getByText(/^H x 2$/i)).toBeInTheDocument();
     expect(screen.queryByText(/钩织 PDF 图纸/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /行列说明/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /PDF 图纸/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^图纸$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /行列说明/i })).toBeInTheDocument();
     expect(screen.getAllByText(/^H$/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/^黑$/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/2 针/i).length).toBeGreaterThan(0);
@@ -216,5 +216,20 @@ describe('App output modes', () => {
     await userEvent.click(screen.getByRole('button', { name: /符号图/i }));
 
     expect(screen.getByLabelText(/像素 0,15 #000000 符号 H/i)).toBeInTheDocument();
+  });
+
+  it('switches crochet export into row notes mode', async () => {
+    renderApp();
+    await createBlankCanvas();
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
+    await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,15 透明/i));
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /行列说明/i }));
+
+    expect(screen.getByRole('heading', { name: /钩织行列说明/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/钩织行列说明摘要/i)).toBeInTheDocument();
+    expect(screen.getByText(/可打印行数：1/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/钩织图纸摘要/i)).not.toBeInTheDocument();
   });
 });

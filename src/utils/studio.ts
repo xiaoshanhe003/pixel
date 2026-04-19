@@ -850,6 +850,59 @@ export function remapActiveLayerBeadColors(
   }));
 }
 
+export function cleanupActiveLayerBeadNoise(
+  document: StudioDocument,
+  brand: BeadBrand,
+  replacements: ReadonlyArray<{ x: number; y: number; from: string; to: string }>,
+): StudioDocument {
+  if (replacements.length === 0) {
+    return document;
+  }
+
+  const replacementByPoint = new Map(
+    replacements.map((replacement) => [
+      `${replacement.x}:${replacement.y}`,
+      { from: replacement.from.trim().toLowerCase(), to: replacement.to.trim().toLowerCase() },
+    ]),
+  );
+
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (!layer.visible || layer.locked) {
+        return layer;
+      }
+
+      let didChange = false;
+      const cells = layer.cells.map((cell) => {
+        if (!cell.color) {
+          return cell;
+        }
+
+        const replacement = replacementByPoint.get(`${cell.x}:${cell.y}`);
+
+        if (!replacement) {
+          return cell;
+        }
+
+        const mappedColor = mapColorToBeadPalette(cell.color, brand).trim().toLowerCase();
+
+        if (mappedColor !== replacement.from || replacement.to === replacement.from) {
+          return cell;
+        }
+
+        didChange = true;
+        return {
+          ...cell,
+          ...buildCellColorPatch(replacement.to),
+        };
+      });
+
+      return didChange ? { ...layer, cells } : layer;
+    }),
+  }));
+}
+
 export function applyBrushStrokeOnActiveLayer(
   document: StudioDocument,
   x: number,

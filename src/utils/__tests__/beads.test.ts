@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBeadEditorPalette,
+  buildBeadNoiseCleanupPlan,
   buildBeadNoiseCleanupMap,
   countBeadUsage,
   mapGridToBeadPalette,
@@ -72,5 +73,27 @@ describe('bead helpers', () => {
 
     expect(replacements.get('#166f41')).toBe('#000000');
     expect(replacements.has('#000000')).toBe(false);
+  });
+
+  it('only cleans locally isolated bead clusters instead of every globally rare color', () => {
+    let grid = createBlankGrid(16);
+    grid = replaceCellColor(grid, 0, 0, '#000000');
+    grid = replaceCellColor(grid, 1, 0, '#000000');
+    grid = replaceCellColor(grid, 0, 1, '#000000');
+    grid = replaceCellColor(grid, 1, 1, '#000000');
+    grid = replaceCellColor(grid, 2, 0, '#166f41');
+    grid = replaceCellColor(grid, 3, 0, '#166f41');
+    grid = replaceCellColor(grid, 2, 1, '#166f41');
+    grid = replaceCellColor(grid, 10, 10, '#166f41');
+    grid = replaceCellColor(grid, 11, 10, '#166f41');
+    grid = replaceCellColor(grid, 10, 11, '#166f41');
+
+    const replacements = buildBeadNoiseCleanupPlan(grid);
+
+    expect(replacements).toEqual([
+      { x: 2, y: 0, from: '#166f41', to: '#000000' },
+      { x: 3, y: 0, from: '#166f41', to: '#000000' },
+      { x: 2, y: 1, from: '#166f41', to: '#000000' },
+    ]);
   });
 });

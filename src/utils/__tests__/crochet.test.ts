@@ -46,4 +46,24 @@ describe('analyzeCrochetPattern', () => {
       { colorName: '灰', mark: 'HU' },
     ]);
   });
+
+  it('keeps distinct shades with the same color name as separate legend entries', () => {
+    let grid = createBlankGrid(16);
+    grid = replaceCellColor(grid, 0, 15, '#00aa00');
+    grid = replaceCellColor(grid, 1, 15, '#00aa00');
+    grid = replaceCellColor(grid, 2, 15, '#00cc44');
+
+    const analysis = analyzeCrochetPattern(grid);
+
+    expect(analysis.legend.map((item) => ({
+      color: item.color,
+      colorName: item.colorName,
+      count: item.count,
+      mark: item.mark,
+    }))).toEqual([
+      { color: '#00aa00', colorName: '绿', count: 2, mark: 'L' },
+      { color: '#00cc44', colorName: '绿', count: 1, mark: 'LV' },
+    ]);
+    expect(analysis.rows[0]?.instructions).toEqual(['L x 2', 'LV x 1']);
+  });
 });

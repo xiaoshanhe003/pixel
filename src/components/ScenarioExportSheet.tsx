@@ -71,14 +71,13 @@ export default function ScenarioExportSheet({
   className,
   previewImageUrl,
 }: ScenarioExportSheetProps) {
-  const isBeads = scenario === 'beads';
   const exportDocument = buildScenarioExportDocument({
     scenario,
     grid,
     beadBrand,
     beadUsage,
     crochetAnalysis,
-    exportMode: scenario === 'crochet' ? 'crochet-chart' : exportMode,
+    exportMode,
   });
   const hasCrochetContent =
     exportDocument.kind === 'crochet-chart' &&
@@ -190,6 +189,26 @@ export default function ScenarioExportSheet({
                 />
               ) : null}
             </>
+          ) : null}
+        </>
+      ) : null}
+
+      {exportDocument.kind === 'crochet-rows' ? (
+        <>
+          <section className="export-sheet__summary" aria-label="钩织行列说明摘要">
+            <p className="export-sheet__summary-line">
+              可打印行数：{exportDocument.filledRowCount}
+            </p>
+          </section>
+          {exportDocument.rows.length > 0 ? (
+            <div className="export-sheet__divider" aria-hidden="true" />
+          ) : null}
+          {crochetAnalysis ? (
+            <CrochetPatternPanel
+              analysis={crochetAnalysis}
+              title="钩织行列说明"
+              className="export-sheet__crochet-rows"
+            />
           ) : null}
         </>
       ) : null}
