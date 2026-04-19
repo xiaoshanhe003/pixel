@@ -205,3 +205,42 @@ export function countBeadUsage(
     }))
     .sort((left, right) => right.count - left.count);
 }
+
+export function buildBeadNoiseCleanupMap(
+  grid: PixelGrid,
+  maxCount = 3,
+): Map<string, string> {
+  const counts = new Map<string, number>();
+
+  for (const cell of grid.cells) {
+    if (!cell.color) {
+      continue;
+    }
+
+    const normalized = cell.color.trim().toLowerCase();
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+
+  const colors = [...counts.keys()];
+  const stableColors = colors.filter((color) => (counts.get(color) ?? 0) > maxCount);
+  const replacements = new Map<string, string>();
+
+  for (const color of colors) {
+    if ((counts.get(color) ?? 0) > maxCount) {
+      continue;
+    }
+
+    const candidatePalette =
+      stableColors.filter((candidate) => candidate !== color).length > 0
+        ? stableColors.filter((candidate) => candidate !== color)
+        : colors.filter((candidate) => candidate !== color);
+
+    if (candidatePalette.length === 0) {
+      continue;
+    }
+
+    replacements.set(color, findNearestPaletteMatch(hexToRgb(color), candidatePalette).color);
+  }
+
+  return replacements;
+}

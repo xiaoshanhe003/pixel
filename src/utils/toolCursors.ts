@@ -1,8 +1,24 @@
 import type { EditorTool } from '../types/studio';
 import { TOOL_ICON_SVGS } from './toolIcons';
 
+function extractViewBox(svg: string): string {
+  return svg.match(/viewBox="([^"]+)"/)?.[1] ?? '0 0 24 24';
+}
+
+function withCurrentColor(svg: string, color: string): string {
+  return svg.replaceAll('currentColor', color);
+}
+
 function createCursor(svg: string, hotspotX: number, hotspotY: number): string {
-  const normalized = svg.replaceAll('currentColor', '#111111');
+  const viewBox = extractViewBox(svg);
+  const halo = withCurrentColor(svg, '#ffffff').replace('stroke-width="2"', 'stroke-width="4.5"');
+  const icon = withCurrentColor(svg, '#111111');
+  const normalized = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="24" height="24">
+      ${halo}
+      ${icon}
+    </svg>
+  `.trim();
   return `url("data:image/svg+xml,${encodeURIComponent(normalized)}") ${hotspotX} ${hotspotY}, auto`;
 }
 

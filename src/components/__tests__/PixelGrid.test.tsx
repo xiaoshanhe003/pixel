@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { PixelGrid as PixelGridModel } from '../../types/pixel';
-import PixelGrid from '../PixelGrid';
+import type { GridSize, PixelGrid as PixelGridModel } from '../../types/pixel';
+import PixelGrid, { collectInterpolatedBrushPoints } from '../PixelGrid';
 
 const defaultToolSettings = {
   paintSize: 1 as const,
@@ -19,6 +19,25 @@ function createGrid(color: string | null = null): PixelGridModel {
     cells: Array.from({ length: 256 }, (_, index) => ({
       x: index % 16,
       y: Math.floor(index / 16),
+      color,
+      source: { r: 0, g: 0, b: 0 },
+      alpha: color ? 255 : 0,
+    })),
+  };
+}
+
+function createSizedGrid(
+  width: GridSize,
+  height: GridSize,
+  color: string | null = null,
+): PixelGridModel {
+  return {
+    width,
+    height,
+    palette: color ? [color] : [],
+    cells: Array.from({ length: width * height }, (_, index) => ({
+      x: index % width,
+      y: Math.floor(index / width),
       color,
       source: { r: 0, g: 0, b: 0 },
       alpha: color ? 255 : 0,
@@ -63,7 +82,7 @@ describe('PixelGrid', () => {
     expect(screen.getByLabelText(/像素 0,9 #000000/i)).toHaveAttribute('data-bead-row', '9');
   });
 
-  it('renders bead axis labels around the canvas in bead scenario', () => {
+  it('renders bead axis labels pinned to the top and left canvas edges in bead scenario', () => {
     render(
       <PixelGrid
         grid={createGrid('#000000')}
@@ -72,10 +91,147 @@ describe('PixelGrid', () => {
       />,
     );
 
+    expect(document.querySelector('.pixel-grid-shell--beads')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-corner')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-track--top')).toBeInTheDocument();
+    expect(document.querySelector('.bead-axis-track--left')).toBeInTheDocument();
     expect(document.querySelectorAll('.bead-axis-label--top')).toHaveLength(16);
-    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(16);
     expect(document.querySelectorAll('.bead-axis-label--left')).toHaveLength(16);
-    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(16);
+    expect(document.querySelectorAll('.bead-axis-label--bottom')).toHaveLength(0);
+    expect(document.querySelectorAll('.bead-axis-label--right')).toHaveLength(0);
+  });
+
+  it('uses one shared ruler interval based on the largest bead index width', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(100, 100, '#000000')}
+        scenario="beads"
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top')).map((label) =>
+      Number(label.textContent),
+    );
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left')).map((label) =>
+      Number(label.textContent),
+    );
+
+    expect(topLabels).toEqual([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]);
+    expect(leftLabels).toEqual(topLabels);
+  });
+
+  it('keeps ruler numbering rhythm consistent when labels are thinned out', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(64, 64, '#000000')}
+        scenario="beads"
+        zoom={1.25}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top'))
+      .slice(0, 6)
+      .map((label) => Number(label.textContent));
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left'))
+      .slice(0, 6)
+      .map((label) => Number(label.textContent));
+
+    expect(topLabels).toEqual([2, 4, 6, 8, 10, 12]);
+    expect(leftLabels).toEqual([2, 4, 6, 8, 10, 12]);
+  });
+
+  it('thins crochet ruler labels from the right and bottom edges inward', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(50, 50, '#000000')}
+        scenario="crochet"
+        zoom={1}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top')).map((label) =>
+      Number(label.textContent),
+    );
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left')).map((label) =>
+      Number(label.textContent),
+    );
+
+    expect(topLabels).toEqual([
+      49, 47, 45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25,
+      23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1,
+    ]);
+    expect(leftLabels).toEqual(topLabels);
+  });
+
+  it('lets thinned ruler labels occupy their full interval span', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(64, 64, '#000000')}
+        scenario="beads"
+        zoom={0.08}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabel = Array.from(document.querySelectorAll('.bead-axis-label--top')).find(
+      (label) => label.textContent === '20',
+    ) as HTMLElement;
+    const leftLabel = Array.from(document.querySelectorAll('.bead-axis-label--left')).find(
+      (label) => label.textContent === '20',
+    ) as HTMLElement;
+
+    expect(topLabel.style.width).toBe('40px');
+    expect(leftLabel.style.height).toBe('40px');
+  });
+
+  it('keeps bead axis rulers pinned while their labels move with the canvas grid', () => {
+    render(
+      <PixelGrid
+        grid={createGrid('#000000')}
+        scenario="beads"
+        editable
+        tool="move"
+        zoom={2}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const frame = screen.getByRole('grid', { name: /像素输出网格/i }).parentElement as HTMLElement;
+    const firstColumnLabel = document.querySelector('.bead-axis-label--top') as HTMLElement;
+    const firstRowLabel = document.querySelector('.bead-axis-label--left') as HTMLElement;
+
+    Object.defineProperty(viewport, 'clientWidth', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(viewport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    const initialLeft = firstColumnLabel.style.left;
+    const initialTop = firstColumnLabel.style.top;
+    const initialRowTop = firstRowLabel.style.top;
+    const initialFrameLeft = frame.style.left;
+    const initialFrameTop = frame.style.top;
+
+    fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
+
+    expect(firstColumnLabel.style.left).not.toBe(initialLeft);
+    expect(firstColumnLabel.style.top).toBe(initialTop);
+    expect(firstRowLabel.style.top).not.toBe(initialRowTop);
+    expect(Number.parseInt(frame.style.left, 10)).toBeLessThan(Number.parseInt(initialFrameLeft, 10));
+    expect(Number.parseInt(frame.style.top, 10)).toBeLessThan(Number.parseInt(initialFrameTop, 10));
+    expect(Number.parseInt(firstColumnLabel.style.left, 10)).toBeLessThan(Number.parseInt(initialLeft, 10));
+    expect(Number.parseInt(firstRowLabel.style.top, 10)).toBeLessThan(Number.parseInt(initialRowTop, 10));
   });
 
   it('applies flat styling when grid lines are hidden', () => {
@@ -117,6 +273,55 @@ describe('PixelGrid', () => {
     await user.click(screen.getByLabelText(/像素 0,0 透明/i));
 
     expect(handleCommitPaintStroke).toHaveBeenCalledWith([{ x: 0, y: 0 }], '#ff00aa');
+  });
+
+  it('fills skipped cells while dragging the brush across non-adjacent cells', () => {
+    const handleCommitPaintStroke = vi.fn();
+
+    render(
+      <PixelGrid
+        grid={createGrid()}
+        editable
+        activeColor="#ff00aa"
+        tool="paint"
+        toolSettings={defaultToolSettings}
+        onCommitPaintStroke={handleCommitPaintStroke}
+      />,
+    );
+
+    const viewport = screen
+      .getByRole('grid', { name: /像素输出网格/i })
+      .closest('.pixel-grid-viewport') as HTMLElement;
+    const firstCell = screen.getByLabelText(/像素 0,0 透明/i);
+    const fourthCell = screen.getByLabelText(/像素 3,0 透明/i);
+
+    fireEvent.pointerDown(firstCell, {
+      pointerId: 7,
+      clientX: 12,
+      clientY: 12,
+    });
+    fireEvent.pointerEnter(fourthCell, { pointerId: 7, clientX: 12, clientY: 12 });
+    fireEvent.pointerUp(viewport, { pointerId: 7 });
+
+    expect(handleCommitPaintStroke).toHaveBeenCalledWith(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }],
+      '#ff00aa',
+    );
+  });
+
+  it('keeps even-sized brush anchor changes when the pointer stays in the same cell', () => {
+    const visited = new Set(['0-0-before-before']);
+
+    const nextPoints = collectInterpolatedBrushPoints(
+      { x: 0, y: 0, alignX: 'before', alignY: 'before' },
+      { x: 0, y: 0, alignX: 'after', alignY: 'after' },
+      visited,
+    );
+
+    expect(nextPoints).toEqual([{ x: 0, y: 0, alignX: 'after', alignY: 'after' }]);
+    expect(visited).toEqual(
+      new Set(['0-0-before-before', '0-0-after-after']),
+    );
   });
 
   it('does not paint when move tool is active', async () => {
@@ -168,7 +373,8 @@ describe('PixelGrid', () => {
     fireEvent(window, new Event('resize'));
     fireEvent.wheel(viewport, { deltaX: 30, deltaY: 40 });
 
-    expect(frame.style.transform).toBe('translate(-510px, -520px)');
+    expect(frame.style.left).toBe('-510px');
+    expect(frame.style.top).toBe('-520px');
   });
 
   it('starts panning from a grid cell when the move tool is active', () => {
@@ -203,7 +409,8 @@ describe('PixelGrid', () => {
     fireEvent.pointerMove(viewport, { pointerId: 7, clientX: 170, clientY: 150 });
     fireEvent.pointerUp(viewport, { pointerId: 7 });
 
-    expect(frame.style.transform).toBe('translate(-480px, -480px)');
+    expect(frame.style.left).toBe('-480px');
+    expect(frame.style.top).toBe('-480px');
   });
 
   it('keeps a small gutter visible when panning an oversized canvas to the edge', () => {
@@ -235,7 +442,8 @@ describe('PixelGrid', () => {
     fireEvent(window, new Event('resize'));
     fireEvent.wheel(viewport, { deltaX: -5000, deltaY: -5000 });
 
-    expect(frame.style.transform).toBe('translate(96px, 96px)');
+    expect(frame.style.left).toBe('96px');
+    expect(frame.style.top).toBe('96px');
   });
 
   it('centers smaller grids horizontally and keeps a fixed top safe margin', () => {
@@ -264,7 +472,8 @@ describe('PixelGrid', () => {
 
     fireEvent(window, new Event('resize'));
 
-    expect(frame.style.transform).toBe('translate(24px, 24px)');
+    expect(frame.style.left).toBe('24px');
+    expect(frame.style.top).toBe('24px');
   });
 
   it('snaps the default offsets to whole pixels so grid lines stay crisp', () => {
@@ -293,7 +502,8 @@ describe('PixelGrid', () => {
 
     fireEvent(window, new Event('resize'));
 
-    expect(frame.style.transform).toBe('translate(24px, 24px)');
+    expect(frame.style.left).toBe('24px');
+    expect(frame.style.top).toBe('24px');
   });
 
   it('assigns explicit row and cell sizes when zoom changes', () => {
@@ -352,16 +562,15 @@ describe('PixelGrid', () => {
 
     fireEvent.pointerDown(first, { pointerId: 1 });
     fireEvent.pointerEnter(second, { pointerId: 1 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(screen.getByRole('grid', { name: /像素输出网格/i }), {
       pointerId: 1,
     });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      '#ff00aa',
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       '#ff00aa',
@@ -393,14 +602,13 @@ describe('PixelGrid', () => {
     fireEvent.pointerDown(first, { pointerId: 12 });
     fireEvent.pointerLeave(viewport as HTMLElement, { pointerId: 12 });
     fireEvent.pointerEnter(second, { pointerId: 12 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(window, { pointerId: 12 });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], '#ff00aa');
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      '#ff00aa',
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       '#ff00aa',
@@ -427,16 +635,15 @@ describe('PixelGrid', () => {
 
     fireEvent.pointerDown(first, { pointerId: 2 });
     fireEvent.pointerEnter(second, { pointerId: 2 });
+
+    expect(handlePreviewPaintStroke).not.toHaveBeenCalled();
+    expect(first.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+    expect(second.querySelector('.pixel-cell__preview')).toBeInTheDocument();
+
     fireEvent.pointerUp(screen.getByRole('grid', { name: /像素输出网格/i }), {
       pointerId: 2,
     });
 
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(1, [{ x: 0, y: 0 }], null);
-    expect(handlePreviewPaintStroke).toHaveBeenNthCalledWith(
-      2,
-      [{ x: 0, y: 0 }, { x: 1, y: 0 }],
-      null,
-    );
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }],
       null,
@@ -494,6 +701,7 @@ describe('PixelGrid', () => {
 
     expect(viewport).toHaveAttribute('data-active-tool', 'fill');
     expect((viewport as HTMLElement).style.cursor).toContain('data:image/svg+xml');
+    expect((viewport as HTMLElement).style.cursor).toContain('%23ffffff');
   });
 
   it('keeps the selected tool cursor while hovering editable cells', () => {

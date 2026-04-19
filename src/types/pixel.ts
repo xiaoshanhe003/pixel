@@ -12,7 +12,7 @@ export type PixelCell = {
   alpha: number;
 };
 
-export type GridSize = 16 | 32 | 64;
+export type GridSize = 16 | 32 | 50 | 64 | 100;
 
 export type PaletteSize = 16 | 32;
 

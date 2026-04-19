@@ -13,7 +13,6 @@ import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { ACTUAL_SIZE_ZOOM, FIT_WINDOW_ZOOM } from '../constants/studio';
 import { ZOOM_IN_SVG, ZOOM_OUT_SVG } from '../utils/toolIcons';
 import { findBeadColorByHex } from '../utils/beads';
-import CrochetChart from './CrochetChart';
 import EditingToolbar from './EditingToolbar';
 import FloatingToolControls from './FloatingToolControls';
 import PixelGrid, { getBaseCellSize } from './PixelGrid';
@@ -320,56 +319,37 @@ export default function StudioCanvasStage({
         {isProcessingUpload ? (
           <div aria-busy="true" />
         ) : activeGrid ? (
-          activeScenario === 'crochet' && crochetAnalysis ? (
-            <CrochetChart
-              grid={activeGrid}
-              viewMode={crochetViewMode}
-              symbolByColor={crochetAnalysis.symbolByColor}
-              editable
-              activeColor={activeColor}
-              tool={activeTool}
-              toolSettings={toolSettings}
-              onPreviewPaintStroke={onPreviewPaintStroke}
-              onCommitPaintStroke={onCommitPaintStroke}
-              onFillArea={onFillArea}
-              onDrawLine={onDrawLine}
-              onDrawRectangle={onDrawRectangle}
-              onSelectionChange={onSelectionChange}
-              onPreviewMoveSelection={onPreviewMoveSelection}
-              onCommitMoveSelection={onCommitMoveSelection}
-              onPreviewScaleSelection={onPreviewScaleSelection}
-              onCommitScaleSelection={onCommitScaleSelection}
-              onSampleCell={onSampleCell}
-              zoom={appliedZoom}
-              showGrid={showGridLines}
-              onViewportSizeChange={handleViewportSizeChange}
-              selectionBounds={selection}
-            />
-          ) : (
-            <PixelGrid
-              grid={activeGrid}
-              scenario={activeScenario}
-              editable
-              activeColor={activeColor}
-              tool={activeTool}
-              toolSettings={toolSettings}
-              onPreviewPaintStroke={onPreviewPaintStroke}
-              onCommitPaintStroke={onCommitPaintStroke}
-              onFillArea={onFillArea}
-              onDrawLine={onDrawLine}
-              onDrawRectangle={onDrawRectangle}
-              onSelectionChange={onSelectionChange}
-              onPreviewMoveSelection={onPreviewMoveSelection}
-              onCommitMoveSelection={onCommitMoveSelection}
-              onPreviewScaleSelection={onPreviewScaleSelection}
-              onCommitScaleSelection={onCommitScaleSelection}
-              onSampleCell={onSampleCell}
-              zoom={appliedZoom}
-              showGrid={showGridLines}
-              onViewportSizeChange={handleViewportSizeChange}
-              selectionBounds={selection}
-            />
-          )
+          <PixelGrid
+            grid={activeGrid}
+            scenario={activeScenario}
+            editable
+            activeColor={activeColor}
+            tool={activeTool}
+            toolSettings={toolSettings}
+            onPreviewPaintStroke={onPreviewPaintStroke}
+            onCommitPaintStroke={onCommitPaintStroke}
+            onFillArea={onFillArea}
+            onDrawLine={onDrawLine}
+            onDrawRectangle={onDrawRectangle}
+            onSelectionChange={onSelectionChange}
+            onPreviewMoveSelection={onPreviewMoveSelection}
+            onCommitMoveSelection={onCommitMoveSelection}
+            onPreviewScaleSelection={onPreviewScaleSelection}
+            onCommitScaleSelection={onCommitScaleSelection}
+            onSampleCell={onSampleCell}
+            zoom={appliedZoom}
+            showGrid={showGridLines}
+            presentation={
+              activeScenario === 'crochet' && crochetViewMode === 'symbol' ? 'symbol' : 'color'
+            }
+            getCellOverlay={
+              activeScenario === 'crochet' && crochetAnalysis
+                ? (cell) => (cell.color ? crochetAnalysis.markByColor.get(cell.color) ?? '?' : undefined)
+                : undefined
+            }
+            onViewportSizeChange={handleViewportSizeChange}
+            selectionBounds={selection}
+          />
         ) : (
           <div className="empty-state">采样完成后，这里会显示像素网格。</div>
         )}

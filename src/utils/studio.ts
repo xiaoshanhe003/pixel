@@ -1,4 +1,5 @@
 import type { GridSize, PixelCell, PixelGrid } from '../types/pixel';
+import type { BeadBrand } from '../data/beadPalettes';
 import type {
   EditorSelection,
   ScenarioId,
@@ -7,6 +8,7 @@ import type {
   StudioLayer,
 } from '../types/studio';
 import { clampByte, hexToRgb, rgbToHex } from './color';
+import { mapColorToBeadPalette } from './beads';
 
 export type LayerContentBounds = EditorSelection;
 export type BrushPoint = {
@@ -803,6 +805,47 @@ export function replaceActiveLayerCell(
           color,
         ).cells,
       };
+    }),
+  }));
+}
+
+export function remapActiveLayerBeadColors(
+  document: StudioDocument,
+  brand: BeadBrand,
+  replacements: ReadonlyMap<string, string>,
+): StudioDocument {
+  if (replacements.size === 0) {
+    return document;
+  }
+
+  return updateFrame(document, document.activeFrameId, (frame) => ({
+    ...frame,
+    layers: frame.layers.map((layer) => {
+      if (!layer.visible || layer.locked) {
+        return layer;
+      }
+
+      let didChange = false;
+      const cells = layer.cells.map((cell) => {
+        if (!cell.color) {
+          return cell;
+        }
+
+        const mappedColor = mapColorToBeadPalette(cell.color, brand).trim().toLowerCase();
+        const replacement = replacements.get(mappedColor);
+
+        if (!replacement || replacement === mappedColor) {
+          return cell;
+        }
+
+        didChange = true;
+        return {
+          ...cell,
+          ...buildCellColorPatch(replacement),
+        };
+      });
+
+      return didChange ? { ...layer, cells } : layer;
     }),
   }));
 }

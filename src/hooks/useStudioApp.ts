@@ -12,10 +12,17 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
-import { countBeadUsage, mapColorToBeadPalette, mapGridToBeadPalette } from '../utils/beads';
+import {
+  buildBeadNoiseCleanupMap,
+  countBeadUsage,
+  mapColorToBeadPalette,
+  mapGridToBeadPalette,
+} from '../utils/beads';
 import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/crochet';
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
+import { printScenarioExport } from '../utils/printScenario';
+import { measureOccupiedGridSize } from '../utils/scenarioExport';
 import {
   type BrushPoint,
   composeFrame,
@@ -131,6 +138,7 @@ export type UseStudioAppResult = {
     setCrochetViewMode: (mode: 'color' | 'symbol') => void;
     setBeadBrand: (brand: BeadBrand) => void;
     setExportMode: (mode: ExportMode) => void;
+    cleanupBeadNoise: () => void;
     paintCell: (x: number, y: number, color: string | null) => void;
     previewPaintStroke: (
       points: BrushPoint[],
@@ -519,7 +527,34 @@ export function useStudioApp(): UseStudioAppResult {
         setSelection(null);
         setHistory((current) => redoStudioHistory(current));
       },
-      printExport: () => window.print(),
+      printExport: () => {
+        if (!derived.activeGrid) {
+          window.print();
+          return;
+        }
+
+        const occupiedSize = measureOccupiedGridSize(derived.activeGrid);
+
+        if (occupiedSize.rows === 0 || occupiedSize.columns === 0) {
+          return;
+        }
+
+        if (activeScenario === 'beads') {
+          printScenarioExport({
+            scenario: 'beads',
+            grid: derived.activeGrid,
+            beadBrand,
+            beadUsage: derived.output.beadUsage,
+          });
+          return;
+        }
+
+        printScenarioExport({
+          scenario: 'crochet',
+          grid: derived.activeGrid,
+          crochetAnalysis: derived.output.crochetAnalysis,
+        });
+      },
       setCrochetViewMode,
       setBeadBrand,
       setExportMode: (mode) => {
@@ -529,6 +564,23 @@ export function useStudioApp(): UseStudioAppResult {
         }
 
         setCrochetExportMode(mode as 'crochet-chart' | 'crochet-rows');
+      },
+      cleanupBeadNoise: () => {
+        if (activeScenario !== 'beads' || !derived.activeGrid) {
+          return;
+        }
+
+        const replacements = buildBeadNoiseCleanupMap(derived.activeGrid, 3);
+
+        if (replacements.size === 0) {
+          return;
+        }
+
+        dispatchCommand({
+          type: 'remapBeadColors',
+          brand: beadBrand,
+          replacements: [...replacements.entries()].map(([from, to]) => ({ from, to })),
+        });
       },
       paintCell: (x, y, color) =>
         dispatchCommand(

@@ -1,6 +1,6 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_16_COLOR_PALETTE } from '../data/defaultPalettes';
 import { BEAD_BRANDS } from '../data/beadPalettes';
 import { createBlankCanvas, renderApp, uploadMockImage } from '../test/appTestUtils';
@@ -16,20 +16,29 @@ describe('App output modes', () => {
     await uploadMockImage('beads.png');
 
     await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
-    await userEvent.click(screen.getByRole('button', { name: /Perler/i }));
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /选择拼豆品牌映射/i }),
+      'perler',
+    );
 
     expect(screen.getByText(/拼豆色板/i)).toBeInTheDocument();
-    expect(screen.getByText(/Perler 映射/i)).toBeInTheDocument();
     expect(screen.getAllByText(/255 颗/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: /打印导出/i })).toBeInTheDocument();
-    expect(screen.getByText(/拼豆打印图纸/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^拼豆图纸$/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Perler 映射/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Perler 色号映射/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /P 系列颜色/i })).toBeInTheDocument();
+    const exportPanel = screen.getByLabelText(/拼豆图纸/i);
 
-    await userEvent.click(screen.getByRole('button', { name: /颜色清单/i }));
-
-    expect(screen.getByText(/拼豆颜色清单/i)).toBeInTheDocument();
+    expect(within(exportPanel).queryByText(/^Print$/i)).not.toBeInTheDocument();
+    expect(within(exportPanel).queryByText(/^16 x 16$/i)).not.toBeInTheDocument();
+    expect(within(exportPanel).queryByRole('button', { name: /豆子清单/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /P 系列颜色/i })).toBeInTheDocument();
+    expect(screen.getByText(/所需豆子数量：/i)).toBeInTheDocument();
+    expect(screen.getByText(/所需最小的行和列：/i)).toBeInTheDocument();
   });
 
   it('prints only from the scenario export panel action', async () => {
+    vi.mocked(window.print).mockClear();
     renderApp();
     await uploadMockImage('beads-print.png');
 
@@ -38,6 +47,92 @@ describe('App output modes', () => {
 
     expect(window.print).toHaveBeenCalledTimes(1);
   });
+
+  it('prints crochet chart from the scenario export panel action', async () => {
+    vi.mocked(window.print).mockClear();
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
+    await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
+
+    expect(window.print).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables scenario print and hides crochet-only summaries in blank states', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+
+    expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+
+    expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
+    expect(screen.queryByLabelText(/钩织图纸摘要/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/第 1 行/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/当前调色板/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/透明/i)).not.toBeInTheDocument();
+  });
+
+  it('cleans up bead speckles on the canvas from the export panel action', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 0,1 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,1 透明/i));
+
+    await userEvent.click(screen.getByRole('button', { name: /打开 Mard 品牌色板/i }));
+    await userEvent.click(screen.getByRole('button', { name: /选择品牌色 B12/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 2,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 3,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 2,1 透明/i));
+
+    expect(screen.getByLabelText(/像素 2,1 #166f41/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /去除杂色/i }));
+
+    expect(screen.getByLabelText(/像素 2,1 #000000/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/像素 2,1 #166f41/i)).not.toBeInTheDocument();
+  });
+
+  it('cleans up bead speckles on a 50 x 50 canvas', async () => {
+    renderApp();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /网格尺寸/i }), '50');
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 0,1 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 1,1 透明/i));
+
+    await userEvent.click(screen.getByRole('button', { name: /打开 Mard 品牌色板/i }));
+    await userEvent.click(screen.getByRole('button', { name: /选择品牌色 B12/i }));
+
+    await userEvent.click(screen.getByLabelText(/像素 2,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 3,0 透明/i));
+    await userEvent.click(screen.getByLabelText(/像素 2,1 透明/i));
+
+    expect(screen.getByLabelText(/像素 2,1 #166f41/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /去除杂色/i }));
+
+    expect(screen.getByLabelText(/像素 2,1 #000000/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/像素 2,1 #166f41/i)).not.toBeInTheDocument();
+  }, 15000);
 
   it('keeps the active paint color in sync with the bead brand mapping', async () => {
     renderApp();
@@ -101,16 +196,25 @@ describe('App output modes', () => {
     await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
 
     expect(screen.getAllByRole('heading', { name: /钩织图纸/i }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/第 1 行/i)).toBeInTheDocument();
-    expect(screen.getByText(/A x 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/钩织 PDF 图纸/i)).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll('.bead-axis-label--top'))
+        .slice(0, 4)
+        .map((label) => label.textContent),
+    ).toEqual(['16', '15', '14', '13']);
+    expect(screen.getByText(/R1（2针）/i)).toBeInTheDocument();
+    expect(screen.getByText(/^H x 2$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/钩织 PDF 图纸/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /行列说明/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /PDF 图纸/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^H$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^黑$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2 针/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/图纸最小行列范围：/i)).toBeInTheDocument();
+    expect(document.querySelectorAll('.export-sheet__divider')).toHaveLength(1);
+    expect(screen.queryByText(/针 ·/i)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /符号图/i }));
 
-    expect(screen.getByLabelText(/像素 0,15 #000000 符号 A/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /行列说明/i }));
-
-    expect(screen.getByText(/钩织行列说明/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/像素 0,15 #000000 符号 H/i)).toBeInTheDocument();
   });
 });

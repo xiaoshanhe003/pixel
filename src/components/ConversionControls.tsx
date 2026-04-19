@@ -1,4 +1,6 @@
+import { BEAD_BRANDS, BEAD_BRAND_ORDER, type BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions, GridSize, PaletteSize } from '../types/pixel';
+import type { ScenarioId } from '../types/studio';
 import { DropdownField } from './ui/dropdown';
 import {
   applyDetailPreset,
@@ -13,13 +15,19 @@ import {
 } from '../utils/conversionPresets';
 
 type ConversionControlsProps = {
+  activeScenario: ScenarioId;
   value: ConversionOptions;
+  beadBrand: BeadBrand;
   onChange: (nextValue: ConversionOptions) => void;
+  onBeadBrandChange: (brand: BeadBrand) => void;
 };
 
 export default function ConversionControls({
+  activeScenario,
   value,
+  beadBrand,
   onChange,
+  onBeadBrandChange,
 }: ConversionControlsProps) {
   const updateValue = <Key extends keyof ConversionOptions>(
     key: Key,
@@ -28,7 +36,7 @@ export default function ConversionControls({
     onChange({ ...value, [key]: next } as ConversionOptions);
   };
 
-  const sizeOptions: GridSize[] = [16, 32, 64];
+  const sizeOptions: GridSize[] = [16, 32, 50, 64, 100];
   const paletteOptions: PaletteSize[] = [16, 32];
   const detailPreset = inferDetailPreset(value);
   const imageKindPreset = inferImageKindPreset(value);
@@ -36,8 +44,8 @@ export default function ConversionControls({
 
   return (
     <section className="controls-card" aria-label="项目设置">
-      <div className="controls-card__header">
-        <p className="eyebrow">项目设置</p>
+      <div className="panel__header">
+        <h2>项目设置</h2>
       </div>
 
       <div className="controls-card__groups">
@@ -55,19 +63,21 @@ export default function ConversionControls({
           />
         </fieldset>
 
-        <fieldset className="size-control">
-          <legend>颜色数量</legend>
-          <DropdownField
-            label="颜色数量"
-            hideLabel
-            value={value.paletteSize}
-            options={paletteOptions.map((size) => ({
-              label: `${size} 色`,
-              value: size,
-            }))}
-            onChange={(size) => updateValue('paletteSize', size as PaletteSize)}
-          />
-        </fieldset>
+        {activeScenario !== 'beads' ? (
+          <fieldset className="size-control">
+            <legend>颜色数量</legend>
+            <DropdownField
+              label="颜色数量"
+              hideLabel
+              value={value.paletteSize}
+              options={paletteOptions.map((size) => ({
+                label: `${size} 色`,
+                value: size,
+              }))}
+              onChange={(size) => updateValue('paletteSize', size as PaletteSize)}
+            />
+          </fieldset>
+        ) : null}
 
         <fieldset className="toggle-grid">
           <legend>转绘偏好</legend>
@@ -113,6 +123,21 @@ export default function ConversionControls({
             }
           />
         </fieldset>
+
+        {activeScenario === 'beads' ? (
+          <fieldset className="size-control">
+            <legend>拼豆色板</legend>
+            <DropdownField
+              label="选择拼豆品牌映射"
+              value={beadBrand}
+              options={BEAD_BRAND_ORDER.map((brandId) => ({
+                value: brandId,
+                label: BEAD_BRANDS[brandId].label,
+              }))}
+              onChange={(brand) => onBeadBrandChange(brand as BeadBrand)}
+            />
+          </fieldset>
+        ) : null}
       </div>
     </section>
   );

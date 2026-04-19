@@ -47,8 +47,7 @@
 .export-sheet__list-row,
 .frame-card,
 .layer-card,
-.swatch,
-.crochet-row-card {
+.swatch {
   border: var(--border-default);
   border-radius: var(--radius-panel);
   background: var(--panel-strong);
@@ -199,6 +198,86 @@
   color: var(--muted);
 }
 
+.export-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 4vw, 40px);
+  background: rgba(14, 12, 10, 0.62);
+  backdrop-filter: blur(10px);
+  overscroll-behavior: none;
+}
+
+.export-preview-dialog {
+  position: relative;
+  z-index: 1000;
+  width: min(1200px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: clamp(18px, 2vw, 24px);
+  border: var(--border-default);
+  border-radius: calc(var(--radius-panel) + 10px);
+  background:
+    radial-gradient(circle at top, rgba(255, 248, 235, 0.9), transparent 40%),
+    color-mix(in srgb, var(--panel-strong) 95%, white 5%);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+}
+
+.export-preview-dialog__header,
+.export-preview-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.export-preview-dialog__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.export-preview-dialog__hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.export-preview-stage {
+  overflow: auto;
+  padding: var(--space-4);
+  border-radius: 24px;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(180deg, rgba(97, 83, 67, 0.08), rgba(49, 39, 27, 0.14)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.35),
+      rgba(255, 255, 255, 0.35) 12px,
+      rgba(255, 255, 255, 0.18) 12px,
+      rgba(255, 255, 255, 0.18) 24px
+    );
+}
+
+.export-preview-paper {
+  width: min(210mm, 100%);
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fffdfa;
+  box-shadow:
+    0 18px 50px rgba(47, 34, 20, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.export-preview-paper__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 @media (max-width: 720px) {
   .crop-dialog-backdrop {
     padding: 0;
@@ -219,6 +298,31 @@
 
   .crop-dialog__footer > * {
     width: 100%;
+  }
+
+  .export-preview-backdrop {
+    padding: 0;
+  }
+
+  .export-preview-dialog {
+    width: 100%;
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .export-preview-dialog__header,
+  .export-preview-dialog__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .export-preview-dialog__actions > * {
+    width: 100%;
+  }
+
+  .export-preview-stage {
+    padding: var(--space-2);
   }
 }
 
@@ -286,11 +390,74 @@
   pointer-events: auto;
 }
 
+.pixel-grid-shell {
+  position: absolute;
+  inset: 0;
+}
+
+.pixel-grid-shell--beads {
+  overflow: clip;
+}
+
 .bead-axis-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 2;
+}
+
+.bead-axis-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  z-index: 3;
+  border-right: 1px solid rgba(57, 64, 75, 0.18);
+  border-bottom: 1px solid rgba(57, 64, 75, 0.14);
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-track {
+  position: absolute;
+  display: block;
+  z-index: 1;
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-track--top {
+  right: 0;
+  border-bottom: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-track--left {
+  bottom: 0;
+  border-right: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill {
+  position: absolute;
+  display: block;
+  z-index: 2;
+  background: rgba(244, 240, 232, 0.94);
+  box-sizing: border-box;
+}
+
+.bead-axis-fill--top {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill--top-lead {
+  border-right: 1px solid rgba(57, 64, 75, 0.16);
+}
+
+.bead-axis-fill--left {
+  border-right: 1px solid rgba(57, 64, 75, 0.12);
+}
+
+.bead-axis-fill--left-lead {
+  border-bottom: 1px solid rgba(57, 64, 75, 0.16);
 }
 
 .bead-axis-label {
@@ -299,8 +466,9 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: transparent;
-  color: rgba(36, 42, 51, 0.54);
+  z-index: 2;
+  background: rgba(244, 240, 232, 0.94);
+  color: rgba(36, 42, 51, 0.72);
   font-family: var(--font-mono-ui);
   font-size: 0.68rem;
   line-height: 1;
@@ -309,27 +477,21 @@
 }
 
 .bead-axis-label--column {
+  justify-content: flex-end;
+  padding-right: 2px;
   border-right: 1px solid rgba(57, 64, 75, 0.16);
-}
-
-.bead-axis-label--column.bead-axis-label--top {
   border-bottom: 1px solid rgba(57, 64, 75, 0.12);
 }
 
-.bead-axis-label--column.bead-axis-label--bottom {
-  border-top: 1px solid rgba(57, 64, 75, 0.12);
+.bead-axis-label--column.bead-axis-label--top {
+  top: 0;
 }
 
 .bead-axis-label--row {
+  align-items: flex-end;
+  padding-bottom: 2px;
   border-bottom: 1px solid rgba(57, 64, 75, 0.16);
-}
-
-.bead-axis-label--row.bead-axis-label--left {
   border-right: 1px solid rgba(57, 64, 75, 0.12);
-}
-
-.bead-axis-label--row.bead-axis-label--right {
-  border-left: 1px solid rgba(57, 64, 75, 0.12);
 }
 
 .pixel-grid {
@@ -467,7 +629,7 @@
   box-shadow: none;
 }
 
-.pixel-cell--editable:hover {
+.pixel-cell--editable:hover:not([data-active-tool='move']):not([data-active-tool='select']) {
   outline: 1px dashed var(--ink);
   outline-offset: -1px;
 }
@@ -475,9 +637,28 @@
 .pixel-cell__preview {
   position: absolute;
   inset: 0;
-  border: 1px dashed rgba(31, 28, 23, 0.9);
-  background: rgba(214, 90, 49, 0.18);
+  border: 0;
+  background: transparent;
   pointer-events: none;
+}
+
+.pixel-cell__preview--transparent {
+  background:
+    linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%),
+    linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%),
+    var(--surface-white-90);
+  background-position:
+    0 0,
+    var(--checker-offset-cell) var(--checker-offset-cell),
+    0 0;
+  background-size:
+    var(--checker-size-cell) var(--checker-size-cell),
+    var(--checker-size-cell) var(--checker-size-cell),
+    auto;
+}
+
+.pixel-grid--hide-transparency-texture .pixel-cell__preview--transparent {
+  background: transparent;
 }
 
 .color-picker input[type='color'],

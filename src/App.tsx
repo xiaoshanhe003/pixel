@@ -29,10 +29,13 @@ export default function App() {
 
         <section className="studio-layout">
           <StudioLeftDock
+            activeScenario={studio.activeScenario}
             conversionOptions={controls.conversionOptions}
+            beadBrand={output.beadBrand}
             selectedFile={source.selectedFile}
             previewUrl={source.previewUrl}
             onConversionOptionsChange={actions.setConversionOptions}
+            onBeadBrandChange={actions.setBeadBrand}
             onFileSelected={actions.setSelectedFile}
           />
 
@@ -73,6 +76,7 @@ export default function App() {
                   }
                   onBeadBrandChange={actions.setBeadBrand}
                   onExportModeChange={actions.setExportMode}
+                  onCleanupBeadNoise={actions.cleanupBeadNoise}
                   onPrint={actions.printExport}
                 />
               </div>
@@ -138,6 +142,7 @@ export default function App() {
               }
               onBeadBrandChange={actions.setBeadBrand}
               onExportModeChange={actions.setExportMode}
+              onCleanupBeadNoise={actions.cleanupBeadNoise}
               onPrint={actions.printExport}
             />
           </div>

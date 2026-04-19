@@ -1,20 +1,28 @@
+import type { BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions } from '../types/pixel';
+import type { ScenarioId } from '../types/studio';
 import ConversionControls from './ConversionControls';
 import ImageUploader from './ImageUploader';
 
 type StudioLeftDockProps = {
+  activeScenario: ScenarioId;
   conversionOptions: ConversionOptions;
+  beadBrand: BeadBrand;
   selectedFile: File | null;
   previewUrl?: string;
   onConversionOptionsChange: (options: ConversionOptions) => void;
+  onBeadBrandChange: (brand: BeadBrand) => void;
   onFileSelected: (file: File | null) => void;
 };
 
 export default function StudioLeftDock({
+  activeScenario,
   conversionOptions,
+  beadBrand,
   selectedFile,
   previewUrl,
   onConversionOptionsChange,
+  onBeadBrandChange,
   onFileSelected,
 }: StudioLeftDockProps) {
   return (
@@ -33,8 +41,11 @@ export default function StudioLeftDock({
       </section>
 
       <ConversionControls
+        activeScenario={activeScenario}
         value={conversionOptions}
+        beadBrand={beadBrand}
         onChange={onConversionOptionsChange}
+        onBeadBrandChange={onBeadBrandChange}
       />
     </aside>
   );

@@ -70,7 +70,7 @@ export default function CrochetChart({
   onViewportSizeChange,
   selectionBounds,
 }: CrochetChartProps) {
-  const columnNumbers = Array.from({ length: grid.width }, (_, index) => index + 1);
+  const columnNumbers = Array.from({ length: grid.width }, (_, index) => grid.width - index);
   const rowNumbers = Array.from({ length: grid.height }, (_, index) => grid.height - index);
 
   return (

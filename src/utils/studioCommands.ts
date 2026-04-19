@@ -1,3 +1,4 @@
+import type { BeadBrand } from '../data/beadPalettes';
 import type { StudioDocument } from '../types/studio';
 import {
   addFrameToDocument,
@@ -18,6 +19,7 @@ import {
   moveLayerToIndex,
   renameLayer,
   replaceActiveLayerCell,
+  remapActiveLayerBeadColors,
   scaleActiveLayerSelection,
   setLayerOpacity,
   toggleLayerLock,
@@ -50,6 +52,11 @@ export type StudioCommand =
       x: number;
       y: number;
       color: string | null;
+    }
+  | {
+      type: 'remapBeadColors';
+      brand: BeadBrand;
+      replacements: Array<{ from: string; to: string }>;
     }
   | {
       type: 'drawLine';
@@ -147,6 +154,12 @@ export function executeStudioCommand(
       return replaceActiveLayerCell(document, command.x, command.y, command.color);
     case 'fillArea':
       return fillActiveLayerArea(document, command.x, command.y, command.color);
+    case 'remapBeadColors':
+      return remapActiveLayerBeadColors(
+        document,
+        command.brand,
+        new Map(command.replacements.map(({ from, to }) => [from.trim().toLowerCase(), to.trim().toLowerCase()])),
+      );
     case 'drawLine':
       return drawLineOnActiveLayer(
         document,

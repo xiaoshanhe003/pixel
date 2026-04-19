@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildBeadEditorPalette, mapGridToBeadPalette, countBeadUsage } from '../beads';
+import {
+  buildBeadEditorPalette,
+  buildBeadNoiseCleanupMap,
+  countBeadUsage,
+  mapGridToBeadPalette,
+} from '../beads';
 import { DEFAULT_16_COLOR_PALETTE } from '../../data/defaultPalettes';
 import { createBlankGrid, replaceCellColor } from '../studio';
 
@@ -51,5 +56,21 @@ describe('bead helpers', () => {
 
     expect(palette).toContain('#000000');
     expect(palette).not.toContain('#1d1414');
+  });
+
+  it('builds cleanup replacements for bead colors that appear three times or less', () => {
+    let grid = createBlankGrid(16);
+    grid = replaceCellColor(grid, 0, 0, '#000000');
+    grid = replaceCellColor(grid, 1, 0, '#000000');
+    grid = replaceCellColor(grid, 0, 1, '#000000');
+    grid = replaceCellColor(grid, 1, 1, '#000000');
+    grid = replaceCellColor(grid, 2, 0, '#166f41');
+    grid = replaceCellColor(grid, 3, 0, '#166f41');
+    grid = replaceCellColor(grid, 2, 1, '#166f41');
+
+    const replacements = buildBeadNoiseCleanupMap(grid);
+
+    expect(replacements.get('#166f41')).toBe('#000000');
+    expect(replacements.has('#000000')).toBe(false);
   });
 });
