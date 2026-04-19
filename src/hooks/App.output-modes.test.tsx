@@ -38,6 +38,7 @@ describe('App output modes', () => {
   });
 
   it('prints only from the scenario export panel action', async () => {
+    vi.mocked(window.print).mockClear();
     renderApp();
     await uploadMockImage('beads-print.png');
 
@@ -45,6 +46,36 @@ describe('App output modes', () => {
     await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
 
     expect(window.print).toHaveBeenCalledTimes(1);
+  });
+
+  it('prints crochet chart from the scenario export panel action', async () => {
+    vi.mocked(window.print).mockClear();
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
+    await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
+
+    expect(window.print).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables scenario print and hides crochet-only summaries in blank states', async () => {
+    renderApp();
+    await createBlankCanvas();
+
+    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+
+    expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+
+    expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
+    expect(screen.queryByLabelText(/钩织图纸摘要/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/第 1 行/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/当前调色板/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/透明/i)).not.toBeInTheDocument();
   });
 
   it('cleans up bead speckles on the canvas from the export panel action', async () => {
@@ -165,16 +196,25 @@ describe('App output modes', () => {
     await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
 
     expect(screen.getAllByRole('heading', { name: /钩织图纸/i }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/第 1 行/i)).toBeInTheDocument();
-    expect(screen.getByText(/A x 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/钩织 PDF 图纸/i)).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll('.bead-axis-label--top'))
+        .slice(0, 4)
+        .map((label) => label.textContent),
+    ).toEqual(['16', '15', '14', '13']);
+    expect(screen.getByText(/R1（2针）/i)).toBeInTheDocument();
+    expect(screen.getByText(/^H x 2$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/钩织 PDF 图纸/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /行列说明/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /PDF 图纸/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/^H$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^黑$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2 针/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/图纸最小行列范围：/i)).toBeInTheDocument();
+    expect(document.querySelectorAll('.export-sheet__divider')).toHaveLength(1);
+    expect(screen.queryByText(/针 ·/i)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /符号图/i }));
 
-    expect(screen.getByLabelText(/像素 0,15 #000000 符号 A/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /行列说明/i }));
-
-    expect(screen.getByText(/钩织行列说明/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/像素 0,15 #000000 符号 H/i)).toBeInTheDocument();
   });
 });

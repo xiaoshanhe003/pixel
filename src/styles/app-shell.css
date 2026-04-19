@@ -191,6 +191,7 @@
 }
 
 .panel__header h2,
+.controls-card__header h2,
 .controls-card__header .eyebrow {
   margin: 0;
   font-size: 1.18rem;
@@ -231,8 +232,11 @@
 
 .panel__body,
 .tool-panel__body,
-.scenario-panel__body,
-.controls-card {
+.scenario-panel__body {
+  padding: var(--space-4) var(--space-8) var(--space-8);
+}
+
+.controls-card__groups {
   padding: var(--space-4) var(--space-8) var(--space-8);
 }
 

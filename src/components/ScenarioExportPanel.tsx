@@ -4,6 +4,8 @@ import type { PixelGrid } from '../types/pixel';
 import type { BeadMappedColor } from '../utils/beads';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { renderBeadPrintPageDataUrl } from '../utils/beadPrintPage';
+import { renderCrochetPrintPageDataUrl } from '../utils/crochetPrintPage';
+import { measureOccupiedGridSize } from '../utils/scenarioExport';
 import ScenarioExportSheet from './ScenarioExportSheet';
 
 type ScenarioExportPanelProps = {
@@ -31,9 +33,12 @@ export default function ScenarioExportPanel({
 }: ScenarioExportPanelProps) {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const isBeadScenario = scenario === 'beads';
+  const isCrochetChart = scenario === 'crochet' && exportMode === 'crochet-chart';
+  const occupiedSize = measureOccupiedGridSize(grid);
+  const hasRenderableContent = occupiedSize.rows > 0 && occupiedSize.columns > 0;
 
   useEffect(() => {
-    if (!isBeadScenario || !beadBrand) {
+    if ((!isBeadScenario || !beadBrand) && !isCrochetChart) {
       setPreviewImageUrl(null);
       return;
     }
@@ -50,11 +55,16 @@ export default function ScenarioExportPanel({
         return;
       }
 
-      const nextPreviewImageUrl = renderBeadPrintPageDataUrl({
-        grid,
-        beadBrand,
-        beadUsage,
-      });
+      const nextPreviewImageUrl = isBeadScenario && beadBrand
+        ? renderBeadPrintPageDataUrl({
+            grid,
+            beadBrand,
+            beadUsage,
+          })
+        : renderCrochetPrintPageDataUrl({
+            grid,
+            crochetAnalysis,
+          });
 
       if (!cancelled) {
         setPreviewImageUrl(nextPreviewImageUrl);
@@ -65,16 +75,16 @@ export default function ScenarioExportPanel({
       cancelled = true;
       window.clearTimeout(timerId);
     };
-  }, [beadBrand, beadUsage, grid, isBeadScenario]);
+  }, [beadBrand, beadUsage, crochetAnalysis, grid, isBeadScenario, isCrochetChart]);
 
   return (
     <section
-      className={`panel stage-bottom-note scenario-export-panel${isBeadScenario && previewImageUrl ? ' scenario-export-panel--beads-print' : ''}`}
-      aria-label={isBeadScenario ? '拼豆图纸' : '打印导出'}
+      className={`panel stage-bottom-note scenario-export-panel${previewImageUrl ? ' scenario-export-panel--beads-print' : ''}`}
+      aria-label={isBeadScenario ? '拼豆图纸' : '钩织图纸'}
     >
       <div className="panel__header">
         <div className="panel-title-block">
-          <h2>{isBeadScenario ? '拼豆图纸' : '打印导出'}</h2>
+          <h2>{isBeadScenario ? '拼豆图纸' : '钩织图纸'}</h2>
         </div>
         <div className="panel__header-actions export-panel__actions">
           <button
@@ -82,6 +92,7 @@ export default function ScenarioExportPanel({
             className="chip-button export-print-button"
             aria-label="打印当前图纸"
             onClick={onPrint}
+            disabled={!hasRenderableContent}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -109,12 +120,12 @@ export default function ScenarioExportPanel({
         className="export-sheet--embedded"
         previewImageUrl={previewImageUrl}
       />
-      {isBeadScenario && previewImageUrl ? (
+      {previewImageUrl ? (
         <div className="export-sheet-print-stage" aria-hidden="true">
           <img
             className="export-sheet-print-stage__image"
             src={previewImageUrl}
-            alt="拼豆图纸打印成品"
+            alt={isBeadScenario ? '拼豆图纸打印成品' : '钩织图纸打印成品'}
           />
         </div>
       ) : null}

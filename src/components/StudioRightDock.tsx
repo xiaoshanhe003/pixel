@@ -4,7 +4,7 @@ import type { ScenarioDefinition, ScenarioId, StudioFrame } from '../types/studi
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import type { countBeadUsage } from '../utils/beads';
 import type { countPaletteUsage } from '../utils/studio';
-import CrochetPatternPanel from './CrochetPatternPanel';
+import { measureOccupiedGridSize } from '../utils/scenarioExport';
 import PalettePanel from './PalettePanel';
 import ScenarioExportPanel from './ScenarioExportPanel';
 
@@ -80,6 +80,9 @@ export default function StudioRightDock({
   onPrint,
 }: StudioRightDockProps) {
   const selectedLayerPalette = buildSelectedLayerPalette(activeFrame);
+  const occupiedSize = activeGrid ? measureOccupiedGridSize(activeGrid) : null;
+  const hasRenderableContent =
+    occupiedSize ? occupiedSize.rows > 0 && occupiedSize.columns > 0 : false;
 
   return (
     <aside className="right-dock" aria-label="右侧属性栏">
@@ -103,9 +106,7 @@ export default function StudioRightDock({
 
       {activeGrid ? (
         <>
-          {activeScenario === 'beads' ? null : activeScenario === 'crochet' && crochetAnalysis ? (
-            <CrochetPatternPanel analysis={crochetAnalysis} />
-          ) : (
+          {activeScenario === 'beads' || (activeScenario === 'crochet' && hasRenderableContent) ? null : (
             <PalettePanel
               palette={
                 activeScenario === 'pixel'

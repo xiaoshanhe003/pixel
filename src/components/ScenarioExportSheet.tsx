@@ -4,6 +4,7 @@ import type { BeadMappedColor } from '../utils/beads';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { getPerceivedLuminance, hexToRgb } from '../utils/color';
 import { buildScenarioExportDocument } from '../utils/scenarioExport';
+import CrochetPatternPanel from './CrochetPatternPanel';
 
 type ScenarioExportSheetProps = {
   scenario: 'beads' | 'crochet';
@@ -77,39 +78,17 @@ export default function ScenarioExportSheet({
     beadBrand,
     beadUsage,
     crochetAnalysis,
-    exportMode,
+    exportMode: scenario === 'crochet' ? 'crochet-chart' : exportMode,
   });
-  const modes = [
-    { id: 'crochet-chart', label: 'PDF 图纸' },
-    { id: 'crochet-rows', label: '行列说明' },
-  ];
+  const hasCrochetContent =
+    exportDocument.kind === 'crochet-chart' &&
+    exportDocument.occupiedSize.rows > 0 &&
+    exportDocument.occupiedSize.columns > 0;
   const hasBeadContent =
     exportDocument.kind === 'beads' && exportDocument.beadSummary.totalCount > 0;
 
   return (
     <div className={className ? `export-sheet ${className}` : 'export-sheet'}>
-      {!isBeads ? (
-        <div className="frame-strip__actions">
-          {modes.map((mode) => (
-            <button
-              key={mode.id}
-              type="button"
-              className={`chip-button${exportMode === mode.id ? ' is-active' : ''}`}
-              onClick={() => onExportModeChange(mode.id)}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {!isBeads ? (
-        <div className="export-sheet__header">
-          <strong>{exportDocument.title}</strong>
-          {exportDocument.subtitle ? <span>{exportDocument.subtitle}</span> : null}
-        </div>
-      ) : null}
-
       {exportDocument.kind === 'beads' ? (
         <>
           {previewImageUrl ? (
@@ -170,34 +149,49 @@ export default function ScenarioExportSheet({
 
       {exportDocument.kind === 'crochet-chart' ? (
         <>
-          {renderPrintGrid(exportDocument.grid, true, exportDocument.symbolByColor)}
-          <div className="export-sheet__legend">
-            {exportDocument.legend.map((item) => (
-              <div key={item.color} className="export-sheet__legend-item">
-                <span
-                  className="swatch-chip"
-                  aria-hidden="true"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span>符号 {item.symbol}</span>
-                <code>{item.color}</code>
-                <strong>{item.count} 针</strong>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : null}
-
-      {exportDocument.kind === 'crochet-rows' ? (
-        <div className="export-sheet__list">
-          {exportDocument.rows.map((row) => (
-            <div key={row.rowNumber} className="export-sheet__list-row">
-              <strong>第 {row.rowNumber} 行</strong>
-              <span>{row.instructions.join(' / ')}</span>
-              <span>{row.stitchCount} 针</span>
+          {previewImageUrl ? (
+            <div className="export-sheet__preview-stage">
+              <img
+                className="export-sheet__preview-image"
+                src={previewImageUrl}
+                alt="钩织图纸第一页预览"
+              />
             </div>
-          ))}
-        </div>
+          ) : (
+            renderPrintGrid(exportDocument.grid, true, exportDocument.markByColor)
+          )}
+          {hasCrochetContent ? (
+            <>
+              <section className="export-sheet__summary" aria-label="钩织图纸摘要">
+                <p className="export-sheet__summary-line">
+                  图纸最小行列范围：{exportDocument.occupiedSize.rows} x {exportDocument.occupiedSize.columns}
+                </p>
+              </section>
+              <div className="export-sheet__legend">
+                {exportDocument.legend.map((item) => (
+                  <div key={item.colorName} className="export-sheet__legend-item">
+                    <span
+                      className="swatch-chip"
+                      aria-hidden="true"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span>{item.mark}</span>
+                    <strong>{item.colorName}</strong>
+                    <span className="export-sheet__count">{item.count} 针</span>
+                  </div>
+                ))}
+              </div>
+              <div className="export-sheet__divider" aria-hidden="true" />
+              {crochetAnalysis ? (
+                <CrochetPatternPanel
+                  analysis={crochetAnalysis}
+                  title={null}
+                  className="export-sheet__crochet-rows"
+                />
+              ) : null}
+            </>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

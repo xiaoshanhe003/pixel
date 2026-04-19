@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { renderBeadPrintPage } from './beadPrintPage';
+import { renderCrochetPrintPage } from './crochetPrintPage';
 import { buildScenarioExportDocument, type ScenarioExportParams } from './scenarioExport';
 
 const PAGE_MARGIN = 14;
@@ -62,6 +63,39 @@ function exportBeadScenarioPdf(params: ScenarioExportParams) {
 
 function exportCrochetScenarioPdf(params: ScenarioExportParams) {
   const exportDocument = buildScenarioExportDocument(params);
+
+  if (exportDocument.kind === 'crochet-chart') {
+    const canvas = renderCrochetPrintPage({
+      grid: params.grid,
+      crochetAnalysis: params.crochetAnalysis ?? null,
+    });
+
+    if (!canvas) {
+      return;
+    }
+
+    const isLandscape = canvas.width > canvas.height;
+    const doc = new jsPDF({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const scale = Math.min(
+      (pageWidth - PAGE_MARGIN * 2) / canvas.width,
+      (pageHeight - PAGE_MARGIN * 2) / canvas.height,
+    );
+    const renderWidth = canvas.width * scale;
+    const renderHeight = canvas.height * scale;
+    const x = (pageWidth - renderWidth) / 2;
+    const y = (pageHeight - renderHeight) / 2;
+
+    doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight, undefined, 'FAST');
+    doc.save(`${exportDocument.filename}.pdf`);
+    return;
+  }
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -69,33 +103,12 @@ function exportCrochetScenarioPdf(params: ScenarioExportParams) {
   });
 
   let y = PAGE_MARGIN;
-  const englishTitle =
-    exportDocument.kind === 'crochet-chart' ? 'Crochet Chart' : 'Crochet Row Notes';
+  const englishTitle = 'Crochet Row Notes';
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.text(englishTitle, PAGE_MARGIN, y);
   y += 8;
-
-  if (exportDocument.kind === 'crochet-chart') {
-    doc.setFont('helvetica', 'normal');
-    y = addWrappedText(
-      doc,
-      `Total stitches: ${exportDocument.legend.reduce((sum, item) => sum + item.count, 0)}`,
-      y,
-      11,
-    ) + 2;
-
-    doc.setFont('helvetica', 'normal');
-    for (const item of exportDocument.legend) {
-      y = addWrappedText(
-        doc,
-        `Symbol ${item.symbol}  ${item.color}  ${item.count} stitches`,
-        y,
-        10,
-      );
-    }
-  }
 
   if (exportDocument.kind === 'crochet-rows') {
     doc.setFont('helvetica', 'normal');

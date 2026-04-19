@@ -21,6 +21,8 @@ import {
 import { analyzeCrochetPattern, type CrochetPatternAnalysis } from '../utils/crochet';
 import { fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { buildPixelGrid } from '../utils/pixelPipeline';
+import { printScenarioExport } from '../utils/printScenario';
+import { measureOccupiedGridSize } from '../utils/scenarioExport';
 import {
   type BrushPoint,
   composeFrame,
@@ -525,7 +527,34 @@ export function useStudioApp(): UseStudioAppResult {
         setSelection(null);
         setHistory((current) => redoStudioHistory(current));
       },
-      printExport: () => window.print(),
+      printExport: () => {
+        if (!derived.activeGrid) {
+          window.print();
+          return;
+        }
+
+        const occupiedSize = measureOccupiedGridSize(derived.activeGrid);
+
+        if (occupiedSize.rows === 0 || occupiedSize.columns === 0) {
+          return;
+        }
+
+        if (activeScenario === 'beads') {
+          printScenarioExport({
+            scenario: 'beads',
+            grid: derived.activeGrid,
+            beadBrand,
+            beadUsage: derived.output.beadUsage,
+          });
+          return;
+        }
+
+        printScenarioExport({
+          scenario: 'crochet',
+          grid: derived.activeGrid,
+          crochetAnalysis: derived.output.crochetAnalysis,
+        });
+      },
       setCrochetViewMode,
       setBeadBrand,
       setExportMode: (mode) => {

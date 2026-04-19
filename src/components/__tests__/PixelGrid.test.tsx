@@ -142,6 +142,30 @@ describe('PixelGrid', () => {
     expect(leftLabels).toEqual([2, 4, 6, 8, 10, 12]);
   });
 
+  it('thins crochet ruler labels from the right and bottom edges inward', () => {
+    render(
+      <PixelGrid
+        grid={createSizedGrid(50, 50, '#000000')}
+        scenario="crochet"
+        zoom={1}
+        toolSettings={defaultToolSettings}
+      />,
+    );
+
+    const topLabels = Array.from(document.querySelectorAll('.bead-axis-label--top')).map((label) =>
+      Number(label.textContent),
+    );
+    const leftLabels = Array.from(document.querySelectorAll('.bead-axis-label--left')).map((label) =>
+      Number(label.textContent),
+    );
+
+    expect(topLabels).toEqual([
+      49, 47, 45, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25,
+      23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1,
+    ]);
+    expect(leftLabels).toEqual(topLabels);
+  });
+
   it('lets thinned ruler labels occupy their full interval span', () => {
     render(
       <PixelGrid

@@ -7,15 +7,17 @@ type PalettePanelProps = {
 export default function PalettePanel({
   palette,
   counts,
-  transparentCount,
+  transparentCount: _transparentCount,
 }: PalettePanelProps) {
+  if (palette.length === 0) {
+    return null;
+  }
+
   return (
     <section className="panel panel--sidebar">
       <div className="panel__header panel__header--stack panel__header--align-left">
         <h2>当前调色板</h2>
-        <span>
-          {palette.length} 色{transparentCount > 0 ? ' + 透明' : ''}
-        </span>
+        <span>{palette.length} 色</span>
       </div>
 
       <div className="swatches">
@@ -32,16 +34,6 @@ export default function PalettePanel({
             </div>
           </div>
         ))}
-
-        {transparentCount > 0 ? (
-          <div className="swatch">
-            <span className="swatch-chip swatch-chip--transparent" aria-hidden="true" />
-            <div className="swatch__meta">
-              <code>透明</code>
-              <span className="swatch__count">{transparentCount} 格</span>
-            </div>
-          </div>
-        ) : null}
       </div>
     </section>
   );

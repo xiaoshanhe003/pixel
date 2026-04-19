@@ -138,6 +138,23 @@ function getAxisLabelSpan(value: number, step: number) {
   return Math.max(step, value > 0 ? Math.min(step, value) : step);
 }
 
+function getPatternAxisLabel(position: number, maxValue: number, scenario: 'beads' | 'crochet') {
+  return scenario === 'crochet' ? maxValue - position + 1 : position;
+}
+
+function shouldRenderPatternAxisLabel(
+  position: number,
+  maxValue: number,
+  step: number,
+  scenario: 'beads' | 'crochet',
+) {
+  if (scenario === 'beads') {
+    return shouldRenderAxisLabel(position, maxValue, step);
+  }
+
+  return (maxValue - position) % step === 0;
+}
+
 function readPointerCellTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return null;
@@ -302,6 +319,7 @@ export default function PixelGrid({
     () => new Set(previewCells.map((cell) => `${cell.x}-${cell.y}`)),
     [previewCells],
   );
+  const usesPatternCanvas = scenario === 'beads' || scenario === 'crochet';
   const baseCellSize = getBaseCellSize(grid.width);
   const rawScaledCellSize = baseCellSize * zoom;
   const displayCellSize = showGrid ? Math.max(1, Math.round(rawScaledCellSize)) : rawScaledCellSize;
@@ -315,8 +333,7 @@ export default function PixelGrid({
   const scaledGridWidth = innerGridWidth + frameInset * 2;
   const scaledGridHeight = innerGridHeight + frameInset * 2;
   const hideTransparencyTexture = displayCellSize < 6;
-  const beadAxisInset =
-    scenario === 'beads' ? BEAD_AXIS_LABEL_SIZE + BEAD_AXIS_LABEL_GAP : 0;
+  const beadAxisInset = usesPatternCanvas ? BEAD_AXIS_LABEL_SIZE + BEAD_AXIS_LABEL_GAP : 0;
   const contentViewportMetrics = useMemo(
     () => ({
       width: Math.max(0, viewportMetrics.width - beadAxisInset),
@@ -630,27 +647,49 @@ export default function PixelGrid({
     renderedGridOffset.x,
     renderedGridOffset.y,
   ]);
-  const beadColumnNumbers = useMemo(
+  const patternColumnAxis = useMemo(
     () =>
-      scenario === 'beads'
-        ? Array.from({ length: grid.width }, (_, index) => index + 1)
+      usesPatternCanvas
+        ? Array.from({ length: grid.width }, (_, index) => {
+            const position = index + 1;
+
+            return {
+              position,
+              label: getPatternAxisLabel(
+                position,
+                grid.width,
+                scenario === 'crochet' ? 'crochet' : 'beads',
+              ),
+            };
+          })
         : [],
-    [grid.width, scenario],
+    [grid.width, scenario, usesPatternCanvas],
   );
-  const beadRowNumbers = useMemo(
+  const patternRowAxis = useMemo(
     () =>
-      scenario === 'beads'
-        ? Array.from({ length: grid.height }, (_, index) => index + 1)
+      usesPatternCanvas
+        ? Array.from({ length: grid.height }, (_, index) => {
+            const position = index + 1;
+
+            return {
+              position,
+              label: getPatternAxisLabel(
+                position,
+                grid.height,
+                scenario === 'crochet' ? 'crochet' : 'beads',
+              ),
+            };
+          })
         : [],
-    [grid.height, scenario],
+    [grid.height, scenario, usesPatternCanvas],
   );
   const beadColumnLabelStep = useMemo(
-    () => (scenario === 'beads' ? getAxisLabelStep(grid.width, cellStride) : 1),
-    [cellStride, grid.width, scenario],
+    () => (usesPatternCanvas ? getAxisLabelStep(grid.width, cellStride) : 1),
+    [cellStride, grid.width, usesPatternCanvas],
   );
   const beadRowLabelStep = useMemo(
-    () => (scenario === 'beads' ? getAxisLabelStep(grid.height, cellStride) : 1),
-    [cellStride, grid.height, scenario],
+    () => (usesPatternCanvas ? getAxisLabelStep(grid.height, cellStride) : 1),
+    [cellStride, grid.height, usesPatternCanvas],
   );
   const beadAxisOriginX = beadAxisInset + renderedGridOffset.x + frameInset;
   const beadAxisOriginY = beadAxisInset + renderedGridOffset.y + frameInset;
@@ -1007,7 +1046,7 @@ export default function PixelGrid({
           />
         </div>
       ) : null}
-      {scenario === 'beads' ? (
+      {usesPatternCanvas ? (
         <div className="bead-axis-layer" aria-hidden="true">
           <span
             className="bead-axis-corner"
@@ -1076,17 +1115,24 @@ export default function PixelGrid({
               }}
             />
           ) : null}
-          {beadColumnNumbers.map((value, index) => {
-            if (!shouldRenderAxisLabel(value, grid.width, beadColumnLabelStep)) {
+          {patternColumnAxis.map(({ position, label }) => {
+            if (
+              !shouldRenderPatternAxisLabel(
+                position,
+                grid.width,
+                beadColumnLabelStep,
+                scenario === 'crochet' ? 'crochet' : 'beads',
+              )
+            ) {
               return null;
             }
 
-            const span = getAxisLabelSpan(value, beadColumnLabelStep);
-            const axisX = beadAxisOriginX + (value - span) * cellStride;
+            const span = getAxisLabelSpan(position, beadColumnLabelStep);
+            const axisX = beadAxisOriginX + (position - span) * cellStride;
 
             return (
               <span
-                key={`top-${value}`}
+                key={`top-${position}`}
                 className="bead-axis-label bead-axis-label--column bead-axis-label--top"
                 style={{
                   left: `${axisX}px`,
@@ -1095,21 +1141,28 @@ export default function PixelGrid({
                   height: `${BEAD_AXIS_LABEL_SIZE}px`,
                 }}
               >
-                {value}
+                {label}
               </span>
             );
           })}
-          {beadRowNumbers.map((value, index) => {
-            if (!shouldRenderAxisLabel(value, grid.height, beadRowLabelStep)) {
+          {patternRowAxis.map(({ position, label }) => {
+            if (
+              !shouldRenderPatternAxisLabel(
+                position,
+                grid.height,
+                beadRowLabelStep,
+                scenario === 'crochet' ? 'crochet' : 'beads',
+              )
+            ) {
               return null;
             }
 
-            const span = getAxisLabelSpan(value, beadRowLabelStep);
-            const axisY = beadAxisOriginY + (value - span) * cellStride;
+            const span = getAxisLabelSpan(position, beadRowLabelStep);
+            const axisY = beadAxisOriginY + (position - span) * cellStride;
 
             return (
               <span
-                key={`left-${value}`}
+                key={`left-${position}`}
                 className="bead-axis-label bead-axis-label--row bead-axis-label--left"
                 style={{
                   left: '0',
@@ -1118,14 +1171,14 @@ export default function PixelGrid({
                   height: `${span * cellStride}px`,
                 }}
               >
-                {value}
+                {label}
               </span>
             );
           })}
         </div>
       ) : null}
       <div
-        className={`pixel-grid-shell${scenario === 'beads' ? ' pixel-grid-shell--beads' : ''}`}
+        className={`pixel-grid-shell${usesPatternCanvas ? ' pixel-grid-shell--beads' : ''}`}
       >
         <div
           className={`pixel-grid-frame${showGrid ? '' : ' pixel-grid-frame--flat'}${
@@ -1137,7 +1190,7 @@ export default function PixelGrid({
           role="grid"
           aria-label="像素输出网格"
           className={`pixel-grid${showGrid ? '' : ' pixel-grid--flat'}${
-            scenario === 'beads' ? ' pixel-grid--beads' : ''
+            usesPatternCanvas ? ' pixel-grid--beads' : ''
           }`}
           style={gridStyle}
         >
@@ -1147,7 +1200,7 @@ export default function PixelGrid({
               type="button"
               role="gridcell"
               className={`pixel-cell${cell.color ? '' : ' pixel-cell--transparent'}${editable ? ' pixel-cell--editable' : ''}${showGrid ? '' : ' pixel-cell--flat'}${presentation === 'symbol' ? ' pixel-cell--symbol' : ''}${
-                scenario === 'beads' ? ' pixel-cell--beads' : ''
+                usesPatternCanvas ? ' pixel-cell--beads' : ''
               }`}
               aria-label={`像素 ${cell.x},${cell.y} ${cell.color ?? '透明'}${
                 presentation === 'symbol' && cell.color

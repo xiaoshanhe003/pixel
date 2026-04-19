@@ -43,8 +43,10 @@ export type ScenarioExportDocument =
       filename: string;
       grid: PixelGrid;
       showSymbols: true;
-      symbolByColor: Map<string, string>;
+      markByColor: Map<string, string>;
+      colorNameByColor: Map<string, string>;
       legend: CrochetLegendItem[];
+      occupiedSize: OccupiedGridSize;
     }
   | {
       kind: 'crochet-rows';
@@ -172,11 +174,15 @@ export function buildScenarioExportDocument({
   return {
     kind: 'crochet-chart',
     title: '钩织 PDF 图纸',
-    subtitle: crochetAnalysis ? `${crochetAnalysis.totalStitches} 针` : undefined,
+    subtitle: crochetAnalysis
+      ? `图纸范围 ${measureOccupiedGridSize(grid).rows} x ${measureOccupiedGridSize(grid).columns}`
+      : undefined,
     filename: 'pixel-forge-crochet-chart',
     grid,
     showSymbols: true,
-    symbolByColor: crochetAnalysis?.symbolByColor ?? new Map<string, string>(),
+    markByColor: crochetAnalysis?.markByColor ?? new Map<string, string>(),
+    colorNameByColor: crochetAnalysis?.colorNameByColor ?? new Map<string, string>(),
     legend: crochetAnalysis?.legend ?? [],
+    occupiedSize: measureOccupiedGridSize(grid),
   };
 }

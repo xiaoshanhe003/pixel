@@ -44,8 +44,8 @@ export default function ConversionControls({
 
   return (
     <section className="controls-card" aria-label="项目设置">
-      <div className="controls-card__header">
-        <p className="eyebrow">项目设置</p>
+      <div className="panel__header">
+        <h2>项目设置</h2>
       </div>
 
       <div className="controls-card__groups">
