@@ -15,7 +15,7 @@ describe('App rendering', () => {
     expect(screen.getByRole('spinbutton', { name: /宽/i })).toHaveValue(16);
     expect(screen.getByRole('spinbutton', { name: /高/i })).toHaveValue(16);
     expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: /细节等级/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /精细度/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /图像类型/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /画面构图/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /填充桶/i })).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('App rendering', () => {
     renderApp();
     await uploadMockImage();
 
-    expect(screen.queryByRole('combobox', { name: /细节等级/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /精细度/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /修改设置/i })).toBeInTheDocument();
   });
 
@@ -101,7 +101,7 @@ describe('App rendering', () => {
     await userEvent.click(screen.getByRole('button', { name: /修改设置/i }));
 
     expect(screen.getByRole('dialog', { name: /裁切并应用转绘设置/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /细节等级/i })).toHaveValue('clean');
+    expect(screen.getByRole('combobox', { name: /精细度/i })).toHaveValue('clean');
 
     await userEvent.click(screen.getByRole('button', { name: /关闭弹窗/i }));
 

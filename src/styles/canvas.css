@@ -384,7 +384,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(300px, 360px);
   gap: var(--space-8);
-  align-items: start;
+  align-items: stretch;
   padding: clamp(16px, 1.8vw, 22px);
 }
 
@@ -398,11 +398,12 @@
 
 .crop-dialog__settings {
   display: grid;
-  align-content: start;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-content: stretch;
   gap: var(--space-5);
-  max-height: calc(100vh - 164px);
+  height: 100%;
+  min-height: 0;
   padding-left: var(--space-3);
-  overflow: auto;
 }
 
 .crop-dialog__settings-header {
@@ -419,13 +420,156 @@
   padding: 0;
 }
 
-.crop-dialog__ratio-toggle {
-  margin-bottom: var(--space-4);
-}
-
 .crop-dialog__workspace-actions {
   display: flex;
   justify-content: center;
+}
+
+.crop-dialog__form {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: var(--space-2);
+}
+
+.crop-dialog__form-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.crop-dialog__form-label {
+  padding-top: 10px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.crop-dialog__form-control {
+  min-width: 0;
+}
+
+.crop-dialog__form-control .ui-dropdown {
+  display: block;
+}
+
+.crop-dialog__ratio-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.crop-dialog__size-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.crop-dialog__size-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: color-mix(in srgb, var(--muted) 82%, var(--ink) 18%);
+}
+
+.crop-dialog__size-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 14px;
+  border: var(--border-default);
+  border-radius: 22px;
+  background: var(--panel-strong);
+}
+
+.crop-dialog__size-field.is-open {
+  z-index: 2;
+}
+
+.crop-dialog__size-prefix {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.crop-dialog__size-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1;
+  padding: 0 24px 0 0;
+}
+
+.crop-dialog__size-trigger {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 42px;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.crop-dialog__size-trigger:focus-visible {
+  outline: none;
+}
+
+.crop-dialog__size-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: var(--border-default);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.crop-dialog__size-option {
+  min-height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.crop-dialog__size-option:hover {
+  background: var(--surface-soft);
+}
+
+.crop-dialog__size-input::-webkit-outer-spin-button,
+.crop-dialog__size-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.crop-dialog__size-input[type='number'] {
+  -moz-appearance: textfield;
 }
 
 .crop-dialog__footer {
@@ -441,9 +585,7 @@
 }
 
 .crop-dialog__footer--stacked {
-  margin-top: auto;
-  position: sticky;
-  bottom: 0;
+  margin-top: 0;
   padding-top: var(--space-5);
   padding-bottom: var(--space-2);
   background:
@@ -470,6 +612,15 @@
     border-left: 0;
     border-top: 1px solid var(--line-soft);
     padding-top: var(--space-6);
+  }
+
+  .crop-dialog__form-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .crop-dialog__form-label {
+    padding-top: 0;
   }
 }
 
