@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { GridSize, PixelGrid as PixelGridModel } from '../../types/pixel';
-import PixelGrid from '../PixelGrid';
+import PixelGrid, { collectInterpolatedBrushPoints } from '../PixelGrid';
 
 const defaultToolSettings = {
   paintSize: 1 as const,
@@ -306,6 +306,21 @@ describe('PixelGrid', () => {
     expect(handleCommitPaintStroke).toHaveBeenCalledWith(
       [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }],
       '#ff00aa',
+    );
+  });
+
+  it('keeps even-sized brush anchor changes when the pointer stays in the same cell', () => {
+    const visited = new Set(['0-0-before-before']);
+
+    const nextPoints = collectInterpolatedBrushPoints(
+      { x: 0, y: 0, alignX: 'before', alignY: 'before' },
+      { x: 0, y: 0, alignX: 'after', alignY: 'after' },
+      visited,
+    );
+
+    expect(nextPoints).toEqual([{ x: 0, y: 0, alignX: 'after', alignY: 'after' }]);
+    expect(visited).toEqual(
+      new Set(['0-0-before-before', '0-0-after-after']),
     );
   });
 

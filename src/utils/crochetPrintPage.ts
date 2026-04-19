@@ -10,6 +10,8 @@ type CrochetPrintPageParams = {
 };
 
 const PRINT_FONT_FAMILY = '"Cascadia Code", "Cascadia Mono", Consolas, monospace';
+const FOOTER_TEXT_FONT_SIZE = 20;
+const FOOTER_TEXT_LINE_HEIGHT = 28;
 
 function getCellTextColor(color: string) {
   return getPerceivedLuminance(hexToRgb(color)) < 110 ? '#ffffff' : '#101010';
@@ -186,6 +188,7 @@ function drawLegend(
   const rowBlockHeight = swatchHeight + textGap + textHeight;
   const rows = Math.ceil(exportDocument.legend.length / columns);
   const summaryY = footer.y + rows * (rowBlockHeight + tileGap) + 20;
+  const rowNotes = crochetAnalysis?.rows.filter((row) => row.stitchCount > 0) ?? [];
 
   exportDocument.legend.forEach((item, index) => {
     const column = index % columns;
@@ -208,12 +211,12 @@ function drawLegend(
     context.fillText(item.mark, x + tileWidth / 2, y + swatchHeight / 2);
 
     context.fillStyle = '#403c37';
-    context.font = `20px ${PRINT_FONT_FAMILY}`;
+    context.font = `${FOOTER_TEXT_FONT_SIZE}px ${PRINT_FONT_FAMILY}`;
     context.fillText(`${item.mark}  ${item.colorName}`, x + tileWidth / 2, y + swatchHeight + textGap + textHeight / 2);
   });
 
   context.fillStyle = '#403c37';
-  context.font = `20px ${PRINT_FONT_FAMILY}`;
+  context.font = `${FOOTER_TEXT_FONT_SIZE}px ${PRINT_FONT_FAMILY}`;
   context.textAlign = 'left';
   context.textBaseline = 'top';
   context.fillText(
@@ -221,6 +224,53 @@ function drawLegend(
     footer.x,
     summaryY,
   );
+
+  if (rowNotes.length === 0) {
+    return;
+  }
+
+  const notesTitleY = summaryY + 40;
+  const notesBodyY = notesTitleY + FOOTER_TEXT_LINE_HEIGHT;
+  const availableHeight = footer.y + footer.height - notesBodyY;
+  const rowsPerColumn = Math.max(1, Math.floor(availableHeight / FOOTER_TEXT_LINE_HEIGHT));
+  const maxColumns = Math.max(1, Math.floor((footer.width + tileGap) / (340 + tileGap)));
+  const requiredColumns = Math.ceil(rowNotes.length / rowsPerColumn);
+  const columnCount = Math.max(1, Math.min(maxColumns, requiredColumns));
+  const columnWidth = Math.floor((footer.width - tileGap * (columnCount - 1)) / columnCount);
+  const maxVisibleRows = rowsPerColumn * columnCount;
+  const overflowCount = Math.max(0, rowNotes.length - maxVisibleRows);
+  const visibleRows =
+    overflowCount > 0
+      ? rowNotes.slice(0, Math.max(0, maxVisibleRows - 1))
+      : rowNotes.slice(0, maxVisibleRows);
+
+  context.fillStyle = '#403c37';
+  context.font = `bold ${FOOTER_TEXT_FONT_SIZE}px ${PRINT_FONT_FAMILY}`;
+  context.fillText('行列说明', footer.x, notesTitleY);
+
+  context.font = `${FOOTER_TEXT_FONT_SIZE}px ${PRINT_FONT_FAMILY}`;
+  visibleRows.forEach((row, index) => {
+    const column = Math.floor(index / rowsPerColumn);
+    const rowIndex = index % rowsPerColumn;
+    const x = footer.x + column * (columnWidth + tileGap);
+    const y = notesBodyY + rowIndex * FOOTER_TEXT_LINE_HEIGHT;
+
+    context.fillText(
+      `R${row.rowNumber}  ${row.instructions.join(' / ')}  ${row.stitchCount}针`,
+      x,
+      y,
+    );
+  });
+
+  if (overflowCount > 0 && maxVisibleRows > 0) {
+    const overflowIndex = maxVisibleRows - 1;
+    const overflowColumn = Math.floor(overflowIndex / rowsPerColumn);
+    const overflowRow = overflowIndex % rowsPerColumn;
+    const overflowX = footer.x + overflowColumn * (columnWidth + tileGap);
+    const overflowY = notesBodyY + overflowRow * FOOTER_TEXT_LINE_HEIGHT;
+
+    context.fillText(`其余 ${overflowCount} 行未在本页展开`, overflowX, overflowY);
+  }
 }
 
 export function renderCrochetPrintPage({

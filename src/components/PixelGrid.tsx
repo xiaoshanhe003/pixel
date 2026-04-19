@@ -174,6 +174,42 @@ function clampCellIndex(value: number, max: number) {
   return Math.max(0, Math.min(max - 1, value));
 }
 
+function buildBrushPointKey(point: BrushPoint) {
+  return `${point.x}-${point.y}-${point.alignX ?? 'center'}-${point.alignY ?? 'center'}`;
+}
+
+export function collectInterpolatedBrushPoints(
+  previousPoint: BrushPoint,
+  nextPoint: BrushPoint,
+  visited: Set<string>,
+) {
+  const interpolatedPoints = buildLinePoints(
+    previousPoint.x,
+    previousPoint.y,
+    nextPoint.x,
+    nextPoint.y,
+  );
+  const nextPoints: BrushPoint[] = [];
+
+  for (let index = 0; index < interpolatedPoints.length; index += 1) {
+    const point = interpolatedPoints[index];
+    const candidate =
+      index === interpolatedPoints.length - 1
+        ? nextPoint
+        : { x: point.x, y: point.y };
+    const pointKey = buildBrushPointKey(candidate);
+
+    if (visited.has(pointKey)) {
+      continue;
+    }
+
+    visited.add(pointKey);
+    nextPoints.push(candidate);
+  }
+
+  return nextPoints;
+}
+
 export default function PixelGrid({
   grid,
   scenario = 'pixel',
@@ -560,29 +596,11 @@ export default function PixelGrid({
       }
 
       const previousPoint = paintStateRef.current.lastPoint;
-      const interpolatedPoints = buildLinePoints(
-        previousPoint.x,
-        previousPoint.y,
-        nextPoint.x,
-        nextPoint.y,
+      const nextPoints = collectInterpolatedBrushPoints(
+        previousPoint,
+        nextPoint,
+        paintStateRef.current.visited,
       );
-      const nextPoints: BrushPoint[] = [];
-
-      for (let index = 0; index < interpolatedPoints.length; index += 1) {
-        const point = interpolatedPoints[index];
-        const candidate =
-          index === interpolatedPoints.length - 1
-            ? nextPoint
-            : { x: point.x, y: point.y };
-        const pointKey = `${candidate.x}-${candidate.y}`;
-
-        if (paintStateRef.current.visited.has(pointKey)) {
-          continue;
-        }
-
-        paintStateRef.current.visited.add(pointKey);
-        nextPoints.push(candidate);
-      }
 
       paintStateRef.current.lastPoint = nextPoint;
 
@@ -1290,7 +1308,7 @@ export default function PixelGrid({
                 }
 
                 const nextColor = tool === 'erase' ? null : activeColor ?? null;
-                const pointKey = `${cell.x}-${cell.y}`;
+                const pointKey = buildBrushPointKey(brushPoint);
 
                 paintStateRef.current = {
                   pointerId: event.pointerId,
