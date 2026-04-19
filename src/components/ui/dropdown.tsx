@@ -1,5 +1,5 @@
 import type * as React from 'react';
-
+import { Icon } from './Icon';
 type DropdownOption<T extends string | number> = {
   label: string;
   value: T;
@@ -15,8 +15,6 @@ type DropdownProps<T extends string | number> = {
   selectClassName?: string;
   ariaLabel?: string;
 };
-
-const CHEVRON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5l5 -5" /></svg>`;
 
 export function DropdownField<T extends string | number>({
   label,
@@ -52,11 +50,7 @@ export function DropdownField<T extends string | number>({
             </option>
           ))}
         </select>
-        <span
-          className="ui-dropdown__icon"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: CHEVRON_SVG }}
-        />
+        <Icon className="ui-dropdown__icon" name="chevronDown" />
       </span>
     </label>
   );

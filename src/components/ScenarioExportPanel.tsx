@@ -7,6 +7,8 @@ import { renderBeadPrintPageDataUrl } from '../utils/beadPrintPage';
 import { renderCrochetPrintPageDataUrl } from '../utils/crochetPrintPage';
 import { measureOccupiedGridSize } from '../utils/scenarioExport';
 import ScenarioExportSheet from './ScenarioExportSheet';
+import { Button } from './ui/button';
+import { Icon } from './ui/Icon';
 
 type ScenarioExportPanelProps = {
   scenario: 'beads' | 'crochet';
@@ -87,25 +89,16 @@ export default function ScenarioExportPanel({
           <h2>{isBeadScenario ? '拼豆图纸' : '钩织图纸'}</h2>
         </div>
         <div className="panel__header-actions export-panel__actions">
-          <button
-            type="button"
-            className="chip-button export-print-button"
+          <Button
+            variant="secondary"
+            className="export-print-button"
+            icon={<Icon name="printer" />}
             aria-label="打印当前图纸"
             onClick={onPrint}
             disabled={!hasRenderableContent}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 8V4h10v4M6 16H4v-6h16v6h-2M7 14h10v6H7z"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </svg>
             <span>打印</span>
-          </button>
+          </Button>
         </div>
       </div>
       <ScenarioExportSheet

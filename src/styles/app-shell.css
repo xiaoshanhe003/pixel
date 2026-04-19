@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: var(--space-5) var(--space-7);
   border: var(--border-default);
   border-radius: var(--radius-control);
@@ -47,18 +47,21 @@
   gap: var(--space-3);
 }
 
+.topbar-scenario-dropdown {
+  width: fit-content;
+  min-width: 0;
+}
+
+.topbar-scenario-dropdown__select {
+  width: auto;
+  min-width: 120px;
+  padding-right: calc(var(--space-8) + 24px);
+}
+
 .scenario-tab,
-.chip-button,
+.ui-button,
 .size-control__option,
 .layer-card__select {
-  min-height: var(--control-height);
-  padding: var(--space-3) var(--space-8) var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--ink);
-  box-shadow: none;
-  transform: none;
   transition:
     background-color 160ms ease,
     color 160ms ease,
@@ -67,23 +70,20 @@
 }
 
 .scenario-tab:hover,
-.chip-button:hover,
+.ui-button:hover,
 .size-control__option:hover,
 .layer-card__select:hover {
   transform: none;
-  background: var(--surface-soft-strong);
 }
 
-.scenario-tab.is-active,
-.chip-button.is-active {
+.scenario-tab.is-active {
   background: var(--ink);
   color: var(--ink-inverse);
   box-shadow: none;
   transform: none;
 }
 
-.scenario-tab.is-active:hover,
-.chip-button.is-active:hover {
+.scenario-tab.is-active:hover {
   background: var(--ink);
 }
 
@@ -105,19 +105,18 @@
   justify-items: end;
 }
 
-.chip-button:disabled,
+.ui-button:disabled,
 .scenario-tab:disabled,
 .size-control__option:disabled,
 .layer-card__select:disabled {
-  opacity: 0.48;
   cursor: not-allowed;
 }
 
-.chip-button:disabled:hover,
+.ui-button:disabled:hover,
 .scenario-tab:disabled:hover,
 .size-control__option:disabled:hover,
 .layer-card__select:disabled:hover {
-  background: transparent;
+  transform: none;
 }
 
 .canvas-toolbar__value,
@@ -216,7 +215,7 @@
   text-align: left;
 }
 
-.panel__header span,
+.panel__header > span,
 .uploader__copy,
 .sidebar-copy,
 .inspector-note {

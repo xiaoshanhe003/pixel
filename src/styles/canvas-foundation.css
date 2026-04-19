@@ -663,7 +663,7 @@
     break-inside: avoid;
   }
 
-  .scenario-export-panel .chip-button,
+  .scenario-export-panel .ui-button,
   .scenario-export-panel .panel__header span {
     display: none;
   }

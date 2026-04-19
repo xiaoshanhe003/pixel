@@ -1,6 +1,8 @@
 import type * as React from 'react';
+import { Icon } from './ui/Icon';
+import { Button } from './ui/button';
 import type { EditorTool } from '../types/studio';
-import { REDO_SVG, TOOL_ICON_SVGS, UNDO_SVG } from '../utils/toolIcons';
+import { REDO_ICON_NAME, TOOL_ICON_NAMES, UNDO_ICON_NAME } from '../utils/toolIcons';
 
 type EditingToolbarProps = {
   tool: EditorTool;
@@ -66,23 +68,20 @@ export default function EditingToolbar({
                   }
 
                   return (
-                    <button
+                    <Button
                       key={option.id}
-                      type="button"
-                      className={`chip-button tool-button${tool === option.id ? ' is-active' : ''}`}
+                      variant={tool === option.id ? 'primary' : 'tertiary'}
+                      className="tool-button"
+                      icon={<Icon className="tool-button__icon" name={TOOL_ICON_NAMES[option.id]} />}
+                      iconOnly
                       onClick={() => onToolChange(option.id)}
                       aria-pressed={tool === option.id}
                       aria-label={option.label}
                     >
-                      <span
-                        className="tool-button__icon"
-                        aria-hidden="true"
-                        dangerouslySetInnerHTML={{ __html: TOOL_ICON_SVGS[option.id] }}
-                      />
                       <span className="tool-button__tooltip" aria-hidden="true">
                         {option.label}
                       </span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -93,38 +92,32 @@ export default function EditingToolbar({
         {extraControls ? (
           <section className="tool-panel__inline-actions tool-cluster" aria-label="历史与视图">
             <div className="tool-cluster__buttons">
-              <button
-                type="button"
-                className="chip-button tool-button"
+              <Button
+                variant="tertiary"
+                className="tool-button"
+                icon={<Icon className="tool-button__icon" name={UNDO_ICON_NAME} />}
+                iconOnly
                 onClick={onUndo}
                 disabled={!canUndo}
                 aria-label="撤销"
               >
-                <span
-                  className="tool-button__icon"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: UNDO_SVG }}
-                />
                 <span className="tool-button__tooltip" aria-hidden="true">
                   撤销
                 </span>
-              </button>
-              <button
-                type="button"
-                className="chip-button tool-button"
+              </Button>
+              <Button
+                variant="tertiary"
+                className="tool-button"
+                icon={<Icon className="tool-button__icon" name={REDO_ICON_NAME} />}
+                iconOnly
                 onClick={onRedo}
                 disabled={!canRedo}
                 aria-label="重做"
               >
-                <span
-                  className="tool-button__icon"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: REDO_SVG }}
-                />
                 <span className="tool-button__tooltip" aria-hidden="true">
                   重做
                 </span>
-              </button>
+              </Button>
               {extraControls}
             </div>
           </section>

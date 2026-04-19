@@ -15,7 +15,7 @@ describe('App output modes', () => {
     renderApp();
     await uploadMockImage('beads.png');
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.selectOptions(
       screen.getByRole('combobox', { name: /选择拼豆品牌映射/i }),
       'perler',
@@ -42,7 +42,7 @@ describe('App output modes', () => {
     renderApp();
     await uploadMockImage('beads-print.png');
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
 
     expect(window.print).toHaveBeenCalledTimes(1);
@@ -55,7 +55,7 @@ describe('App output modes', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
     await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
-    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'crochet');
     await userEvent.click(screen.getByRole('button', { name: /打印当前图纸/i }));
 
     expect(window.print).toHaveBeenCalledTimes(1);
@@ -65,11 +65,11 @@ describe('App output modes', () => {
     renderApp();
     await createBlankCanvas();
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
 
     expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'crochet');
 
     expect(screen.getByRole('button', { name: /打印当前图纸/i })).toBeDisabled();
     expect(screen.queryByLabelText(/钩织图纸摘要/i)).not.toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('App output modes', () => {
     renderApp();
     await createBlankCanvas();
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
     await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
@@ -111,7 +111,7 @@ describe('App output modes', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /网格尺寸/i }), '50');
     await createBlankCanvas();
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
     await userEvent.click(screen.getByLabelText(/像素 0,0 透明/i));
@@ -137,7 +137,7 @@ describe('App output modes', () => {
   it('keeps the active paint color in sync with the bead brand mapping', async () => {
     renderApp();
     await createBlankCanvas();
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
     const mappedColor = mapColorToBeadPalette('#000000', 'mard');
@@ -149,7 +149,7 @@ describe('App output modes', () => {
   it('uses the current bead brand palette in the toolbar swatches without duplicates', async () => {
     renderApp();
     await createBlankCanvas();
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
     const swatches = screen.getAllByRole('button', { name: /选择颜色/i });
@@ -170,7 +170,7 @@ describe('App output modes', () => {
   it('opens the full bead brand library instead of the default color picker in bead mode', async () => {
     renderApp();
     await createBlankCanvas();
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.click(screen.getByRole('button', { name: /画笔/i }));
 
     expect(document.querySelector('input[type="color"]')).not.toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('App output modes', () => {
     await userEvent.click(screen.getByLabelText(/像素 0,15 透明/i));
     await userEvent.click(screen.getByLabelText(/像素 1,15 透明/i));
 
-    await userEvent.click(screen.getByRole('button', { name: /钩织图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'crochet');
 
     expect(screen.getAllByRole('heading', { name: /钩织图纸/i }).length).toBeGreaterThan(0);
     expect(

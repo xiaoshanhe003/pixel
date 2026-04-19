@@ -11,9 +11,7 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /新建空白画布/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /撤销/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /重做/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /像素绘画/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /拼豆图纸/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /钩织图纸/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /创作场景/i })).toHaveValue('pixel');
     expect(screen.getByRole('combobox', { name: /网格尺寸/i })).toHaveValue('16');
     expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
     expect(screen.getByRole('combobox', { name: /细节等级/i })).toHaveValue('clean');
@@ -36,7 +34,7 @@ describe('App rendering', () => {
 
     expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
 
-    await userEvent.click(screen.getByRole('button', { name: /拼豆图纸/i }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
 
     expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
   });
@@ -68,7 +66,7 @@ describe('App rendering', () => {
     await userEvent.click(screen.getByRole('button', { name: /删除/i }));
 
     expect(screen.queryByAltText(/已上传原图预览/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/无参考图/i)).toBeInTheDocument();
+    expect(screen.getByText(/支持 PNG、JPG、WebP/i)).toBeInTheDocument();
   });
 
   it('keeps pre-processing behind a single confirm action before upload', async () => {

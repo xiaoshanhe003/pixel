@@ -1,5 +1,6 @@
 import { BEAD_BRANDS, BEAD_BRAND_ORDER, type BeadBrand } from '../data/beadPalettes';
 import type { BeadMappedColor } from '../utils/beads';
+import { Button } from './ui/button';
 
 type BeadPalettePanelProps = {
   brand: BeadBrand;
@@ -26,14 +27,13 @@ export default function BeadPalettePanel({
           const item = BEAD_BRANDS[brandId];
 
           return (
-          <button
-            key={item.id}
-            type="button"
-            className={`chip-button${brand === item.id ? ' is-active' : ''}`}
-            onClick={() => onBrandChange(item.id)}
-          >
-            {item.label}
-          </button>
+            <Button
+              key={item.id}
+              variant={brand === item.id ? 'primary' : 'tertiary'}
+              onClick={() => onBrandChange(item.id)}
+            >
+              {item.label}
+            </Button>
           );
         })}
       </div>

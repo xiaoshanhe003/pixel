@@ -11,11 +11,13 @@ import type {
 import type { BeadBrand } from '../data/beadPalettes';
 import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { ACTUAL_SIZE_ZOOM, FIT_WINDOW_ZOOM } from '../constants/studio';
-import { ZOOM_IN_SVG, ZOOM_OUT_SVG } from '../utils/toolIcons';
+import { ZOOM_IN_ICON_NAME, ZOOM_OUT_ICON_NAME } from '../utils/toolIcons';
 import { findBeadColorByHex } from '../utils/beads';
 import EditingToolbar from './EditingToolbar';
 import FloatingToolControls from './FloatingToolControls';
 import PixelGrid, { getBaseCellSize } from './PixelGrid';
+import { Button } from './ui/button';
+import { Icon } from './ui/Icon';
 import { CheckboxField } from './ui/checkbox';
 import { DropdownField } from './ui/dropdown';
 
@@ -223,52 +225,44 @@ export default function StudioCanvasStage({
           <>
             {activeScenario === 'crochet' ? (
               <>
-                <button
-                  type="button"
-                  className={`chip-button${crochetViewMode === 'color' ? ' is-active' : ''}`}
+                <Button
+                  variant={crochetViewMode === 'color' ? 'primary' : 'tertiary'}
                   onClick={() => onCrochetViewModeChange('color')}
                 >
                   颜色图
-                </button>
-                <button
-                  type="button"
-                  className={`chip-button${crochetViewMode === 'symbol' ? ' is-active' : ''}`}
+                </Button>
+                <Button
+                  variant={crochetViewMode === 'symbol' ? 'primary' : 'tertiary'}
                   onClick={() => onCrochetViewModeChange('symbol')}
                 >
                   符号图
-                </button>
+                </Button>
               </>
             ) : null}
-            <button
-              type="button"
-              className="chip-button tool-button"
+            <Button
+              variant="tertiary"
+              className="tool-button"
+              icon={<Icon className="tool-button__icon" name={ZOOM_OUT_ICON_NAME} />}
+              iconOnly
               onClick={() => onCanvasZoomChange(() => stepDownZoom)}
               aria-label="缩小"
             >
-              <span
-                className="tool-button__icon"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: ZOOM_OUT_SVG }}
-              />
               <span className="tool-button__tooltip" aria-hidden="true">
                 缩小
               </span>
-            </button>
-            <button
-              type="button"
-              className="chip-button tool-button"
+            </Button>
+            <Button
+              variant="tertiary"
+              className="tool-button"
+              icon={<Icon className="tool-button__icon" name={ZOOM_IN_ICON_NAME} />}
+              iconOnly
               onClick={() => onCanvasZoomChange(() => stepUpZoom)}
               aria-label="放大"
             >
-              <span
-                className="tool-button__icon"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: ZOOM_IN_SVG }}
-              />
               <span className="tool-button__tooltip" aria-hidden="true">
                 放大
               </span>
-            </button>
+            </Button>
             <DropdownField
               className="canvas-zoom-dropdown"
               selectClassName="canvas-zoom-dropdown__select"

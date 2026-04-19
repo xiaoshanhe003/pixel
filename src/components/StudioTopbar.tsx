@@ -1,4 +1,6 @@
 import type { ScenarioDefinition, ScenarioId, StudioDocument } from '../types/studio';
+import { Button } from './ui/button';
+import { DropdownField } from './ui/dropdown';
 
 type StudioTopbarProps = {
   document: StudioDocument;
@@ -9,7 +11,7 @@ type StudioTopbarProps = {
 };
 
 export default function StudioTopbar({
-  document,
+  document: _document,
   activeScenario,
   scenarios,
   onScenarioChange,
@@ -18,30 +20,24 @@ export default function StudioTopbar({
   return (
     <header className="app-topbar">
       <div className="topbar-cluster">
-        <nav className="scenario-switcher" aria-label="创作场景">
-          {scenarios.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`scenario-tab${item.id === activeScenario ? ' is-active' : ''}`}
-              onClick={() => onScenarioChange(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <DropdownField
+          className="topbar-scenario-dropdown"
+          selectClassName="topbar-scenario-dropdown__select"
+          label="创作场景"
+          hideLabel
+          value={activeScenario}
+          options={scenarios.map((item) => ({
+            label: item.label,
+            value: item.id,
+          }))}
+          onChange={(value) => onScenarioChange(value as ScenarioId)}
+        />
       </div>
 
       <div className="topbar-cluster topbar-actions">
-        <button type="button" className="chip-button" onClick={onCreateBlankCanvas}>
+        <Button variant="secondary" onClick={onCreateBlankCanvas}>
           新建空白画布
-        </button>
-      </div>
-
-      <div className="topbar-cluster topbar-status">
-        {activeScenario === 'pixel' ? (
-          <span className="info-tag">{document.frames.length} 帧</span>
-        ) : null}
+        </Button>
       </div>
     </header>
   );

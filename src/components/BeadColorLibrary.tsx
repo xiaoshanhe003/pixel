@@ -3,6 +3,8 @@ import type { BeadBrand } from '../data/beadPalettes';
 import { BEAD_BRANDS } from '../data/beadPalettes';
 import { groupBeadPaletteBySeries } from '../utils/beads';
 import { getPerceivedLuminance, hexToRgb } from '../utils/color';
+import { Button, SwatchButton } from './ui/button';
+import { Icon } from './ui/Icon';
 
 type BeadColorLibraryProps = {
   activeColor: string;
@@ -66,22 +68,14 @@ export default function BeadColorLibrary({
     >
       <div className="bead-library__header">
         <strong className="bead-library__title">{brand.label}</strong>
-        <button
-          type="button"
+        <Button
+          variant="tertiary"
+          icon={<Icon name="x" />}
+          iconOnly
           className="bead-library__close"
           aria-label="关闭品牌色板"
           onClick={onClose}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M6 6L18 18M18 6L6 18"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeWidth="1.8"
-            />
-          </svg>
-        </button>
+        />
       </div>
 
       <div className="bead-library__search">
@@ -110,12 +104,12 @@ export default function BeadColorLibrary({
                     getPerceivedLuminance(hexToRgb(color.hex)) < 140 ? '#ffffff' : '#1a1a1a';
 
                   return (
-                    <button
+                    <SwatchButton
                       key={color.id}
-                      type="button"
-                      className={`color-swatch-button bead-library__swatch bead-library__swatch--tile${
+                      className={`bead-library__swatch bead-library__swatch--tile${
                         isActive ? ' is-active' : ''
                       }`}
+                      active={isActive}
                       onClick={() => {
                         onColorChange(color.hex);
                         onClose();
@@ -129,7 +123,7 @@ export default function BeadColorLibrary({
                       }}
                     >
                       <span className="bead-library__swatch-code">{color.id}</span>
-                    </button>
+                    </SwatchButton>
                   );
                 })}
               </div>

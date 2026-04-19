@@ -29,7 +29,7 @@ export default function StudioLeftDock({
     <aside className="left-dock" aria-label="左侧边栏">
       <section className="panel panel--dock">
         <div className="panel__header">
-          <h2>素材</h2>
+          <h2>参考图</h2>
         </div>
         <div className="panel__body panel__body--compact">
           <ImageUploader

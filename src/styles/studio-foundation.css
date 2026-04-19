@@ -476,7 +476,7 @@
   font-size: 0.92rem;
 }
 
-.color-swatch-button {
+.ui-swatch-button {
   padding: 0;
   border: 1px solid var(--line);
   background: transparent;
@@ -486,12 +486,12 @@
     box-shadow 160ms ease;
 }
 
-.color-swatch-button:hover {
+.ui-swatch-button:hover {
   transform: translateY(-1px);
   border-color: rgba(0, 0, 0, 0.22);
 }
 
-.color-swatch-button.is-active {
+.ui-swatch-button.is-active {
   border-color: var(--ink);
   box-shadow: inset 0 0 0 2px var(--panel-strong);
 }

@@ -43,7 +43,7 @@ export default function App() {
             <div className="tablet-inspector-toggle">
               <button
                 type="button"
-                className={`chip-button${isTabletInspectorOpen ? ' is-active' : ''}`}
+                className={`ui-button ui-button--secondary tablet-inspector-toggle__button${isTabletInspectorOpen ? ' is-active' : ''}`}
                 aria-expanded={isTabletInspectorOpen}
                 aria-controls="tablet-inspector-panel"
                 onClick={() => setIsTabletInspectorOpen((current) => !current)}

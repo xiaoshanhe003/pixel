@@ -5,6 +5,7 @@ import type { CrochetPatternAnalysis } from '../utils/crochet';
 import { getPerceivedLuminance, hexToRgb } from '../utils/color';
 import { buildScenarioExportDocument } from '../utils/scenarioExport';
 import CrochetPatternPanel from './CrochetPatternPanel';
+import { Button } from './ui/button';
 
 type ScenarioExportSheetProps = {
   scenario: 'beads' | 'crochet';
@@ -117,13 +118,9 @@ export default function ScenarioExportSheet({
                   <p className="export-sheet__summary-line">色板：{exportDocument.beadBrandLabel}</p>
                 </section>
                 <div className="export-sheet__summary-actions">
-                  <button
-                    type="button"
-                    className="chip-button"
-                    onClick={onCleanupBeadNoise}
-                  >
+                  <Button variant="secondary" onClick={onCleanupBeadNoise}>
                     去除杂色
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : null}

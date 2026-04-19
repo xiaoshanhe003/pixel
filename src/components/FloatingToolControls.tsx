@@ -3,6 +3,7 @@ import type { BeadBrand } from '../data/beadPalettes';
 import type { EditorTool, EditorToolSettings } from '../types/studio';
 import { hexToRgb } from '../utils/color';
 import BeadColorLibrary from './BeadColorLibrary';
+import { SwatchButton } from './ui/button';
 
 type FloatingToolControlsProps = {
   activeColor: string;
@@ -186,10 +187,10 @@ export default function FloatingToolControls({
             const isActive = activeColor.toLowerCase() === color.toLowerCase();
 
             return (
-              <button
+              <SwatchButton
                 key={color}
-                type="button"
-                className={`color-swatch-button color-palette__swatch${isActive ? ' is-active' : ''}`}
+                className={`color-palette__swatch${isActive ? ' is-active' : ''}`}
+                active={isActive}
                 onClick={() => onColorChange(color)}
                 aria-label={`选择颜色 ${color}`}
                 aria-pressed={isActive}

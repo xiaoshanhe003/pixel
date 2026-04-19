@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { Button } from './ui/button';
+import { Icon } from './ui/Icon';
 import type { SquareCrop } from '../utils/image';
 import { cropImageFile, fileToImageElement } from '../utils/image';
 
@@ -295,101 +297,114 @@ export default function ImageUploader({
 
   return (
     <section className="uploader-stage" aria-label="图片上传区域">
-      <div className="uploader-actions">
-        <label className="uploader" htmlFor="image-upload">
-          <span className="uploader__title">上传图片</span>
-          <input
-            ref={fileInputRef}
-            id="image-upload"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
+      <div className="source-card">
+        <input
+          ref={fileInputRef}
+          id="image-upload"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
 
-              if (!file) {
-                return;
-              }
+            if (!file) {
+              return;
+            }
 
-              setPendingFile(file);
-              setIsCropping(true);
-              event.currentTarget.value = '';
-            }}
-          />
-        </label>
+            setPendingFile(file);
+            setIsCropping(true);
+            event.currentTarget.value = '';
+          }}
+        />
 
-        {canCrop && !isCropping ? (
-          <button
-            type="button"
-            className="chip-button"
-            onClick={() => {
-              setPendingFile(selectedFile);
-              setIsCropping(true);
-            }}
-          >
-            裁切
-          </button>
-        ) : null}
-
-        {selectedFile && !isCropping ? (
-          <button
-            type="button"
-            className="chip-button"
-            onClick={() => {
-              setPendingFile(null);
-              setIsCropping(false);
-              onFileSelected(null);
-            }}
-          >
-            删除
-          </button>
-        ) : null}
-
-      </div>
-
-      {previewSrc ? (
-        isCropping && pendingPreviewUrl ? (
-          <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
-            <img
-              ref={cropImageRef}
-              className="source-preview__image"
-              src={pendingPreviewUrl}
-              alt="待裁切原图预览"
-            />
-            {cropFrame ? (
-              <div
-                className="crop-selection"
-                style={{
-                  left: `${cropFrame.left}px`,
-                  top: `${cropFrame.top}px`,
-                  width: `${cropFrame.size}px`,
-                  height: `${cropFrame.size}px`,
-                }}
-                onPointerDown={(event) => startInteraction(event, 'move')}
-              >
-                <span className="crop-selection__rule crop-selection__rule--horizontal" />
-                <span className="crop-selection__rule crop-selection__rule--vertical" />
-                <button
-                  type="button"
-                  className="crop-selection__handle"
-                  aria-label="调整裁切范围"
-                  onPointerDown={(event) => {
-                    event.stopPropagation();
-                    startInteraction(event, 'resize');
-                  }}
+        {previewSrc ? (
+          <>
+            {isCropping && pendingPreviewUrl ? (
+              <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
+                <img
+                  ref={cropImageRef}
+                  className="source-preview__image"
+                  src={pendingPreviewUrl}
+                  alt="待裁切原图预览"
                 />
+                {cropFrame ? (
+                  <div
+                    className="crop-selection"
+                    style={{
+                      left: `${cropFrame.left}px`,
+                      top: `${cropFrame.top}px`,
+                      width: `${cropFrame.size}px`,
+                      height: `${cropFrame.size}px`,
+                    }}
+                    onPointerDown={(event) => startInteraction(event, 'move')}
+                  >
+                    <span className="crop-selection__rule crop-selection__rule--horizontal" />
+                    <span className="crop-selection__rule crop-selection__rule--vertical" />
+                    <button
+                      type="button"
+                      className="crop-selection__handle"
+                      aria-label="调整裁切范围"
+                      onPointerDown={(event) => {
+                        event.stopPropagation();
+                        startInteraction(event, 'resize');
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            ) : (
+              <>
+                <div className="source-preview-frame">
+                  <img
+                    className="source-preview"
+                    src={previewSrc}
+                    alt="已上传原图预览"
+                  />
+                </div>
+
+                <div className="uploader-actions uploader-actions--stacked">
+                  {canCrop && !isCropping ? (
+                    <Button
+                      variant="secondary"
+                      className="source-action source-action--primary"
+                      icon={<Icon name="crop" />}
+                      onClick={() => {
+                        setPendingFile(selectedFile);
+                        setIsCropping(true);
+                      }}
+                    >
+                      裁切
+                    </Button>
+                  ) : null}
+
+                  {selectedFile && !isCropping ? (
+                    <Button
+                      variant="secondary"
+                      className="source-action source-action--icon-only"
+                      icon={<Icon name="x" />}
+                      iconOnly
+                      aria-label="删除"
+                      onClick={() => {
+                        setPendingFile(null);
+                        setIsCropping(false);
+                        onFileSelected(null);
+                      }}
+                    />
+                  ) : null}
+                </div>
+              </>
+            )}
+          </>
         ) : (
-          <img
-            className="source-preview"
-            src={previewSrc}
-            alt="已上传原图预览"
-          />
-        )
-      ) : (
-        <div className="empty-state">无参考图</div>
-      )}
+          <label className="uploader uploader--card" htmlFor="image-upload">
+            <span className="uploader__icon" aria-hidden="true">
+              <Icon name="upload" />
+            </span>
+            <span className="uploader__title">点击上传图片</span>
+            <span className="uploader__copy">支持 PNG、JPG、WebP</span>
+          </label>
+        )}
+      </div>
 
       {isCropping && pendingPreviewUrl
         ? createPortal(
@@ -413,16 +428,15 @@ export default function ImageUploader({
                     <p className="crop-dialog__eyebrow">上传前处理</p>
                     <h3 className="crop-dialog__title">裁切图片</h3>
                   </div>
-                  <button
-                    type="button"
-                    className="chip-button"
+                  <Button
+                    variant="tertiary"
                     onClick={() => {
                       setPendingFile(null);
                       setIsCropping(false);
                     }}
                   >
                     关闭
-                  </button>
+                  </Button>
                 </div>
 
                 <p className="crop-dialog__hint">拖动选区调整构图，拖拽右下角圆点缩放裁切范围。</p>
@@ -461,19 +475,17 @@ export default function ImageUploader({
                 </div>
 
                 <div className="crop-dialog__footer">
-                  <button
-                    type="button"
-                    className="chip-button"
+                  <Button
+                    variant="tertiary"
                     onClick={() => {
                       setPendingFile(null);
                       setIsCropping(false);
                     }}
                   >
                     取消
-                  </button>
-                  <button
-                    type="button"
-                    className="chip-button"
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={() => {
                       if (shouldApplyCrop) {
                         void applyCrop();
@@ -485,7 +497,7 @@ export default function ImageUploader({
                     }}
                   >
                     确认
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>,

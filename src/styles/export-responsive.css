@@ -84,6 +84,31 @@
   .tablet-inspector-toggle {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+  }
+
+  .tablet-inspector-toggle__button {
+    min-width: 148px;
+    padding-inline: var(--space-7);
+    white-space: nowrap;
+    border-color: var(--line);
+    background: var(--surface-panel-glass);
+    backdrop-filter: blur(18px);
+  }
+
+  .tablet-inspector-toggle__button:hover {
+    border-color: rgba(0, 0, 0, 0.18);
+    background: var(--surface-soft);
+  }
+
+  .tablet-inspector-toggle__button.is-active {
+    background: var(--ink);
+    color: var(--ink-inverse);
+    border-color: var(--ink);
+  }
+
+  .tablet-inspector-toggle__button.is-active:hover {
+    background: rgba(0, 0, 0, 0.86);
   }
 
   .tablet-inspector-panel {
