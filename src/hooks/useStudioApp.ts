@@ -14,7 +14,7 @@ import type {
 } from '../types/studio';
 import type { CropRect } from '../utils/image';
 import {
-  buildBeadNoiseCleanupMap,
+  buildBeadNoiseCleanupPlan,
   countBeadUsage,
   mapColorToBeadPalette,
   mapGridToBeadPalette,
@@ -608,6 +608,11 @@ export function useStudioApp(): UseStudioAppResult {
           return;
         }
 
+        if (activeScenario === 'crochet' && crochetExportMode === 'crochet-rows') {
+          window.print();
+          return;
+        }
+
         if (activeScenario === 'beads') {
           printScenarioExport({
             scenario: 'beads',
@@ -639,16 +644,16 @@ export function useStudioApp(): UseStudioAppResult {
           return;
         }
 
-        const replacements = buildBeadNoiseCleanupMap(derived.activeGrid, 3);
+        const replacements = buildBeadNoiseCleanupPlan(derived.activeGrid, 3);
 
-        if (replacements.size === 0) {
+        if (replacements.length === 0) {
           return;
         }
 
         dispatchCommand({
-          type: 'remapBeadColors',
+          type: 'cleanupBeadNoise',
           brand: beadBrand,
-          replacements: [...replacements.entries()].map(([from, to]) => ({ from, to })),
+          replacements,
         });
       },
       paintCell: (x, y, color) =>

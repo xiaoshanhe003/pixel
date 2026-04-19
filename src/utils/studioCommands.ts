@@ -19,6 +19,7 @@ import {
   moveLayerToIndex,
   renameLayer,
   replaceActiveLayerCell,
+  cleanupActiveLayerBeadNoise,
   remapActiveLayerBeadColors,
   scaleActiveLayerSelection,
   setLayerOpacity,
@@ -57,6 +58,11 @@ export type StudioCommand =
       type: 'remapBeadColors';
       brand: BeadBrand;
       replacements: Array<{ from: string; to: string }>;
+    }
+  | {
+      type: 'cleanupBeadNoise';
+      brand: BeadBrand;
+      replacements: Array<{ x: number; y: number; from: string; to: string }>;
     }
   | {
       type: 'drawLine';
@@ -160,6 +166,8 @@ export function executeStudioCommand(
         command.brand,
         new Map(command.replacements.map(({ from, to }) => [from.trim().toLowerCase(), to.trim().toLowerCase()])),
       );
+    case 'cleanupBeadNoise':
+      return cleanupActiveLayerBeadNoise(document, command.brand, command.replacements);
     case 'drawLine':
       return drawLineOnActiveLayer(
         document,

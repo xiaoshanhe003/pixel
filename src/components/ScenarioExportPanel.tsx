@@ -89,6 +89,24 @@ export default function ScenarioExportPanel({
           <h2>{isBeadScenario ? '拼豆图纸' : '钩织图纸'}</h2>
         </div>
         <div className="panel__header-actions export-panel__actions">
+          {!isBeadScenario ? (
+            <>
+              <button
+                type="button"
+                className={`chip-button${exportMode === 'crochet-chart' ? ' is-active' : ''}`}
+                onClick={() => onExportModeChange('crochet-chart')}
+              >
+                图纸
+              </button>
+              <button
+                type="button"
+                className={`chip-button${exportMode === 'crochet-rows' ? ' is-active' : ''}`}
+                onClick={() => onExportModeChange('crochet-rows')}
+              >
+                行列说明
+              </button>
+            </>
+          ) : null}
           <Button
             variant="secondary"
             className="export-print-button"

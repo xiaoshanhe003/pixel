@@ -13,6 +13,13 @@ export type BeadColorGroup = {
   colors: BeadColor[];
 };
 
+export type BeadNoiseCleanupReplacement = {
+  x: number;
+  y: number;
+  from: string;
+  to: string;
+};
+
 const EDITOR_SWATCH_MIN_DISTANCE = 72;
 const BEAD_SERIES_DESCRIPTIONS: Partial<Record<BeadBrand, Record<string, string>>> = {
   mard: {
@@ -210,36 +217,133 @@ export function buildBeadNoiseCleanupMap(
   grid: PixelGrid,
   maxCount = 3,
 ): Map<string, string> {
-  const counts = new Map<string, number>();
+  const replacements = buildBeadNoiseCleanupPlan(grid, maxCount);
+  const replacementByColor = new Map<string, string>();
+
+  for (const replacement of replacements) {
+    const existing = replacementByColor.get(replacement.from);
+
+    if (existing && existing !== replacement.to) {
+      continue;
+    }
+
+    replacementByColor.set(replacement.from, replacement.to);
+  }
+
+  return replacementByColor;
+}
+
+export function buildBeadNoiseCleanupPlan(
+  grid: PixelGrid,
+  maxComponentSize = 3,
+): BeadNoiseCleanupReplacement[] {
+  const colorByPoint = new Map<string, string>();
 
   for (const cell of grid.cells) {
     if (!cell.color) {
       continue;
     }
 
-    const normalized = cell.color.trim().toLowerCase();
-    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    colorByPoint.set(`${cell.x}:${cell.y}`, cell.color.trim().toLowerCase());
   }
 
-  const colors = [...counts.keys()];
-  const stableColors = colors.filter((color) => (counts.get(color) ?? 0) > maxCount);
-  const replacements = new Map<string, string>();
+  const visited = new Set<string>();
+  const replacements: BeadNoiseCleanupReplacement[] = [];
 
-  for (const color of colors) {
-    if ((counts.get(color) ?? 0) > maxCount) {
+  for (const cell of grid.cells) {
+    if (!cell.color) {
       continue;
     }
 
-    const candidatePalette =
-      stableColors.filter((candidate) => candidate !== color).length > 0
-        ? stableColors.filter((candidate) => candidate !== color)
-        : colors.filter((candidate) => candidate !== color);
+    const startKey = `${cell.x}:${cell.y}`;
 
-    if (candidatePalette.length === 0) {
+    if (visited.has(startKey)) {
       continue;
     }
 
-    replacements.set(color, findNearestPaletteMatch(hexToRgb(color), candidatePalette).color);
+    const componentColor = cell.color.trim().toLowerCase();
+    const queue = [{ x: cell.x, y: cell.y }];
+    const component: Array<{ x: number; y: number }> = [];
+    const neighborCounts = new Map<string, number>();
+
+    while (queue.length > 0) {
+      const current = queue.shift() as { x: number; y: number };
+      const key = `${current.x}:${current.y}`;
+
+      if (visited.has(key)) {
+        continue;
+      }
+
+      visited.add(key);
+
+      if (colorByPoint.get(key) !== componentColor) {
+        continue;
+      }
+
+      component.push(current);
+
+      const neighbors = [
+        { x: current.x - 1, y: current.y },
+        { x: current.x + 1, y: current.y },
+        { x: current.x, y: current.y - 1 },
+        { x: current.x, y: current.y + 1 },
+      ];
+
+      for (const neighbor of neighbors) {
+        if (
+          neighbor.x < 0 ||
+          neighbor.y < 0 ||
+          neighbor.x >= grid.width ||
+          neighbor.y >= grid.height
+        ) {
+          continue;
+        }
+
+        const neighborKey = `${neighbor.x}:${neighbor.y}`;
+        const neighborColor = colorByPoint.get(neighborKey);
+
+        if (neighborColor === componentColor) {
+          if (!visited.has(neighborKey)) {
+            queue.push(neighbor);
+          }
+          continue;
+        }
+
+        if (!neighborColor) {
+          continue;
+        }
+
+        neighborCounts.set(neighborColor, (neighborCounts.get(neighborColor) ?? 0) + 1);
+      }
+    }
+
+    if (component.length === 0 || component.length > maxComponentSize || neighborCounts.size === 0) {
+      continue;
+    }
+
+    const candidatePalette = [...neighborCounts.keys()];
+    const candidate = candidatePalette.sort((left, right) => {
+      const countDelta = (neighborCounts.get(right) ?? 0) - (neighborCounts.get(left) ?? 0);
+
+      if (countDelta !== 0) {
+        return countDelta;
+      }
+
+      return getRgbDistance(componentColor, left) - getRgbDistance(componentColor, right);
+    })[0];
+
+    if (!candidate || candidate === componentColor) {
+      continue;
+    }
+
+    for (const point of component) {
+      replacements.push({
+        x: point.x,
+        y: point.y,
+        from: componentColor,
+        to: candidate,
+      });
+    }
   }
 
   return replacements;

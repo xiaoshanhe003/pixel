@@ -161,11 +161,11 @@ function toPinyinKey(colorName: string): string {
     .join('');
 }
 
-function buildMarkMap(colorNames: string[]): Map<string, string> {
-  const markByName = new Map<string, string>();
+function buildMarkMap(entries: Array<{ color: string; colorName: string }>): Map<string, string> {
+  const markByColor = new Map<string, string>();
   const usedMarks = new Set<string>();
 
-  for (const colorName of colorNames) {
+  for (const { color, colorName } of entries) {
     const pinyin = toPinyinKey(colorName);
     let mark = '';
     const candidates = new Set<string>();
@@ -203,10 +203,10 @@ function buildMarkMap(colorNames: string[]): Map<string, string> {
     }
 
     usedMarks.add(mark);
-    markByName.set(colorName, mark);
+    markByColor.set(color, mark);
   }
 
-  return markByName;
+  return markByColor;
 }
 
 export function analyzeCrochetPattern(grid: PixelGrid): CrochetPatternAnalysis {
@@ -222,54 +222,33 @@ export function analyzeCrochetPattern(grid: PixelGrid): CrochetPatternAnalysis {
   const colorNameByColor = new Map(
     orderedColors.map((color) => [color, getCrochetColorName(color)]),
   );
-  const groupedLegend = new Map<
-    string,
-    {
-      color: string;
-      count: number;
-    }
-  >();
-
-  for (const color of orderedColors) {
-    const colorName = colorNameByColor.get(color) ?? '灰';
-    const count = grid.cells.filter((cell) => cell.color === color).length;
-    const existing = groupedLegend.get(colorName);
-
-    if (existing) {
-      existing.count += count;
-      continue;
-    }
-
-    groupedLegend.set(colorName, {
+  const countByColor = new Map(
+    orderedColors.map((color) => [
       color,
-      count,
-    });
-  }
-
-  const uniqueColorNames = [...groupedLegend.keys()];
-  const markByName = buildMarkMap(uniqueColorNames);
-  const legend = uniqueColorNames.map((colorName, index) => {
-    const item = groupedLegend.get(colorName) as { color: string; count: number };
+      grid.cells.filter((cell) => cell.color === color).length,
+    ]),
+  );
+  const markByColor = buildMarkMap(
+    orderedColors.map((color) => ({
+      color,
+      colorName: colorNameByColor.get(color) ?? '灰',
+    })),
+  );
+  const legend = orderedColors.map((color, index) => {
+    const colorName = colorNameByColor.get(color) ?? '灰';
 
     return {
-      color: item.color,
+      color,
       symbol: CROCHET_SYMBOLS[index] ?? `C${index + 1}`,
-      mark: markByName.get(colorName) ?? `C${index + 1}`,
+      mark: markByColor.get(color) ?? `C${index + 1}`,
       colorName,
-      count: item.count,
+      count: countByColor.get(color) ?? 0,
     };
   });
   const symbolByColor = new Map(
     orderedColors.map((color) => {
-      const colorName = colorNameByColor.get(color) ?? '灰';
-      const legendItem = legend.find((item) => item.colorName === colorName);
+      const legendItem = legend.find((item) => item.color === color);
       return [color, legendItem?.symbol ?? '?'] as const;
-    }),
-  );
-  const markByColor = new Map(
-    orderedColors.map((color) => {
-      const colorName = colorNameByColor.get(color) ?? '灰';
-      return [color, markByName.get(colorName) ?? '?'] as const;
     }),
   );
   const rows = Array.from({ length: grid.height }, (_, index) => {
