@@ -13,15 +13,13 @@ import {
 describe('App output modes', () => {
   it('maps the bead scenario to a brand palette and shows bead counts', async () => {
     renderApp();
-    await uploadMockImage('beads.png');
-
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
     await userEvent.selectOptions(
-      screen.getByRole('combobox', { name: /选择拼豆品牌映射/i }),
+      screen.getByRole('combobox', { name: /^拼豆色板$/i }),
       'perler',
     );
+    await uploadMockImage('beads.png');
 
-    expect(screen.getByText(/拼豆色板/i)).toBeInTheDocument();
     expect(screen.getAllByText(/255 颗/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: /^拼豆图纸$/i })).toBeInTheDocument();
     expect(screen.queryByText(/Perler 映射/i)).not.toBeInTheDocument();

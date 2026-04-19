@@ -20,6 +20,10 @@ type ConversionControlsProps = {
   beadBrand: BeadBrand;
   onChange: (nextValue: ConversionOptions) => void;
   onBeadBrandChange: (brand: BeadBrand) => void;
+  title?: string;
+  className?: string;
+  bodyClassName?: string;
+  plain?: boolean;
 };
 
 export default function ConversionControls({
@@ -28,6 +32,10 @@ export default function ConversionControls({
   beadBrand,
   onChange,
   onBeadBrandChange,
+  title = '项目设置',
+  className = '',
+  bodyClassName = '',
+  plain = false,
 }: ConversionControlsProps) {
   const updateValue = <Key extends keyof ConversionOptions>(
     key: Key,
@@ -42,13 +50,8 @@ export default function ConversionControls({
   const imageKindPreset = inferImageKindPreset(value);
   const framingPreset = inferFramingPreset(value);
 
-  return (
-    <section className="controls-card" aria-label="项目设置">
-      <div className="panel__header">
-        <h2>项目设置</h2>
-      </div>
-
-      <div className="controls-card__groups">
+  const groups = (
+    <div className={plain ? `conversion-controls__groups ${bodyClassName}`.trim() : `controls-card__groups ${bodyClassName}`.trim()}>
         <fieldset className="size-control">
           <legend>网格尺寸</legend>
           <DropdownField
@@ -63,7 +66,7 @@ export default function ConversionControls({
           />
         </fieldset>
 
-        {activeScenario !== 'beads' ? (
+        {plain && activeScenario !== 'beads' ? (
           <fieldset className="size-control">
             <legend>颜色数量</legend>
             <DropdownField
@@ -79,56 +82,60 @@ export default function ConversionControls({
           </fieldset>
         ) : null}
 
-        <fieldset className="toggle-grid">
-          <legend>转绘偏好</legend>
-          <DropdownField
-            label="细节等级"
-            value={detailPreset}
-            options={[
-              { label: '简洁', value: 'clean' satisfies DetailPreset },
-              { label: '平衡', value: 'balanced' satisfies DetailPreset },
-              { label: '细节', value: 'detailed' satisfies DetailPreset },
-            ]}
-            onChange={(preset) => onChange(applyDetailPreset(value, preset as DetailPreset))}
-          />
-          <DropdownField
-            label="图像类型"
-            value={imageKindPreset}
-            options={[
-              { label: '通用图像', value: 'general' satisfies ImageKindPreset },
-              {
-                label: '角色线稿',
-                value: 'line-art-character' satisfies ImageKindPreset,
-              },
-            ]}
-            onChange={(preset) =>
-              onChange(applyImageKindPreset(value, preset as ImageKindPreset))
-            }
-          />
-          <DropdownField
-            label="画面构图"
-            value={framingPreset}
-            options={[
-              {
-                label: '完整构图',
-                value: 'full-composition' satisfies FramingPreset,
-              },
-              {
-                label: '主体突出',
-                value: 'subject-focus' satisfies FramingPreset,
-              },
-            ]}
-            onChange={(preset) =>
-              onChange(applyFramingPreset(value, preset as FramingPreset))
-            }
-          />
-        </fieldset>
+        {plain ? (
+          <fieldset className="toggle-grid">
+            <legend>转绘偏好</legend>
+            <DropdownField
+              label="细节等级"
+              value={detailPreset}
+              options={[
+                { label: '简洁', value: 'clean' satisfies DetailPreset },
+                { label: '平衡', value: 'balanced' satisfies DetailPreset },
+                { label: '细节', value: 'detailed' satisfies DetailPreset },
+              ]}
+              onChange={(preset) => onChange(applyDetailPreset(value, preset as DetailPreset))}
+            />
+            <DropdownField
+              label="图像类型"
+              value={imageKindPreset}
+              options={[
+                { label: '通用图像', value: 'general' satisfies ImageKindPreset },
+                {
+                  label: '角色线稿',
+                  value: 'line-art-character' satisfies ImageKindPreset,
+                },
+              ]}
+              onChange={(preset) =>
+                onChange(applyImageKindPreset(value, preset as ImageKindPreset))
+              }
+            />
+            <DropdownField
+              label="画面构图"
+              value={framingPreset}
+              options={[
+                {
+                  label: '完整构图',
+                  value: 'full-composition' satisfies FramingPreset,
+                },
+                {
+                  label: '主体突出',
+                  value: 'subject-focus' satisfies FramingPreset,
+                },
+              ]}
+              onChange={(preset) =>
+                onChange(applyFramingPreset(value, preset as FramingPreset))
+              }
+            />
+          </fieldset>
+        ) : null}
 
         {activeScenario === 'beads' ? (
           <fieldset className="size-control">
             <legend>拼豆色板</legend>
             <DropdownField
-              label="选择拼豆品牌映射"
+              label="拼豆色板"
+              hideLabel
+              ariaLabel="拼豆色板"
               value={beadBrand}
               options={BEAD_BRAND_ORDER.map((brandId) => ({
                 value: brandId,
@@ -139,6 +146,23 @@ export default function ConversionControls({
           </fieldset>
         ) : null}
       </div>
+  );
+
+  if (plain) {
+    return (
+      <div className={`conversion-controls conversion-controls--plain ${className}`.trim()}>
+        {groups}
+      </div>
+    );
+  }
+
+  return (
+    <section className={`controls-card ${className}`.trim()} aria-label={title}>
+      <div className="panel__header">
+        <h2>{title}</h2>
+      </div>
+
+      {groups}
     </section>
   );
 }

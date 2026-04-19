@@ -235,7 +235,8 @@
   padding: var(--space-4) var(--space-8) var(--space-8);
 }
 
-.controls-card__groups {
+.controls-card__groups,
+.conversion-controls__groups {
   padding: var(--space-4) var(--space-8) var(--space-8);
 }
 

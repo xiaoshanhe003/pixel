@@ -250,6 +250,7 @@
 }
 
 .controls-card__groups,
+.conversion-controls__groups,
 .toggle-grid {
   display: grid;
   gap: var(--space-7);
@@ -337,6 +338,12 @@
 }
 
 .size-control {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.toggle-grid {
   margin: 0;
   padding: 0;
   border: 0;

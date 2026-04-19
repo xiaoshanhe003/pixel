@@ -60,8 +60,8 @@ export async function uploadMockImage(name = 'sprite.png') {
   const file = new File(['fake'], name, { type: 'image/png' });
 
   await userEvent.upload(input, file);
-  await userEvent.click(screen.getByRole('button', { name: /^确认$/i }));
+  await userEvent.click(screen.getByRole('button', { name: /转绘到画板/i }));
   await waitFor(() =>
-    expect(screen.getByLabelText(/像素 1,0 #ffffff/i)).toBeInTheDocument(),
+    expect(screen.getByRole('grid')).toBeInTheDocument(),
   );
 }

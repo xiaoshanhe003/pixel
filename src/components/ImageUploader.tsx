@@ -1,15 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from './ui/button';
-import { Icon } from './ui/Icon';
+import type { BeadBrand } from '../data/beadPalettes';
+import type { ConversionOptions } from '../types/pixel';
+import type { ScenarioId } from '../types/studio';
 import type { SquareCrop } from '../utils/image';
 import { cropImageFile, fileToImageElement } from '../utils/image';
+import { Button } from './ui/button';
+import ConversionControls from './ConversionControls';
+import { Icon } from './ui/Icon';
 
 type ImageUploaderProps = {
-  selectedFile: File | null;
-  onFileSelected: (file: File | null) => void;
+  activeScenario: ScenarioId;
+  sourceFile: File | null;
+  appliedFile: File | null;
+  appliedCrop: SquareCrop | null;
   previewUrl?: string;
+  conversionOptions: ConversionOptions;
+  beadBrand: BeadBrand;
+  onApply: (params: {
+    sourceFile: File;
+    appliedFile: File;
+    crop: SquareCrop | null;
+    conversionOptions: ConversionOptions;
+    beadBrand: BeadBrand;
+  }) => void;
+  onClear: () => void;
 };
 
 type ImageMetrics = {
@@ -24,6 +40,8 @@ type RenderFrame = {
   height: number;
 };
 
+type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
 const MIN_CROP_SIZE = 48;
 
 function buildCenteredCrop(metrics: ImageMetrics): SquareCrop {
@@ -36,12 +54,18 @@ function buildCenteredCrop(metrics: ImageMetrics): SquareCrop {
   };
 }
 
-function isSameCrop(left: SquareCrop | null, right: SquareCrop | null): boolean {
-  if (!left || !right) {
-    return false;
-  }
+function normalizeCrop(crop: SquareCrop, metrics: ImageMetrics): SquareCrop {
+  const maxSize = Math.min(
+    metrics.naturalWidth,
+    metrics.naturalHeight,
+  );
+  const nextSize = Math.max(MIN_CROP_SIZE, Math.min(crop.size, maxSize));
 
-  return left.x === right.x && left.y === right.y && left.size === right.size;
+  return {
+    x: Math.max(0, Math.min(crop.x, metrics.naturalWidth - nextSize)),
+    y: Math.max(0, Math.min(crop.y, metrics.naturalHeight - nextSize)),
+    size: nextSize,
+  };
 }
 
 function getImageRenderFrame(image: HTMLImageElement): RenderFrame {
@@ -81,14 +105,21 @@ function getImageRenderFrame(image: HTMLImageElement): RenderFrame {
 }
 
 export default function ImageUploader({
-  selectedFile,
-  onFileSelected,
+  activeScenario,
+  sourceFile,
+  appliedFile,
+  appliedCrop,
   previewUrl,
+  conversionOptions,
+  beadBrand,
+  onApply,
+  onClear,
 }: ImageUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const interactionRef = useRef<{
     mode: 'move' | 'resize';
+    handle?: ResizeHandle;
     pointerId: number;
     startX: number;
     startY: number;
@@ -96,31 +127,32 @@ export default function ImageUploader({
     frame: RenderFrame;
     metrics: ImageMetrics;
   } | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingSourceFile, setPendingSourceFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string>();
-  const [isCropping, setIsCropping] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [crop, setCrop] = useState<SquareCrop | null>(null);
+  const [initialCrop, setInitialCrop] = useState<SquareCrop | null>(null);
   const [metrics, setMetrics] = useState<ImageMetrics | null>(null);
-  const defaultCrop = useMemo(
-    () => (metrics ? buildCenteredCrop(metrics) : null),
-    [metrics],
-  );
+  const [draftOptions, setDraftOptions] = useState<ConversionOptions>(conversionOptions);
+  const [draftBeadBrand, setDraftBeadBrand] = useState<BeadBrand>(beadBrand);
 
   useEffect(() => {
-    if (!pendingFile) {
+    if (!pendingSourceFile) {
       setPendingPreviewUrl(undefined);
       setCrop(null);
       setMetrics(null);
+      setInitialCrop(null);
       return;
     }
 
-    const nextPreviewUrl = URL.createObjectURL(pendingFile);
+    const nextPreviewUrl = URL.createObjectURL(pendingSourceFile);
     let cancelled = false;
 
     setPendingPreviewUrl(nextPreviewUrl);
     void (async () => {
       try {
-        const image = await fileToImageElement(pendingFile);
+        const image = await fileToImageElement(pendingSourceFile);
 
         if (cancelled) {
           return;
@@ -130,12 +162,18 @@ export default function ImageUploader({
           naturalWidth: image.naturalWidth || image.width,
           naturalHeight: image.naturalHeight || image.height,
         };
+        const centeredCrop = buildCenteredCrop(nextMetrics);
 
         setMetrics(nextMetrics);
-        setCrop(buildCenteredCrop(nextMetrics));
+        setCrop(
+          initialCrop
+            ? normalizeCrop(initialCrop, nextMetrics)
+            : centeredCrop,
+        );
       } catch {
         if (!cancelled) {
-          setPendingFile(null);
+          setPendingSourceFile(null);
+          setIsDialogOpen(false);
         }
       }
     })();
@@ -144,30 +182,21 @@ export default function ImageUploader({
       cancelled = true;
       URL.revokeObjectURL(nextPreviewUrl);
     };
-  }, [pendingFile]);
+  }, [initialCrop, pendingSourceFile]);
 
   useEffect(() => {
-    if (!selectedFile) {
-      return;
-    }
-
-    setPendingFile(null);
-    setIsCropping(false);
-  }, [selectedFile]);
-
-  useEffect(() => {
-    if (!isCropping) {
+    if (!isDialogOpen) {
       return;
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') {
+      if (event.key !== 'Escape' || isApplying) {
         return;
       }
 
       interactionRef.current = null;
-      setPendingFile(null);
-      setIsCropping(false);
+      setPendingSourceFile(null);
+      setIsDialogOpen(false);
     }
 
     window.addEventListener('keydown', handleKeyDown);
@@ -175,7 +204,7 @@ export default function ImageUploader({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isCropping]);
+  }, [isApplying, isDialogOpen]);
 
   useEffect(() => {
     function handlePointerMove(event: PointerEvent) {
@@ -202,21 +231,70 @@ export default function ImageUploader({
         return;
       }
 
-      const limitByWidth = current.metrics.naturalWidth - current.crop.x;
-      const limitByHeight = current.metrics.naturalHeight - current.crop.y;
-      const maxSize = Math.min(limitByWidth, limitByHeight);
+      const oppositeX =
+        current.handle === 'top-left' || current.handle === 'bottom-left'
+          ? current.crop.x + current.crop.size
+          : current.crop.x;
+      const oppositeY =
+        current.handle === 'top-left' || current.handle === 'top-right'
+          ? current.crop.y + current.crop.size
+          : current.crop.y;
+
+      const pointerX =
+        current.handle === 'top-left' || current.handle === 'bottom-left'
+          ? current.crop.x + deltaX
+          : current.crop.x + current.crop.size + deltaX;
+      const pointerY =
+        current.handle === 'top-left' || current.handle === 'top-right'
+          ? current.crop.y + deltaY
+          : current.crop.y + current.crop.size + deltaY;
+
+      const rawSize = Math.max(
+        Math.abs(oppositeX - pointerX),
+        Math.abs(oppositeY - pointerY),
+      );
+      const maxAllowedSize =
+        current.handle === 'top-left'
+          ? Math.min(oppositeX, oppositeY)
+          : current.handle === 'top-right'
+            ? Math.min(current.metrics.naturalWidth - oppositeX, oppositeY)
+            : current.handle === 'bottom-left'
+              ? Math.min(oppositeX, current.metrics.naturalHeight - oppositeY)
+              : Math.min(
+                  current.metrics.naturalWidth - oppositeX,
+                  current.metrics.naturalHeight - oppositeY,
+                );
       const nextSize = Math.max(
         MIN_CROP_SIZE,
-        Math.min(
-          Math.round(current.crop.size + Math.max(deltaX, deltaY)),
-          maxSize,
-        ),
+        Math.min(Math.round(rawSize), maxAllowedSize),
       );
 
-      setCrop({
-        ...current.crop,
-        size: nextSize,
-      });
+      const nextCrop =
+        current.handle === 'top-left'
+          ? {
+              x: oppositeX - nextSize,
+              y: oppositeY - nextSize,
+              size: nextSize,
+            }
+          : current.handle === 'top-right'
+            ? {
+                x: oppositeX,
+                y: oppositeY - nextSize,
+                size: nextSize,
+              }
+            : current.handle === 'bottom-left'
+              ? {
+                  x: oppositeX - nextSize,
+                  y: oppositeY,
+                  size: nextSize,
+                }
+              : {
+                  x: oppositeX,
+                  y: oppositeY,
+                  size: nextSize,
+                };
+
+      setCrop(nextCrop);
     }
 
     function handlePointerUp(event: PointerEvent) {
@@ -251,11 +329,12 @@ export default function ImageUploader({
       top: frame.top + crop.y * scale,
       size: crop.size * scale,
     };
-  }, [crop, metrics, pendingPreviewUrl, isCropping]);
+  }, [crop, metrics, pendingPreviewUrl, isDialogOpen]);
 
   const startInteraction = (
     event: ReactPointerEvent<HTMLElement>,
     mode: 'move' | 'resize',
+    handle?: ResizeHandle,
   ) => {
     if (!crop || !metrics || !cropImageRef.current) {
       return;
@@ -263,6 +342,7 @@ export default function ImageUploader({
 
     interactionRef.current = {
       mode,
+      handle,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -272,28 +352,51 @@ export default function ImageUploader({
     };
   };
 
-  const commitPendingFile = async () => {
-    if (!pendingFile) {
+  const openDialog = (file: File, nextCrop: SquareCrop | null) => {
+    setPendingSourceFile(file);
+    setDraftOptions(conversionOptions);
+    setDraftBeadBrand(beadBrand);
+    setInitialCrop(nextCrop);
+    setIsDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    if (isApplying) {
       return;
     }
 
-    onFileSelected(pendingFile);
+    interactionRef.current = null;
+    setPendingSourceFile(null);
+    setIsDialogOpen(false);
   };
 
-  const applyCrop = async () => {
-    if (!pendingFile || !crop) {
+  const applySettings = async () => {
+    if (!pendingSourceFile) {
       return;
     }
 
-    const nextFile = await cropImageFile(pendingFile, crop);
-    setPendingFile(nextFile);
-    onFileSelected(nextFile);
-    setIsCropping(false);
+    setIsApplying(true);
+
+    try {
+      const nextAppliedFile = crop
+        ? await cropImageFile(pendingSourceFile, crop)
+        : pendingSourceFile;
+
+      onApply({
+        sourceFile: pendingSourceFile,
+        appliedFile: nextAppliedFile,
+        crop,
+        conversionOptions: draftOptions,
+        beadBrand: draftBeadBrand,
+      });
+      setIsDialogOpen(false);
+      setPendingSourceFile(null);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
-  const previewSrc = pendingPreviewUrl ?? previewUrl;
-  const canCrop = Boolean(selectedFile || pendingFile);
-  const shouldApplyCrop = !isSameCrop(crop, defaultCrop);
+  const hasAppliedResult = Boolean(appliedFile && previewUrl);
 
   return (
     <section className="uploader-stage" aria-label="图片上传区域">
@@ -311,89 +414,42 @@ export default function ImageUploader({
               return;
             }
 
-            setPendingFile(file);
-            setIsCropping(true);
+            openDialog(file, null);
             event.currentTarget.value = '';
           }}
         />
 
-        {previewSrc ? (
+        {hasAppliedResult ? (
           <>
-            {isCropping && pendingPreviewUrl ? (
-              <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
-                <img
-                  ref={cropImageRef}
-                  className="source-preview__image"
-                  src={pendingPreviewUrl}
-                  alt="待裁切原图预览"
-                />
-                {cropFrame ? (
-                  <div
-                    className="crop-selection"
-                    style={{
-                      left: `${cropFrame.left}px`,
-                      top: `${cropFrame.top}px`,
-                      width: `${cropFrame.size}px`,
-                      height: `${cropFrame.size}px`,
-                    }}
-                    onPointerDown={(event) => startInteraction(event, 'move')}
-                  >
-                    <span className="crop-selection__rule crop-selection__rule--horizontal" />
-                    <span className="crop-selection__rule crop-selection__rule--vertical" />
-                    <button
-                      type="button"
-                      className="crop-selection__handle"
-                      aria-label="调整裁切范围"
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        startInteraction(event, 'resize');
-                      }}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <div className="source-preview-frame">
-                  <img
-                    className="source-preview"
-                    src={previewSrc}
-                    alt="已上传原图预览"
-                  />
-                </div>
+            <div className="source-preview-frame">
+              <img
+                className="source-preview"
+                src={previewUrl}
+                alt="已上传原图预览"
+              />
+            </div>
 
-                <div className="uploader-actions uploader-actions--stacked">
-                  {canCrop && !isCropping ? (
-                    <Button
-                      variant="secondary"
-                      className="source-action source-action--primary"
-                      icon={<Icon name="crop" />}
-                      onClick={() => {
-                        setPendingFile(selectedFile);
-                        setIsCropping(true);
-                      }}
-                    >
-                      裁切
-                    </Button>
-                  ) : null}
+            <div className="uploader-actions uploader-actions--stacked">
+              {sourceFile ? (
+                <Button
+                  variant="secondary"
+                  className="source-action source-action--primary"
+                  icon={<Icon name="crop" />}
+                  onClick={() => openDialog(sourceFile, appliedCrop)}
+                >
+                  修改设置
+                </Button>
+              ) : null}
 
-                  {selectedFile && !isCropping ? (
-                    <Button
-                      variant="secondary"
-                      className="source-action source-action--icon-only"
-                      icon={<Icon name="x" />}
-                      iconOnly
-                      aria-label="删除"
-                      onClick={() => {
-                        setPendingFile(null);
-                        setIsCropping(false);
-                        onFileSelected(null);
-                      }}
-                    />
-                  ) : null}
-                </div>
-              </>
-            )}
+              <Button
+                variant="secondary"
+                className="source-action source-action--icon-only"
+                icon={<Icon name="x" />}
+                iconOnly
+                aria-label="删除"
+                onClick={onClear}
+              />
+            </div>
           </>
         ) : (
           <label className="uploader uploader--card" htmlFor="image-upload">
@@ -406,98 +462,109 @@ export default function ImageUploader({
         )}
       </div>
 
-      {isCropping && pendingPreviewUrl
+      {isDialogOpen && pendingPreviewUrl
         ? createPortal(
             <div
               className="crop-dialog-backdrop"
               role="presentation"
-              onClick={() => {
-                setPendingFile(null);
-                setIsCropping(false);
-              }}
+              onClick={closeDialog}
             >
               <div
-                className="crop-dialog"
+                className="crop-dialog crop-dialog--split"
                 role="dialog"
                 aria-modal="true"
-                aria-label="图片裁切"
+                aria-label="裁切并应用转绘设置"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="crop-dialog__header">
-                  <div>
-                    <p className="crop-dialog__eyebrow">上传前处理</p>
-                    <h3 className="crop-dialog__title">裁切图片</h3>
-                  </div>
+                <div className="crop-dialog__dialog-header">
+                  <h3 className="crop-dialog__dialog-title">裁切图片</h3>
                   <Button
                     variant="tertiary"
-                    onClick={() => {
-                      setPendingFile(null);
-                      setIsCropping(false);
-                    }}
-                  >
-                    关闭
-                  </Button>
-                </div>
-
-                <p className="crop-dialog__hint">拖动选区调整构图，拖拽右下角圆点缩放裁切范围。</p>
-
-                <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
-                  <img
-                    ref={cropImageRef}
-                    className="source-preview__image"
-                    src={pendingPreviewUrl}
-                    alt="待裁切原图预览"
+                    icon={<Icon name="x" />}
+                    iconOnly
+                    className="crop-dialog__close"
+                    aria-label="关闭弹窗"
+                    onClick={closeDialog}
                   />
-                  {cropFrame ? (
-                    <div
-                      className="crop-selection"
-                      style={{
-                        left: `${cropFrame.left}px`,
-                        top: `${cropFrame.top}px`,
-                        width: `${cropFrame.size}px`,
-                        height: `${cropFrame.size}px`,
-                      }}
-                      onPointerDown={(event) => startInteraction(event, 'move')}
-                    >
-                      <span className="crop-selection__rule crop-selection__rule--horizontal" />
-                      <span className="crop-selection__rule crop-selection__rule--vertical" />
-                      <button
-                        type="button"
-                        className="crop-selection__handle"
-                        aria-label="调整裁切范围"
-                        onPointerDown={(event) => {
-                          event.stopPropagation();
-                          startInteraction(event, 'resize');
-                        }}
-                      />
-                    </div>
-                  ) : null}
                 </div>
 
-                <div className="crop-dialog__footer">
-                  <Button
-                    variant="tertiary"
-                    onClick={() => {
-                      setPendingFile(null);
-                      setIsCropping(false);
-                    }}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      if (shouldApplyCrop) {
-                        void applyCrop();
-                        return;
-                      }
+                <div className="crop-dialog__split-main">
+                  <div className="crop-dialog__workspace">
+                    <div className="source-preview source-preview--cropper" aria-label="上传前裁切">
+                      <img
+                        ref={cropImageRef}
+                        className="source-preview__image"
+                        src={pendingPreviewUrl}
+                        alt="待裁切原图预览"
+                      />
+                      {cropFrame ? (
+                        <div
+                          className="crop-selection"
+                          style={{
+                            left: `${cropFrame.left}px`,
+                            top: `${cropFrame.top}px`,
+                            width: `${cropFrame.size}px`,
+                            height: `${cropFrame.size}px`,
+                          }}
+                          onPointerDown={(event) => startInteraction(event, 'move')}
+                        >
+                          <span className="crop-selection__rule crop-selection__rule--horizontal" />
+                          <span className="crop-selection__rule crop-selection__rule--vertical" />
+                          {(
+                            [
+                              'top-left',
+                              'top-right',
+                              'bottom-left',
+                              'bottom-right',
+                            ] as ResizeHandle[]
+                          ).map((handle) => (
+                            <button
+                              key={handle}
+                              type="button"
+                              className={`crop-selection__handle crop-selection__handle--${handle}`}
+                              aria-label="调整裁切范围"
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                startInteraction(event, 'resize', handle);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
 
-                      void commitPendingFile();
-                      setIsCropping(false);
-                    }}
-                  >
-                    确认
-                  </Button>
+                  <aside className="crop-dialog__settings">
+                    <div className="crop-dialog__settings-header">
+                      <h3 className="crop-dialog__title">转绘偏好</h3>
+                    </div>
+
+                    <ConversionControls
+                      plain
+                      className="crop-dialog__controls"
+                      bodyClassName="crop-dialog__controls-body"
+                      activeScenario={activeScenario}
+                      value={draftOptions}
+                      beadBrand={draftBeadBrand}
+                      onChange={setDraftOptions}
+                      onBeadBrandChange={setDraftBeadBrand}
+                    />
+
+                    <div className="crop-dialog__footer crop-dialog__footer--stacked">
+                      <Button variant="secondary" onClick={closeDialog}>
+                        取消
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          void applySettings();
+                        }}
+                        disabled={isApplying}
+                      >
+                        {isApplying ? '转绘中...' : '转绘到画板'}
+                      </Button>
+                    </div>
+                  </aside>
                 </div>
               </div>
             </div>,

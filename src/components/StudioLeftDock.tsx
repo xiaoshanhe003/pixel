@@ -1,6 +1,7 @@
 import type { BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions } from '../types/pixel';
 import type { ScenarioId } from '../types/studio';
+import type { SquareCrop } from '../utils/image';
 import ConversionControls from './ConversionControls';
 import ImageUploader from './ImageUploader';
 
@@ -8,45 +9,65 @@ type StudioLeftDockProps = {
   activeScenario: ScenarioId;
   conversionOptions: ConversionOptions;
   beadBrand: BeadBrand;
-  selectedFile: File | null;
+  sourceFile: File | null;
+  appliedFile: File | null;
+  appliedCrop: SquareCrop | null;
   previewUrl?: string;
   onConversionOptionsChange: (options: ConversionOptions) => void;
   onBeadBrandChange: (brand: BeadBrand) => void;
-  onFileSelected: (file: File | null) => void;
+  onApplyImageSettings: (params: {
+    sourceFile: File;
+    appliedFile: File;
+    crop: SquareCrop | null;
+    conversionOptions: ConversionOptions;
+    beadBrand: BeadBrand;
+  }) => void;
+  onClearImage: () => void;
 };
 
 export default function StudioLeftDock({
   activeScenario,
   conversionOptions,
   beadBrand,
-  selectedFile,
+  sourceFile,
+  appliedFile,
+  appliedCrop,
   previewUrl,
   onConversionOptionsChange,
   onBeadBrandChange,
-  onFileSelected,
+  onApplyImageSettings,
+  onClearImage,
 }: StudioLeftDockProps) {
   return (
     <aside className="left-dock" aria-label="左侧边栏">
+      {appliedFile ? null : (
+        <ConversionControls
+          activeScenario={activeScenario}
+          value={conversionOptions}
+          beadBrand={beadBrand}
+          onChange={onConversionOptionsChange}
+          onBeadBrandChange={onBeadBrandChange}
+        />
+      )}
+
       <section className="panel panel--dock">
         <div className="panel__header">
           <h2>参考图</h2>
         </div>
         <div className="panel__body panel__body--compact">
           <ImageUploader
-            selectedFile={selectedFile}
-            onFileSelected={onFileSelected}
+            activeScenario={activeScenario}
+            sourceFile={sourceFile}
+            appliedFile={appliedFile}
+            appliedCrop={appliedCrop}
             previewUrl={previewUrl}
+            conversionOptions={conversionOptions}
+            beadBrand={beadBrand}
+            onApply={onApplyImageSettings}
+            onClear={onClearImage}
           />
         </div>
       </section>
-
-      <ConversionControls
-        activeScenario={activeScenario}
-        value={conversionOptions}
-        beadBrand={beadBrand}
-        onChange={onConversionOptionsChange}
-        onBeadBrandChange={onBeadBrandChange}
-      />
     </aside>
   );
 }

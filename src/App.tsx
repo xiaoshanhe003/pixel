@@ -32,11 +32,14 @@ export default function App() {
             activeScenario={studio.activeScenario}
             conversionOptions={controls.conversionOptions}
             beadBrand={output.beadBrand}
-            selectedFile={source.selectedFile}
+            sourceFile={source.sourceFile}
+            appliedFile={source.appliedFile}
+            appliedCrop={source.appliedCrop}
             previewUrl={source.previewUrl}
             onConversionOptionsChange={actions.setConversionOptions}
             onBeadBrandChange={actions.setBeadBrand}
-            onFileSelected={actions.setSelectedFile}
+            onApplyImageSettings={actions.applySourceImage}
+            onClearImage={actions.clearSourceImage}
           />
 
           <section className="canvas-column">

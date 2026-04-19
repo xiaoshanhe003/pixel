@@ -12,6 +12,7 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
+import type { SquareCrop } from '../utils/image';
 import {
   buildBeadNoiseCleanupMap,
   countBeadUsage,
@@ -66,9 +67,11 @@ function clampSelectionToDocument(
 }
 
 type StudioSourceState = {
-  selectedFile: File | null;
+  sourceFile: File | null;
+  appliedFile: File | null;
   previewUrl?: string;
   isProcessingUpload: boolean;
+  appliedCrop: SquareCrop | null;
 };
 
 type StudioOutputState = {
@@ -121,7 +124,14 @@ export type UseStudioAppResult = {
   output: StudioOutputState;
   stats: StudioStats;
   actions: {
-    setSelectedFile: (file: File | null) => void;
+    applySourceImage: (params: {
+      sourceFile: File;
+      appliedFile: File;
+      crop: SquareCrop | null;
+      conversionOptions: ConversionOptions;
+      beadBrand: BeadBrand;
+    }) => void;
+    clearSourceImage: () => void;
     setConversionOptions: (options: ConversionOptions) => void;
     setActiveScenario: (scenarioId: ScenarioId) => void;
     setActiveColor: (color: string) => void;
@@ -188,25 +198,25 @@ function useStudioDocumentSync(params: {
   document: StudioDocument;
   activeScenario: ScenarioId;
   conversionOptions: ConversionOptions;
-  selectedFile: File | null;
+  appliedFile: File | null;
   resetDocument: (document: StudioDocument) => void;
   setDocument: (
     updater: (current: StudioDocument) => StudioDocument,
   ) => void;
 }) {
-  const { document, activeScenario, conversionOptions, selectedFile, resetDocument, setDocument } =
+  const { document, activeScenario, conversionOptions, appliedFile, resetDocument, setDocument } =
     params;
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
 
   useEffect(() => {
-    if (!selectedFile) {
+    if (!appliedFile) {
       setIsProcessingUpload(false);
       setPreviewUrl(undefined);
       return;
     }
 
-    const nextPreviewUrl = URL.createObjectURL(selectedFile);
+    const nextPreviewUrl = URL.createObjectURL(appliedFile);
     let cancelled = false;
 
     setIsProcessingUpload(true);
@@ -214,7 +224,7 @@ function useStudioDocumentSync(params: {
 
     void (async () => {
       try {
-        const image = await fileToImageElement(selectedFile);
+        const image = await fileToImageElement(appliedFile);
         const imageData = imageSourceToImageData(
           image,
           image.naturalWidth || image.width,
@@ -240,10 +250,10 @@ function useStudioDocumentSync(params: {
       setIsProcessingUpload(false);
       URL.revokeObjectURL(nextPreviewUrl);
     };
-  }, [activeScenario, conversionOptions, resetDocument, selectedFile]);
+  }, [activeScenario, appliedFile, conversionOptions, resetDocument]);
 
   useEffect(() => {
-    if (selectedFile) {
+    if (appliedFile) {
       return;
     }
 
@@ -261,7 +271,7 @@ function useStudioDocumentSync(params: {
     document.height,
     document.width,
     resetDocument,
-    selectedFile,
+    appliedFile,
   ]);
 
   useEffect(() => {
@@ -348,7 +358,9 @@ export function useStudioApp(): UseStudioAppResult {
   const [conversionOptions, setConversionOptions] =
     useState<ConversionOptions>(DEFAULT_OPTIONS);
   const [activeScenario, setActiveScenario] = useState<ScenarioId>('pixel');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [appliedFile, setAppliedFile] = useState<File | null>(null);
+  const [appliedCrop, setAppliedCrop] = useState<SquareCrop | null>(null);
   const [history, setHistory] = useState<StudioHistoryState>(() =>
     createStudioHistoryState(createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize)),
   );
@@ -390,7 +402,7 @@ export function useStudioApp(): UseStudioAppResult {
     document,
     activeScenario,
     conversionOptions,
-    selectedFile,
+    appliedFile,
     resetDocument,
     setDocument,
   });
@@ -467,9 +479,11 @@ export function useStudioApp(): UseStudioAppResult {
       canRedo: history.future.length > 0,
     },
     source: {
-      selectedFile,
+      sourceFile,
+      appliedFile,
       previewUrl,
       isProcessingUpload,
+      appliedCrop,
     },
     editor: {
       activeColor: effectiveActiveColor,
@@ -490,7 +504,31 @@ export function useStudioApp(): UseStudioAppResult {
     output: derived.output,
     stats: derived.stats,
     actions: {
-      setSelectedFile,
+      applySourceImage: ({
+        sourceFile: nextSourceFile,
+        appliedFile: nextAppliedFile,
+        crop,
+        conversionOptions: nextConversionOptions,
+        beadBrand: nextBeadBrand,
+      }) => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setSourceFile(nextSourceFile);
+        setAppliedFile(nextAppliedFile);
+        setAppliedCrop(crop);
+        setConversionOptions(nextConversionOptions);
+        setBeadBrand(nextBeadBrand);
+        setCanvasZoom(FIT_WINDOW_ZOOM);
+      },
+      clearSourceImage: () => {
+        strokeBaseDocumentRef.current = null;
+        selectionBaseDocumentRef.current = null;
+        setSelection(null);
+        setSourceFile(null);
+        setAppliedFile(null);
+        setAppliedCrop(null);
+      },
       setConversionOptions,
       setActiveScenario,
       setActiveColor: (color) =>
@@ -507,7 +545,9 @@ export function useStudioApp(): UseStudioAppResult {
       setCanvasZoom,
       toggleGridLines: () => setShowGridLines((current) => !current),
       createBlankCanvas: () => {
-        setSelectedFile(null);
+        setSourceFile(null);
+        setAppliedFile(null);
+        setAppliedCrop(null);
         setPreviewUrl(undefined);
         strokeBaseDocumentRef.current = null;
         selectionBaseDocumentRef.current = null;

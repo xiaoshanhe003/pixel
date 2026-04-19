@@ -13,10 +13,10 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /重做/i })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /创作场景/i })).toHaveValue('pixel');
     expect(screen.getByRole('combobox', { name: /网格尺寸/i })).toHaveValue('16');
-    expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
-    expect(screen.getByRole('combobox', { name: /细节等级/i })).toHaveValue('clean');
-    expect(screen.getByRole('combobox', { name: /图像类型/i })).toHaveValue('line-art-character');
-    expect(screen.getByRole('combobox', { name: /画面构图/i })).toHaveValue('full-composition');
+    expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /细节等级/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /图像类型/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /画面构图/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /填充桶/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /线条/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /矩形/i })).toBeInTheDocument();
@@ -29,14 +29,17 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /抓手/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('hides palette size controls in bead mode', async () => {
+  it('keeps palette size controls inside the conversion dialog only', async () => {
     renderApp();
 
-    expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
-
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');
-
     expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
+
+    const input = screen.getByLabelText(/上传图片/i) as HTMLInputElement;
+    const file = new File(['fake'], 'sprite.png', { type: 'image/png' });
+
+    await userEvent.upload(input, file);
+
+    expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
   });
 
   it('shows the expanded grid size options in ascending order', async () => {
@@ -77,26 +80,35 @@ describe('App rendering', () => {
 
     await userEvent.upload(input, file);
 
-    expect(screen.getByRole('dialog', { name: /图片裁切/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^确认$/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /裁切并应用转绘设置/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /转绘到画板/i })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /^确认$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /转绘到画板/i }));
 
-    expect(cropImageFile).not.toHaveBeenCalled();
+    expect(cropImageFile).toHaveBeenCalled();
     await screen.findByRole('grid', { name: /像素输出网格/i });
   });
 
-  it('reopens cropping inside a modal for an existing uploaded image', async () => {
+  it('moves conversion preferences into the upload dialog once a result is applied', async () => {
     renderApp();
     await uploadMockImage();
 
-    await userEvent.click(screen.getByRole('button', { name: /^裁切$/i }));
+    expect(screen.queryByRole('combobox', { name: /细节等级/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /修改设置/i })).toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('dialog', { name: /图片裁切/i })).toBeInTheDocument();
+  it('reopens cropping and settings inside a modal for an existing uploaded image', async () => {
+    renderApp();
+    await uploadMockImage();
 
-    await userEvent.click(screen.getByRole('button', { name: /^关闭$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /修改设置/i }));
 
-    expect(screen.queryByRole('dialog', { name: /图片裁切/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /裁切并应用转绘设置/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /细节等级/i })).toHaveValue('clean');
+
+    await userEvent.click(screen.getByRole('button', { name: /关闭弹窗/i }));
+
+    expect(screen.queryByRole('dialog', { name: /裁切并应用转绘设置/i })).not.toBeInTheDocument();
     expect(screen.getByAltText(/已上传原图预览/i)).toBeInTheDocument();
   });
 

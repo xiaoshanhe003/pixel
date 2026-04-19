@@ -9,7 +9,7 @@ describe('App layout visibility', () => {
     expect(screen.queryByRole('heading', { name: /图层/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /逐帧动画/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /检查器/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /素材/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /参考图/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /项目设置/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /打开右侧面板/i })).toBeInTheDocument();
   });
