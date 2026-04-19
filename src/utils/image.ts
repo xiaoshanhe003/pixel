@@ -10,10 +10,11 @@ type Bounds = {
   height: number;
 };
 
-export type SquareCrop = {
+export type CropRect = {
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
 };
 
 function createImageData(width: number, height: number, data?: Uint8ClampedArray): ImageData {
@@ -255,21 +256,21 @@ export async function fileToImageElement(file: File): Promise<HTMLImageElement> 
 
 export async function cropImageFile(
   file: File,
-  crop: SquareCrop,
+  crop: CropRect,
 ): Promise<File> {
   const image = await fileToImageElement(file);
   const naturalWidth = image.naturalWidth || image.width;
   const naturalHeight = image.naturalHeight || image.height;
-  const maxSize = Math.min(naturalWidth, naturalHeight);
-  const size = Math.max(1, Math.min(Math.round(crop.size), maxSize));
-  const x = Math.max(0, Math.min(Math.round(crop.x), naturalWidth - size));
-  const y = Math.max(0, Math.min(Math.round(crop.y), naturalHeight - size));
-  const canvas = createCanvas(size, size);
+  const width = Math.max(1, Math.min(Math.round(crop.width), naturalWidth));
+  const height = Math.max(1, Math.min(Math.round(crop.height), naturalHeight));
+  const x = Math.max(0, Math.min(Math.round(crop.x), naturalWidth - width));
+  const y = Math.max(0, Math.min(Math.round(crop.y), naturalHeight - height));
+  const canvas = createCanvas(width, height);
   const context = getCanvas2DContext(canvas);
 
   context.imageSmoothingEnabled = true;
-  context.clearRect(0, 0, size, size);
-  context.drawImage(image, x, y, size, size, 0, 0, size, size);
+  context.clearRect(0, 0, width, height);
+  context.drawImage(image, x, y, width, height, 0, 0, width, height);
 
   const type = file.type || 'image/png';
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -445,6 +446,41 @@ export function createSubjectFocusImageData(
   }
 
   return cropImageData(imageData, focusBounds);
+}
+
+export function detectContentCrop(
+  imageData: ImageData,
+  paddingRatio = 0,
+): CropRect {
+  const opaqueBounds = measureOpaqueBounds(imageData);
+  const subjectBounds =
+    opaqueBounds &&
+    (opaqueBounds.width < imageData.width || opaqueBounds.height < imageData.height)
+      ? opaqueBounds
+      : measureSolidForegroundBounds(imageData, estimateEdgeBackgroundColor(imageData)) ?? opaqueBounds;
+
+  if (!subjectBounds) {
+    return {
+      x: 0,
+      y: 0,
+      width: imageData.width,
+      height: imageData.height,
+    };
+  }
+
+  const padX = Math.round(subjectBounds.width * paddingRatio);
+  const padY = Math.round(subjectBounds.height * paddingRatio);
+  const minX = Math.max(0, subjectBounds.minX - padX);
+  const minY = Math.max(0, subjectBounds.minY - padY);
+  const maxX = Math.min(imageData.width - 1, subjectBounds.maxX + padX);
+  const maxY = Math.min(imageData.height - 1, subjectBounds.maxY + padY);
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+  };
 }
 
 export function fitImageDataContain(

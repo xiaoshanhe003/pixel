@@ -106,7 +106,10 @@ describe('App output modes', () => {
   it('cleans up bead speckles on a 50 x 50 canvas', async () => {
     renderApp();
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /网格尺寸/i }), '50');
+    await userEvent.clear(screen.getByRole('spinbutton', { name: /宽/i }));
+    await userEvent.type(screen.getByRole('spinbutton', { name: /宽/i }), '50');
+    await userEvent.clear(screen.getByRole('spinbutton', { name: /高/i }));
+    await userEvent.type(screen.getByRole('spinbutton', { name: /高/i }), '50');
     await createBlankCanvas();
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /创作场景/i }), 'beads');

@@ -1,8 +1,6 @@
 import type { ConversionOptions } from '../types/pixel';
 
 export type DetailPreset = 'clean' | 'balanced' | 'detailed';
-export type ImageKindPreset = 'general' | 'line-art-character';
-export type FramingPreset = 'full-composition' | 'subject-focus';
 
 export function applyDetailPreset(
   options: ConversionOptions,
@@ -47,34 +45,4 @@ export function inferDetailPreset(options: ConversionOptions): DetailPreset {
   }
 
   return 'balanced';
-}
-
-export function applyImageKindPreset(
-  options: ConversionOptions,
-  preset: ImageKindPreset,
-): ConversionOptions {
-  return {
-    ...options,
-    animeMode: preset === 'line-art-character',
-  };
-}
-
-export function inferImageKindPreset(
-  options: ConversionOptions,
-): ImageKindPreset {
-  return options.animeMode ? 'line-art-character' : 'general';
-}
-
-export function applyFramingPreset(
-  options: ConversionOptions,
-  preset: FramingPreset,
-): ConversionOptions {
-  return {
-    ...options,
-    fillFrame: preset === 'subject-focus',
-  };
-}
-
-export function inferFramingPreset(options: ConversionOptions): FramingPreset {
-  return options.fillFrame ? 'subject-focus' : 'full-composition';
 }

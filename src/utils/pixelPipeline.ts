@@ -77,27 +77,29 @@ function readAlphaAt(imageData: ImageData, x: number, y: number): number {
 
 function sampleImageData(
   imageData: ImageData,
-  gridSize: number,
+  gridWidth: number,
+  gridHeight: number,
   fillFrame: boolean,
 ): SampledCell[][] {
+  const longestEdge = Math.max(gridWidth, gridHeight);
   const baseImage = createSubjectFocusImageData(
     imageData,
-    1,
+    gridWidth / gridHeight,
     fillFrame,
     TRANSPARENT_ALPHA_THRESHOLD,
   );
   const padding = fillFrame
-    ? Math.max(0, Math.round(gridSize * 0.03))
-    : Math.max(1, Math.round(gridSize * 0.08));
+    ? Math.max(0, Math.round(longestEdge * 0.03))
+    : Math.max(1, Math.round(longestEdge * 0.08));
   const source =
-    baseImage.width === gridSize && baseImage.height === gridSize
+    baseImage.width === gridWidth && baseImage.height === gridHeight
       ? baseImage
       : fillFrame
-        ? fitImageDataCover(baseImage, gridSize, gridSize, padding)
-        : fitImageDataContain(baseImage, gridSize, gridSize, padding);
+        ? fitImageDataCover(baseImage, gridWidth, gridHeight, padding)
+        : fitImageDataContain(baseImage, gridWidth, gridHeight, padding);
 
-  return Array.from({ length: gridSize }, (_, y) =>
-    Array.from({ length: gridSize }, (_, x) => {
+  return Array.from({ length: gridHeight }, (_, y) =>
+    Array.from({ length: gridWidth }, (_, x) => {
       const sourceRgb = readRgbAt(source, x, y);
       const alpha = readAlphaAt(source, x, y);
 
@@ -688,9 +690,12 @@ export function cleanupAnimeLineArtifacts(
 }
 
 export function buildPixelGrid(imageData: ImageData, options: ConversionOptions): PixelGrid {
+  const gridWidth = options.gridWidth ?? options.gridSize ?? 16;
+  const gridHeight = options.gridHeight ?? options.gridSize ?? 16;
   const sampledCells = sampleImageData(
     imageData,
-    options.gridSize,
+    gridWidth,
+    gridHeight,
     options.fillFrame,
   );
   const featureWeights = buildFeatureWeightGrid(sampledCells);
@@ -709,7 +714,7 @@ export function buildPixelGrid(imageData: ImageData, options: ConversionOptions)
     : colorGrid.map((row) => row.map((cell) => cell.color));
   const cleanedColorGrid = options.simplifyShapes
     ? simplifyShapeClusters(noiseCleanedGrid, {
-        gridSize: options.gridSize,
+        gridSize: Math.max(gridWidth, gridHeight),
         preserveSilhouette: options.preserveSilhouette,
         animeMode: options.animeMode,
       }, featureWeights)
@@ -717,7 +722,7 @@ export function buildPixelGrid(imageData: ImageData, options: ConversionOptions)
   const animeCleanedGrid = cleanupAnimeLineArtifacts(
     cleanedColorGrid,
     {
-      gridSize: options.gridSize,
+      gridSize: Math.max(gridWidth, gridHeight),
       animeMode: options.animeMode,
     },
     featureWeights,
@@ -725,8 +730,8 @@ export function buildPixelGrid(imageData: ImageData, options: ConversionOptions)
 
   const cells: PixelCell[] = [];
 
-  for (let y = 0; y < options.gridSize; y += 1) {
-    for (let x = 0; x < options.gridSize; x += 1) {
+  for (let y = 0; y < gridHeight; y += 1) {
+    for (let x = 0; x < gridWidth; x += 1) {
       const sampledCell = colorGrid[y][x];
 
       cells.push({
@@ -748,8 +753,8 @@ export function buildPixelGrid(imageData: ImageData, options: ConversionOptions)
   ];
 
   return {
-    width: options.gridSize,
-    height: options.gridSize,
+    width: gridWidth,
+    height: gridHeight,
     cells,
     palette: activePalette,
   };

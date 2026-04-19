@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConversionOptions } from '../../types/pixel';
-import {
-  applyDetailPreset,
-  applyFramingPreset,
-  applyImageKindPreset,
-  inferDetailPreset,
-  inferFramingPreset,
-  inferImageKindPreset,
-} from '../conversionPresets';
+import { applyDetailPreset, inferDetailPreset } from '../conversionPresets';
 
 const baseOptions: ConversionOptions = {
   gridSize: 16,
@@ -52,19 +45,5 @@ describe('conversionPresets', () => {
     expect(inferDetailPreset(applyDetailPreset(baseOptions, 'clean'))).toBe('clean');
     expect(inferDetailPreset(applyDetailPreset(baseOptions, 'balanced'))).toBe('balanced');
     expect(inferDetailPreset(applyDetailPreset(baseOptions, 'detailed'))).toBe('detailed');
-  });
-
-  it('maps image type preset to anime mode', () => {
-    expect(applyImageKindPreset(baseOptions, 'general').animeMode).toBe(false);
-    expect(applyImageKindPreset(baseOptions, 'line-art-character').animeMode).toBe(true);
-    expect(inferImageKindPreset({ ...baseOptions, animeMode: false })).toBe('general');
-    expect(inferImageKindPreset(baseOptions)).toBe('line-art-character');
-  });
-
-  it('maps framing preset to fill-frame mode', () => {
-    expect(applyFramingPreset(baseOptions, 'full-composition').fillFrame).toBe(false);
-    expect(applyFramingPreset(baseOptions, 'subject-focus').fillFrame).toBe(true);
-    expect(inferFramingPreset({ ...baseOptions, fillFrame: false })).toBe('full-composition');
-    expect(inferFramingPreset({ ...baseOptions, fillFrame: true })).toBe('subject-focus');
   });
 });

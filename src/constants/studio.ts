@@ -3,6 +3,8 @@ import type { ScenarioDefinition } from '../types/studio';
 
 export const DEFAULT_OPTIONS: ConversionOptions = {
   gridSize: 16,
+  gridWidth: 16,
+  gridHeight: 16,
   paletteSize: 16,
   dithering: false,
   cleanupNoise: true,

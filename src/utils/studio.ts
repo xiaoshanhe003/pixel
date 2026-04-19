@@ -42,36 +42,36 @@ function buildCellColorPatch(color: string | null) {
       };
 }
 
-export function createBlankGrid(size: GridSize): PixelGrid {
-  const cells: PixelCell[] = Array.from({ length: size * size }, (_, index) => ({
-    x: index % size,
-    y: Math.floor(index / size),
+export function createBlankGrid(width: GridSize, height = width): PixelGrid {
+  const cells: PixelCell[] = Array.from({ length: width * height }, (_, index) => ({
+    x: index % width,
+    y: Math.floor(index / width),
     color: null,
     source: { r: 255, g: 255, b: 255 },
     alpha: 0,
   }));
 
   return {
-    width: size,
-    height: size,
+    width,
+    height,
     cells,
     palette: [],
   };
 }
 
-export function createBlankLayer(size: GridSize, name = '图层 1'): StudioLayer {
+export function createBlankLayer(width: GridSize, height = width, name = '图层 1'): StudioLayer {
   return {
     id: createStudioId('layer'),
     name,
     visible: true,
     locked: false,
     opacity: 1,
-    cells: createBlankGrid(size).cells,
+    cells: createBlankGrid(width, height).cells,
   };
 }
 
-export function createBlankFrame(size: GridSize, name = '第 1 帧'): StudioFrame {
-  const layer = createBlankLayer(size, '图层 1');
+export function createBlankFrame(width: GridSize, height = width, name = '第 1 帧'): StudioFrame {
+  const layer = createBlankLayer(width, height, '图层 1');
 
   return {
     id: createStudioId('frame'),
@@ -83,14 +83,15 @@ export function createBlankFrame(size: GridSize, name = '第 1 帧'): StudioFram
 
 export function createStudioDocument(
   scenario: ScenarioId,
-  size: GridSize,
+  width: GridSize,
+  height = width,
 ): StudioDocument {
-  const frame = createBlankFrame(size);
+  const frame = createBlankFrame(width, height);
 
   return {
     scenario,
-    width: size,
-    height: size,
+    width,
+    height,
     frames: [frame],
     activeFrameId: frame.id,
   };
@@ -166,11 +167,11 @@ export function createDocumentFromGrid(
 
 export function composeFrame(
   frame: StudioFrame,
-  width: GridSize,
-  height: GridSize,
+  width: number,
+  height: number,
 ): PixelGrid {
   const cellCount = width * height;
-  const base = createBlankGrid(width);
+  const base = createBlankGrid(width, height);
   const cells = base.cells.map((cell, index) => {
     let compositeRed = 255;
     let compositeGreen = 255;
@@ -1081,6 +1082,7 @@ export function addLayerToActiveFrame(document: StudioDocument): StudioDocument 
   return updateFrame(document, document.activeFrameId, (frame) => {
     const nextLayer = createBlankLayer(
       document.width,
+      document.height,
       `图层 ${frame.layers.length + 1}`,
     );
 
@@ -1343,6 +1345,7 @@ export function setLayerOpacity(
 export function addFrameToDocument(document: StudioDocument): StudioDocument {
   const nextFrame = createBlankFrame(
     document.width,
+    document.height,
     `第 ${document.frames.length + 1} 帧`,
   );
 

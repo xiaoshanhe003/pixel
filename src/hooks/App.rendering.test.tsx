@@ -12,7 +12,8 @@ describe('App rendering', () => {
     expect(screen.getByRole('button', { name: /撤销/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /重做/i })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /创作场景/i })).toHaveValue('pixel');
-    expect(screen.getByRole('combobox', { name: /网格尺寸/i })).toHaveValue('16');
+    expect(screen.getByRole('spinbutton', { name: /宽/i })).toHaveValue(16);
+    expect(screen.getByRole('spinbutton', { name: /高/i })).toHaveValue(16);
     expect(screen.queryByRole('combobox', { name: /颜色数量/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /细节等级/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /图像类型/i })).not.toBeInTheDocument();
@@ -42,15 +43,11 @@ describe('App rendering', () => {
     expect(screen.getByRole('combobox', { name: /颜色数量/i })).toHaveValue('16');
   });
 
-  it('shows the expanded grid size options in ascending order', async () => {
+  it('shows width and height inputs in project settings', async () => {
     renderApp();
 
-    const gridSizeSelect = screen.getByRole('combobox', { name: /网格尺寸/i });
-    const optionLabels = Array.from(gridSizeSelect.querySelectorAll('option')).map(
-      (option) => option.textContent,
-    );
-
-    expect(optionLabels).toEqual(['16 x 16', '32 x 32', '50 x 50', '64 x 64', '100 x 100']);
+    expect(screen.getByRole('spinbutton', { name: /宽/i })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /高/i })).toBeInTheDocument();
   });
 
   it('shows a generated grid after an image is uploaded', async () => {

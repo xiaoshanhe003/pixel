@@ -4,24 +4,25 @@ import { createPortal } from 'react-dom';
 import type { BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions } from '../types/pixel';
 import type { ScenarioId } from '../types/studio';
-import type { SquareCrop } from '../utils/image';
-import { cropImageFile, fileToImageElement } from '../utils/image';
+import type { CropRect } from '../utils/image';
+import { cropImageFile, detectContentCrop, fileToImageElement, imageSourceToImageData } from '../utils/image';
 import { Button } from './ui/button';
 import ConversionControls from './ConversionControls';
 import { Icon } from './ui/Icon';
+import { CheckboxField } from './ui/checkbox';
 
 type ImageUploaderProps = {
   activeScenario: ScenarioId;
   sourceFile: File | null;
   appliedFile: File | null;
-  appliedCrop: SquareCrop | null;
+  appliedCrop: CropRect | null;
   previewUrl?: string;
   conversionOptions: ConversionOptions;
   beadBrand: BeadBrand;
   onApply: (params: {
     sourceFile: File;
     appliedFile: File;
-    crop: SquareCrop | null;
+    crop: CropRect | null;
     conversionOptions: ConversionOptions;
     beadBrand: BeadBrand;
   }) => void;
@@ -40,31 +41,37 @@ type RenderFrame = {
   height: number;
 };
 
-type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+type ResizeHandle =
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'top'
+  | 'right'
+  | 'bottom'
+  | 'left';
 
 const MIN_CROP_SIZE = 48;
+const AUTO_FIT_PADDING_RATIO = 0;
 
-function buildCenteredCrop(metrics: ImageMetrics): SquareCrop {
-  const size = Math.min(metrics.naturalWidth, metrics.naturalHeight);
-
+function buildCenteredCrop(metrics: ImageMetrics): CropRect {
   return {
-    x: Math.round((metrics.naturalWidth - size) / 2),
-    y: Math.round((metrics.naturalHeight - size) / 2),
-    size,
+    x: 0,
+    y: 0,
+    width: metrics.naturalWidth,
+    height: metrics.naturalHeight,
   };
 }
 
-function normalizeCrop(crop: SquareCrop, metrics: ImageMetrics): SquareCrop {
-  const maxSize = Math.min(
-    metrics.naturalWidth,
-    metrics.naturalHeight,
-  );
-  const nextSize = Math.max(MIN_CROP_SIZE, Math.min(crop.size, maxSize));
+function normalizeCrop(crop: CropRect, metrics: ImageMetrics): CropRect {
+  const nextWidth = Math.max(MIN_CROP_SIZE, Math.min(Math.round(crop.width), metrics.naturalWidth));
+  const nextHeight = Math.max(MIN_CROP_SIZE, Math.min(Math.round(crop.height), metrics.naturalHeight));
 
   return {
-    x: Math.max(0, Math.min(crop.x, metrics.naturalWidth - nextSize)),
-    y: Math.max(0, Math.min(crop.y, metrics.naturalHeight - nextSize)),
-    size: nextSize,
+    x: Math.max(0, Math.min(Math.round(crop.x), metrics.naturalWidth - nextWidth)),
+    y: Math.max(0, Math.min(Math.round(crop.y), metrics.naturalHeight - nextHeight)),
+    width: nextWidth,
+    height: nextHeight,
   };
 }
 
@@ -123,7 +130,7 @@ export default function ImageUploader({
     pointerId: number;
     startX: number;
     startY: number;
-    crop: SquareCrop;
+    crop: CropRect;
     frame: RenderFrame;
     metrics: ImageMetrics;
   } | null>(null);
@@ -131,11 +138,14 @@ export default function ImageUploader({
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [crop, setCrop] = useState<SquareCrop | null>(null);
-  const [initialCrop, setInitialCrop] = useState<SquareCrop | null>(null);
+  const [crop, setCrop] = useState<CropRect | null>(null);
+  const [initialCrop, setInitialCrop] = useState<CropRect | null>(null);
   const [metrics, setMetrics] = useState<ImageMetrics | null>(null);
   const [draftOptions, setDraftOptions] = useState<ConversionOptions>(conversionOptions);
   const [draftBeadBrand, setDraftBeadBrand] = useState<BeadBrand>(beadBrand);
+  const [keepRatio, setKeepRatio] = useState(true);
+  const resolvedGridWidth = draftOptions.gridWidth ?? draftOptions.gridSize ?? 16;
+  const resolvedGridHeight = draftOptions.gridHeight ?? draftOptions.gridSize ?? 16;
 
   useEffect(() => {
     if (!pendingSourceFile) {
@@ -219,82 +229,69 @@ export default function ImageUploader({
       const deltaY = (event.clientY - current.startY) * scale;
 
       if (current.mode === 'move') {
-        const maxX = current.metrics.naturalWidth - current.crop.size;
-        const maxY = current.metrics.naturalHeight - current.crop.size;
+        const maxX = current.metrics.naturalWidth - current.crop.width;
+        const maxY = current.metrics.naturalHeight - current.crop.height;
 
         setCrop({
           ...current.crop,
           x: Math.max(0, Math.min(Math.round(current.crop.x + deltaX), maxX)),
           y: Math.max(0, Math.min(Math.round(current.crop.y + deltaY), maxY)),
-          size: current.crop.size,
         });
         return;
       }
 
-      const oppositeX =
-        current.handle === 'top-left' || current.handle === 'bottom-left'
-          ? current.crop.x + current.crop.size
-          : current.crop.x;
-      const oppositeY =
-        current.handle === 'top-left' || current.handle === 'top-right'
-          ? current.crop.y + current.crop.size
-          : current.crop.y;
+      const handle = current.handle;
 
-      const pointerX =
-        current.handle === 'top-left' || current.handle === 'bottom-left'
-          ? current.crop.x + deltaX
-          : current.crop.x + current.crop.size + deltaX;
-      const pointerY =
-        current.handle === 'top-left' || current.handle === 'top-right'
-          ? current.crop.y + deltaY
-          : current.crop.y + current.crop.size + deltaY;
+      if (!handle) {
+        return;
+      }
 
-      const rawSize = Math.max(
-        Math.abs(oppositeX - pointerX),
-        Math.abs(oppositeY - pointerY),
+      const currentRight = current.crop.x + current.crop.width;
+      const currentBottom = current.crop.y + current.crop.height;
+      let nextLeft = current.crop.x;
+      let nextTop = current.crop.y;
+      let nextRight = currentRight;
+      let nextBottom = currentBottom;
+
+      if (handle.includes('left')) {
+        nextLeft = Math.max(
+          0,
+          Math.min(Math.round(current.crop.x + deltaX), currentRight - MIN_CROP_SIZE),
+        );
+      }
+
+      if (handle.includes('right')) {
+        nextRight = Math.min(
+          current.metrics.naturalWidth,
+          Math.max(Math.round(currentRight + deltaX), current.crop.x + MIN_CROP_SIZE),
+        );
+      }
+
+      if (handle.includes('top')) {
+        nextTop = Math.max(
+          0,
+          Math.min(Math.round(current.crop.y + deltaY), currentBottom - MIN_CROP_SIZE),
+        );
+      }
+
+      if (handle.includes('bottom')) {
+        nextBottom = Math.min(
+          current.metrics.naturalHeight,
+          Math.max(Math.round(currentBottom + deltaY), current.crop.y + MIN_CROP_SIZE),
+        );
+      }
+
+      setCrop(
+        normalizeCrop(
+          {
+            x: nextLeft,
+            y: nextTop,
+            width: nextRight - nextLeft,
+            height: nextBottom - nextTop,
+          },
+          current.metrics,
+        ),
       );
-      const maxAllowedSize =
-        current.handle === 'top-left'
-          ? Math.min(oppositeX, oppositeY)
-          : current.handle === 'top-right'
-            ? Math.min(current.metrics.naturalWidth - oppositeX, oppositeY)
-            : current.handle === 'bottom-left'
-              ? Math.min(oppositeX, current.metrics.naturalHeight - oppositeY)
-              : Math.min(
-                  current.metrics.naturalWidth - oppositeX,
-                  current.metrics.naturalHeight - oppositeY,
-                );
-      const nextSize = Math.max(
-        MIN_CROP_SIZE,
-        Math.min(Math.round(rawSize), maxAllowedSize),
-      );
-
-      const nextCrop =
-        current.handle === 'top-left'
-          ? {
-              x: oppositeX - nextSize,
-              y: oppositeY - nextSize,
-              size: nextSize,
-            }
-          : current.handle === 'top-right'
-            ? {
-                x: oppositeX,
-                y: oppositeY - nextSize,
-                size: nextSize,
-              }
-            : current.handle === 'bottom-left'
-              ? {
-                  x: oppositeX - nextSize,
-                  y: oppositeY,
-                  size: nextSize,
-                }
-              : {
-                  x: oppositeX,
-                  y: oppositeY,
-                  size: nextSize,
-                };
-
-      setCrop(nextCrop);
     }
 
     function handlePointerUp(event: PointerEvent) {
@@ -316,6 +313,19 @@ export default function ImageUploader({
     };
   }, []);
 
+  const cropAspectRatio = crop ? crop.width / crop.height : 1;
+
+  useEffect(() => {
+    if (!isDialogOpen || !keepRatio || !crop) {
+      return;
+    }
+
+    setDraftOptions((current) => ({
+      ...current,
+      gridHeight: Math.max(1, Math.ceil((current.gridWidth ?? current.gridSize ?? 16) / cropAspectRatio)),
+    }));
+  }, [cropAspectRatio, isDialogOpen, keepRatio, crop]);
+
   const cropFrame = useMemo(() => {
     if (!crop || !metrics || !cropImageRef.current) {
       return null;
@@ -327,7 +337,8 @@ export default function ImageUploader({
     return {
       left: frame.left + crop.x * scale,
       top: frame.top + crop.y * scale,
-      size: crop.size * scale,
+      width: crop.width * scale,
+      height: crop.height * scale,
     };
   }, [crop, metrics, pendingPreviewUrl, isDialogOpen]);
 
@@ -352,11 +363,12 @@ export default function ImageUploader({
     };
   };
 
-  const openDialog = (file: File, nextCrop: SquareCrop | null) => {
+  const openDialog = (file: File, nextCrop: CropRect | null) => {
     setPendingSourceFile(file);
     setDraftOptions(conversionOptions);
     setDraftBeadBrand(beadBrand);
     setInitialCrop(nextCrop);
+    setKeepRatio(true);
     setIsDialogOpen(true);
   };
 
@@ -368,6 +380,48 @@ export default function ImageUploader({
     interactionRef.current = null;
     setPendingSourceFile(null);
     setIsDialogOpen(false);
+  };
+
+  const updateCanvasSize = (dimension: 'width' | 'height', value: string) => {
+    const nextValue = Math.max(1, Number.parseInt(value || '1', 10));
+
+    setDraftOptions((current) => {
+      if (!keepRatio || !crop) {
+        return dimension === 'width'
+          ? { ...current, gridWidth: nextValue }
+          : { ...current, gridHeight: nextValue };
+      }
+
+      if (dimension === 'width') {
+        return {
+          ...current,
+          gridWidth: nextValue,
+          gridHeight: Math.max(1, Math.ceil(nextValue / cropAspectRatio)),
+        };
+      }
+
+      return {
+        ...current,
+        gridHeight: nextValue,
+        gridWidth: Math.max(1, Math.ceil(nextValue * cropAspectRatio)),
+      };
+    });
+  };
+
+  const fitToContent = async () => {
+    if (!pendingSourceFile || !metrics) {
+      return;
+    }
+
+    const image = await fileToImageElement(pendingSourceFile);
+    const imageData = imageSourceToImageData(
+      image,
+      image.naturalWidth || image.width,
+      image.naturalHeight || image.height,
+      true,
+    );
+
+    setCrop(normalizeCrop(detectContentCrop(imageData, AUTO_FIT_PADDING_RATIO), metrics));
   };
 
   const applySettings = async () => {
@@ -477,7 +531,7 @@ export default function ImageUploader({
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="crop-dialog__dialog-header">
-                  <h3 className="crop-dialog__dialog-title">裁切图片</h3>
+                  <h3 className="crop-dialog__dialog-title">编辑参考图</h3>
                   <Button
                     variant="tertiary"
                     icon={<Icon name="x" />}
@@ -503,13 +557,27 @@ export default function ImageUploader({
                           style={{
                             left: `${cropFrame.left}px`,
                             top: `${cropFrame.top}px`,
-                            width: `${cropFrame.size}px`,
-                            height: `${cropFrame.size}px`,
+                            width: `${cropFrame.width}px`,
+                            height: `${cropFrame.height}px`,
                           }}
                           onPointerDown={(event) => startInteraction(event, 'move')}
                         >
                           <span className="crop-selection__rule crop-selection__rule--horizontal" />
                           <span className="crop-selection__rule crop-selection__rule--vertical" />
+                          {(['top', 'right', 'bottom', 'left'] as ResizeHandle[]).map(
+                            (handle) => (
+                              <button
+                                key={handle}
+                                type="button"
+                                className={`crop-selection__edge crop-selection__edge--${handle}`}
+                                aria-label="调整裁切范围"
+                                onPointerDown={(event) => {
+                                  event.stopPropagation();
+                                  startInteraction(event, 'resize', handle);
+                                }}
+                              />
+                            ),
+                          )}
                           {(
                             [
                               'top-left',
@@ -532,11 +600,59 @@ export default function ImageUploader({
                         </div>
                       ) : null}
                     </div>
+                    <div className="crop-dialog__workspace-actions">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          void fitToContent();
+                        }}
+                      >
+                        贴合内容
+                      </Button>
+                    </div>
                   </div>
 
                   <aside className="crop-dialog__settings">
-                    <div className="crop-dialog__settings-header">
-                      <h3 className="crop-dialog__title">转绘偏好</h3>
+                    <div className="conversion-controls conversion-controls--plain crop-dialog__controls">
+                      <div className="conversion-controls__groups crop-dialog__controls-body">
+                        <fieldset className="size-control">
+                          <legend>画布</legend>
+                          <CheckboxField
+                            checked={keepRatio}
+                            onCheckedChange={(checked) => setKeepRatio(Boolean(checked))}
+                            label="按当前比例"
+                            wrapperClassName="crop-dialog__ratio-toggle"
+                          />
+                          <div className="size-fields">
+                            <label className="ui-number-field">
+                              <span className="ui-number-field__label">宽</span>
+                              <input
+                                className="ui-number-field__input"
+                                type="number"
+                                min={1}
+                                max={256}
+                                step={1}
+                                inputMode="numeric"
+                                value={resolvedGridWidth}
+                                onChange={(event) => updateCanvasSize('width', event.target.value)}
+                              />
+                            </label>
+                            <label className="ui-number-field">
+                              <span className="ui-number-field__label">高</span>
+                              <input
+                                className="ui-number-field__input"
+                                type="number"
+                                min={1}
+                                max={256}
+                                step={1}
+                                inputMode="numeric"
+                                value={resolvedGridHeight}
+                                onChange={(event) => updateCanvasSize('height', event.target.value)}
+                              />
+                            </label>
+                          </div>
+                        </fieldset>
+                      </div>
                     </div>
 
                     <ConversionControls
@@ -548,6 +664,7 @@ export default function ImageUploader({
                       beadBrand={draftBeadBrand}
                       onChange={setDraftOptions}
                       onBeadBrandChange={setDraftBeadBrand}
+                      showCanvasSize={false}
                     />
 
                     <div className="crop-dialog__footer crop-dialog__footer--stacked">

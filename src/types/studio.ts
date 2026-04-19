@@ -47,8 +47,8 @@ export type StudioFrame = {
 
 export type StudioDocument = {
   scenario: ScenarioId;
-  width: GridSize;
-  height: GridSize;
+  width: number;
+  height: number;
   frames: StudioFrame[];
   activeFrameId: string;
 };

@@ -12,12 +12,14 @@ export type PixelCell = {
   alpha: number;
 };
 
-export type GridSize = 16 | 32 | 50 | 64 | 100;
+export type GridSize = number;
 
 export type PaletteSize = 16 | 32;
 
 export type ConversionOptions = {
-  gridSize: GridSize;
+  gridSize?: GridSize;
+  gridWidth?: GridSize;
+  gridHeight?: GridSize;
   paletteSize: PaletteSize;
   dithering: boolean;
   cleanupNoise: boolean;

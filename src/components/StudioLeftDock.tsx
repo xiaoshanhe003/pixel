@@ -1,7 +1,7 @@
 import type { BeadBrand } from '../data/beadPalettes';
 import type { ConversionOptions } from '../types/pixel';
 import type { ScenarioId } from '../types/studio';
-import type { SquareCrop } from '../utils/image';
+import type { CropRect } from '../utils/image';
 import ConversionControls from './ConversionControls';
 import ImageUploader from './ImageUploader';
 
@@ -11,14 +11,14 @@ type StudioLeftDockProps = {
   beadBrand: BeadBrand;
   sourceFile: File | null;
   appliedFile: File | null;
-  appliedCrop: SquareCrop | null;
+  appliedCrop: CropRect | null;
   previewUrl?: string;
   onConversionOptionsChange: (options: ConversionOptions) => void;
   onBeadBrandChange: (brand: BeadBrand) => void;
   onApplyImageSettings: (params: {
     sourceFile: File;
     appliedFile: File;
-    crop: SquareCrop | null;
+    crop: CropRect | null;
     conversionOptions: ConversionOptions;
     beadBrand: BeadBrand;
   }) => void;

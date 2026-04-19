@@ -12,7 +12,7 @@ import type {
   StudioFrame,
   StudioLayer,
 } from '../types/studio';
-import type { SquareCrop } from '../utils/image';
+import type { CropRect } from '../utils/image';
 import {
   buildBeadNoiseCleanupMap,
   countBeadUsage,
@@ -71,7 +71,7 @@ type StudioSourceState = {
   appliedFile: File | null;
   previewUrl?: string;
   isProcessingUpload: boolean;
-  appliedCrop: SquareCrop | null;
+  appliedCrop: CropRect | null;
 };
 
 type StudioOutputState = {
@@ -127,7 +127,7 @@ export type UseStudioAppResult = {
     applySourceImage: (params: {
       sourceFile: File;
       appliedFile: File;
-      crop: SquareCrop | null;
+      crop: CropRect | null;
       conversionOptions: ConversionOptions;
       beadBrand: BeadBrand;
     }) => void;
@@ -206,6 +206,8 @@ function useStudioDocumentSync(params: {
 }) {
   const { document, activeScenario, conversionOptions, appliedFile, resetDocument, setDocument } =
     params;
+  const gridWidth = conversionOptions.gridWidth ?? conversionOptions.gridSize ?? DEFAULT_OPTIONS.gridWidth ?? 16;
+  const gridHeight = conversionOptions.gridHeight ?? conversionOptions.gridSize ?? DEFAULT_OPTIONS.gridHeight ?? 16;
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
 
@@ -239,7 +241,13 @@ function useStudioDocumentSync(params: {
         }
       } catch {
         if (!cancelled) {
-          resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+          resetDocument(
+            createStudioDocument(
+              activeScenario,
+              gridWidth,
+              gridHeight,
+            ),
+          );
           setIsProcessingUpload(false);
         }
       }
@@ -258,16 +266,23 @@ function useStudioDocumentSync(params: {
     }
 
     if (
-      document.width === conversionOptions.gridSize &&
-      document.height === conversionOptions.gridSize
+      document.width === gridWidth &&
+      document.height === gridHeight
     ) {
       return;
     }
 
-    resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+    resetDocument(
+      createStudioDocument(
+        activeScenario,
+        gridWidth,
+        gridHeight,
+      ),
+    );
   }, [
     activeScenario,
-    conversionOptions.gridSize,
+    gridWidth,
+    gridHeight,
     document.height,
     document.width,
     resetDocument,
@@ -360,9 +375,15 @@ export function useStudioApp(): UseStudioAppResult {
   const [activeScenario, setActiveScenario] = useState<ScenarioId>('pixel');
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [appliedFile, setAppliedFile] = useState<File | null>(null);
-  const [appliedCrop, setAppliedCrop] = useState<SquareCrop | null>(null);
+  const [appliedCrop, setAppliedCrop] = useState<CropRect | null>(null);
   const [history, setHistory] = useState<StudioHistoryState>(() =>
-    createStudioHistoryState(createStudioDocument('pixel', DEFAULT_OPTIONS.gridSize)),
+    createStudioHistoryState(
+      createStudioDocument(
+        'pixel',
+        DEFAULT_OPTIONS.gridWidth ?? DEFAULT_OPTIONS.gridSize ?? 16,
+        DEFAULT_OPTIONS.gridHeight ?? DEFAULT_OPTIONS.gridSize ?? 16,
+      ),
+    ),
   );
   const [activeColor, setActiveColor] = useState('#000000');
   const [activeTool, setActiveTool] = useState<EditorTool>('move');
@@ -386,6 +407,8 @@ export function useStudioApp(): UseStudioAppResult {
   const selectionBaseDocumentRef = useRef<StudioDocument | null>(null);
 
   const document = history.present;
+  const gridWidth = conversionOptions.gridWidth ?? conversionOptions.gridSize ?? DEFAULT_OPTIONS.gridWidth ?? 16;
+  const gridHeight = conversionOptions.gridHeight ?? conversionOptions.gridSize ?? DEFAULT_OPTIONS.gridHeight ?? 16;
 
   const setDocument = useCallback(
     (updater: (current: StudioDocument) => StudioDocument) => {
@@ -552,7 +575,13 @@ export function useStudioApp(): UseStudioAppResult {
         strokeBaseDocumentRef.current = null;
         selectionBaseDocumentRef.current = null;
         setSelection(null);
-        resetDocument(createStudioDocument(activeScenario, conversionOptions.gridSize));
+        resetDocument(
+          createStudioDocument(
+            activeScenario,
+            gridWidth,
+            gridHeight,
+          ),
+        );
         setCanvasZoom(FIT_WINDOW_ZOOM);
       },
       undo: () => {
